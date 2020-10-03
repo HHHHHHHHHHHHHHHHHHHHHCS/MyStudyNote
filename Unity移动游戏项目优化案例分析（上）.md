@@ -3,6 +3,7 @@
 <br/>
 
 ### 最近把UWA2020技术相关的视频看的七七八八 , 做做笔记以防遗忘.
+(知乎好像不能内部页面跳转emmmm....)
 
 [1. drawCall 和 batch 的区别](#1)<br>
 [2. Batching , SRP Batcher 和 SRP Instancing](#2)<br>
