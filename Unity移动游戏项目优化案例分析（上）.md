@@ -4,14 +4,16 @@
 
 ### 最近把UWA2020技术相关的视频看的七七八八 , 做做笔记以防遗忘.
 
-[1. drawCall 和 batch 的区别](#1.-drawCall-和-batch-的区别)<br>
-[2. Batching , SRP Batcher 和 SRP Instancing](#2.-Batching-,-SRP-Batcher-和-SRP-Instancing)<br>
-[3. DrawMeshInstance VS DrawMeshInstanceIndirect](#3.-DrawMeshInstance-VS-DrawMeshInstanceIndirect)<br>
-[4. UIRebuild](#4.-UIRebuild)<br>
-[5. UIRebatch(Canvas为单位)](#5.-UIRebatch(Canvas为单位))<br>
-[6. Overdraw](#6.-Overdraw)<br>
+[1. drawCall 和 batch 的区别](#1)<br>
+[2. Batching , SRP Batcher 和 SRP Instancing](#2)<br>
+[3. DrawMeshInstance VS DrawMeshInstanceIndirect](#3)<br>
+[4. UIRebuild](#4)<br>
+[5. UIRebatch(Canvas为单位)](#5)<br>
+[6. Overdraw](#6)<br>
 
 ------------------------
+<span id='1'/>
+
 ## **1. drawCall 和 batch 的区别**
 ### &nbsp;&nbsp; DrawCall : CPU发送渲染命令给GPU , 如:glDrawElements(OpenGL) / glDrawArrays(OpenGL) / DrawIndexedPrimitive(DX)
 ### &nbsp;&nbsp; Batch : CPU发送渲染的数据给GPU(CPU Write) , 如 设置顶点数据 glBufferData(OpenGL) / glBufferSubData(OpenGL) 等.
@@ -19,6 +21,8 @@
 <br/>
 
 ------------------------
+<span id='2'/>
+
 ## **2. Batching , SRP Batcher 和 SRP Instancing**
 * ## **Static Batching**
 ### &nbsp;&nbsp;条件:
