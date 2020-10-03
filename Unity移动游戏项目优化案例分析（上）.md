@@ -80,6 +80,8 @@
 <br/>
 
 ------------------------
+<span id='3'/>
+
 ## **3. DrawMeshInstance VS DrawMeshInstanceIndirect**
 * ## **单次上限**
   ### DrawMeshInstance : 128 / 256 / 512 (不同平台)
@@ -109,6 +111,8 @@
 <br/>
 
 ------------------------
+<span id='4'/>
+
 ## **4. UIRebuild**
 * ## **Graphics.Rebuild(顶点修改)**
   ### 性能瓶颈环境
@@ -153,6 +157,8 @@
 <br/>
 
 ------------------------
+<span id='5'/>
+
 ## **5. UIRebatch(Canvas为单位)**
 * ## **触发的情况**
   ### Canvas.BuildBatch
@@ -166,6 +172,8 @@
 <br/>
 
 ------------------------
+<span id='6'/>
+
 ## **6. Overdraw**
  ### &nbsp;&nbsp; Overdraw 指同一像素被重复渲染的次数 , 当被重复渲染的像素过多的时 或 重复的次数过多时候 , 则造成性能浪费.
  ### &nbsp;&nbsp; 一个像素被重复n次 光栅化 , fragment , 输出合并 . 这些都会占用 GPU像素填充率 , ALU运算 , 读取贴图的带宽.
