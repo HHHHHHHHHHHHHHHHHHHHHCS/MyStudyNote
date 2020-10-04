@@ -28,7 +28,7 @@
 
 ## **2. Batching , SRP Batcher 和 SRP Instancing**
 * ## **Static Batching**
-&nbsp;&nbsp; Projection->Player 里面有Static Batching
+&nbsp;&nbsp; Projection->Player 里面有Static Batching开关
 ### &nbsp;&nbsp;条件:
 1. ### 相同的材质球 , 可以不同的Mesh
 
