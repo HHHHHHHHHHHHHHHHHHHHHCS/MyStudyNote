@@ -18,11 +18,11 @@
 <span id='1'/>
 
 ## **1. Shader**
-### &nbsp;&nbsp;问题:
+### &nbsp;&nbsp;**问题:**
 1. ### 卡顿
 2. ### ShaderLab占用内存过大
 
-### &nbsp;&nbsp;原因:
+### &nbsp;&nbsp;**原因:**
 1. ### Shader.Parse-->Shader加载和解析
     + 变体数控制-->Shader被编译成多份,占用内存变大
     + 缓存控制-->避免Shader多次加载卸载,比如Shader在场景包中,切换场景被卸载加载
@@ -31,7 +31,7 @@
     + 冗余控制
     + Shader过多-->过多的时候,会导致编译过久,卡顿.
 
-### &nbsp;&nbsp;解决:
+### &nbsp;&nbsp;**解决:**
 1. ### 编译过久
     + 预先Warmup Shader.WarmupAllShaders()
 3. ### 变体控制
@@ -56,11 +56,11 @@
 ## **2. 场景加载**
 * ## **Async Upload Pipeline(AUP)**
 &nbsp;&nbsp; 渲染线程异步上传资源
-### &nbsp;&nbsp;条件:
+### &nbsp;&nbsp;**条件:**
 1. ### 只对纹理和Mesh生效
 2. ### 要关闭Read/Write
 
-### &nbsp;&nbsp;策略:
+### &nbsp;&nbsp;**策略:**
 1. ### 加载场景时,让BufferSize变大(Settings->Quality)
     + 分配给上传的内存变大
 2. ### 加载场景时,让TimeSlice变大(Settings->Quality)
@@ -70,12 +70,12 @@
 
 * ## **Texture Stream**
 &nbsp;&nbsp; 分层加载mipmap,不完全加载就进入场景
-### &nbsp;&nbsp;条件:
+### &nbsp;&nbsp;**条件:**
   1. ### 依赖Async Upload Pipeline(AUP)
   2. ### 需要Settings->Quality里面开启Texture Streaming
   3. ### 需要开启mipmap
 
-### &nbsp;&nbsp;策略:
+### &nbsp;&nbsp;**策略:**
 1. ### 加载时和运行时设置两套参数 
     + ### Memory Budget(给纹理的内存预算越少,纹理加载的mip level基本就越低)
     + ### Max Reduction(分层mipmap最大限制, 减少level越大, 图片越小)
@@ -83,11 +83,11 @@
 <br/>
 
 * ## **Mesh.Bake PhsX CollisionData**
-### &nbsp;&nbsp;问题:
+### &nbsp;&nbsp;**问题:**
 1. ### Mesh过大/复杂 , 每次进场景都需要运行时计算Collision数据 , 让加载过久
 2. ### 需要开启Read/Write , 这样就不能用AUP了
 
-### &nbsp;&nbsp;解决:
+### &nbsp;&nbsp;**解决:**
 1. ### Prebake Collision Meshes(Settings -> Player)
     + 包体大小上升,内存占用上升
 2. ### 使用简化Mesh或者LOD作为碰撞体
