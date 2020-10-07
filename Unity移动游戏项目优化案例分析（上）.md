@@ -211,7 +211,7 @@
 <br/>
 
 * ## **边框元素的FillCenter**
-  ### 九宫格的时候(Image Type 为 Sliced) 去掉 FillCenter
+  ### 九宫格的时候(Image Type 为 Sliced/Tiled) 去掉 FillCenter
 <br/>
 
 ------------------------
