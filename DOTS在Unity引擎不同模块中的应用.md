@@ -222,7 +222,7 @@
 
 * ## **解决方案**
   + Unity Animations
-    - 开发中(emmmmmUnity一堆TODO的)
+    - 开发中(emmmmm Unity一堆TODO的)
   + GameObject+DOTS混用
     - ECS Injection
     - IJobParallelForTransform
