@@ -7,17 +7,20 @@
 
 ------------------------
 
-[1. drawCall 和 batch 的区别](#1)<br>
-[2. Batching , SRP Batcher 和 SRP Instancing](#2)<br>
-[3. DrawMeshInstance VS DrawMeshInstanceIndirect](#3)<br>
-[4. UIRebuild](#4)<br>
-[5. UIRebatch(Canvas为单位)](#5)<br>
-[6. Overdraw](#6)<br>
+[1. 简介](#1)<br>
+[2. 渲染](#2)<br>
+[3. 转换](#3)<br>
+[4. 蒙皮动画](#4)<br>
+[5. 物理](#5)<br>
+[6. 场景](#6)<br>
+[7. UI](#7)<br>
+[8. 建议](#8)<br>
+
 
 ------------------------
 <span id='1'/>
 
-## **简介**
+## **1. 简介**
 * ## **DOTS(Data Oriented Technology Stack)**
   + 有啥?
     - Entity Component System(ECS)
@@ -80,7 +83,7 @@
 ------------------------
 <span id='2'/>
 
-## **2. Rendering**
+## **2. 渲染**
 * ## **ECS渲染**
   + 数据准备:位置+模型信息(Mesh+Material)
   + 调用Draw API / Hybrid Render
@@ -160,6 +163,7 @@
     - 设计阶段保留Unity传统模式
     - Runtime阶段使用ECS高效处理方式
   + 方法
+    - 渲染可能需要Hybrid Renderer
     - 挂载自动转换脚本 ConvertToEntity
       - Transform -> LocalToWorld
       - MeshRender -> RenderMesh
@@ -171,4 +175,171 @@
         - IDeclareReferencedPrefabs
 <br/>
 
+* ## **DOTS+GameObject混合使用**
+  + 目的
+    - ECS/Job System负责部分逻辑运算,使用GameObject进行渲染
+    - 可以继续使用原来的渲染管线
+    - 之前的MonoBehaviour继续有效
+  + 举个粒子:ECS更新GameObject位置信息
+    - 挂载ConvertToEnity脚本->选择Coversion Mode->Convert And Inject GameObject让LocalToWorld和Transform同时拥有
+    - 方式一 : 直接在System中获取Transform组件
+      - ForEach(Transform).WithoutBurst().Run()
+    - 方式二 : Job中更新Entity位置数据后,同步至GameObject
+      - 需要给entity添加CopyTransformToGameObject
+      - EntityManager.AddComponentData(entity,new CopyTransformGameObject())
+    - 方式三 : 使用IJobSystem
+      - 使用IJobParallelForTransform 和 TransformAccess,只针对Transform
+      - 可以用BurstCompile
+      - 可以多线程更新transform信息,相同Root共线程
+      - 不需要ECS的概念,改造简便
+    - 如 10K Cubes + 位移
+      - 主要耗时都在主线程上,ECS+Job使用了多线程缓解了压力
+
+      | 老做法 | ECS Injection(main thread) | ECS Injection(Job) | IJobParallelForTransform |
+      | :----: | :----: | :----: | :----: |
+      | 20FPS | 25FPS | 30FPS | 33FPS |
+
+    - 如 35K Cubes , MI9 Pro
+
+      | 方式 | 帧率 | 备注 |
+      | :----: | :----: | :----: |
+      | ECS + Job + Burst | 60FPS | GO完全转换为ECS,并使用多线程更新属性 |
+      | ECS + Job | 54FPS |  |
+      | ECS | 30FPS |  |
+      | IJobParallelForTransform | 11FPS | 无需ECS,针对Transform |
+      | ECS Injection | 10FPS | ECS与GO混合使用,利用Job多线程更新属性 |
+      | Classic(老做法) | <8FPS |  |
+
+<br/>
+
 ------------------------
+<span id='4'/>
+
+## **4. 蒙皮动画**
+* ## **问题**
+  + Hybrid Render / API绘制 都 不支持Skinned mesh
+<br/>
+
+* ## **解决方案**
+  + Unity Animations
+    - 开发中(emmmmmUnity一堆TODO的)
+  + GameObject+DOTS混用
+    - ECS Injection
+    - IJobParallelForTransform
+  + 渲染Mesh,GPU进行动画
+    - Vertex Animation
+    - Geometry Shader 传入VerticesBuffer(Unity的SKinedMesh和原神都这么干)(https://zhuanlan.zhihu.com/p/126294753)
+      - 需要DX10(Stream Out)或OpenGL ES 3.0(Transform Feedback) (https://www.zhihu.com/question/67301295/answer/251750311)
+    - GPU Skinning
+<br/>
+
+* ## **GPU Skinning + Instancing**
+  + 将动画信息写入纹理
+  + 运行时在Shader中采样纹理,进行GPU Skinning
+  + GPU Animation
+    - https://blog.uwa4d.com/archives/UWALab_GPUAnimation.html
+<br/>
+
+* ## **ECS + GPU Skinning + Instancing**
+  + 烘焙动画纹理
+  + 运行时ECS多线程更新位置及其其他角色信息
+  + 调用DrawMeshInstanced/DrawMeshInstancedIndirect进行渲染
+  + 渲染时候用GPU Animation完成动画播放
+<br/>
+
+
+* ## **混合使用方案**
+  + 子弹等->ECS
+  + 玩家角色->GameObject+ECS Injection
+  + 小兵->ECS+GPU Skinning+Instancing
+<br/>
+
+------------------------
+<span id='5'/>
+
+## **5. 物理**
+* ## **Unity Physics/Havok Physics**
+  + 相同的数据协议,Editor设置,切换方便
+  + Unity Physics
+    - C#开源
+    - 扩展性强
+    - 不依赖缓存
+    - 效率相对慢,但是比原生快
+  + Havok Physics 
+    - 运算精确
+    - 缓存策略提升性能
+    - 效率相对快
+    - UnityPro用户订阅收费,但是新版本PackageManager好像免费
+  + 如 20K Cubes
+    - GameObject FPS:8
+    - Unity Physics FPS:50
+    - Havok Physics FPS:60
+<br/>
+
+* ## **物理动画**
+  + 头发布料适合ECS/Job加速
+  + Automatic Dynamic Bone
+    - https://github.com/OneYoungMean/Automatic-DynamicBone
+  + UWA Blog
+    - https://blog.uwa4d.com/archives/Sparkle_DynamicBone.html
+<br/>
+
+------------------------
+<span id='6'/>
+
+## **6. 场景**
+* ## **SubScene**
+  + https://zhuanlan.zhihu.com/p/109943463
+  + 加载/卸载效率高:SubScene -> RAM
+    - 二进制存储,加载直接进入内存,不需要序列化
+    - 多线程加载
+    - 避免同一帧内大量GameObejct的active的调用
+  + 限制
+    - 本地存储,不能用到AssetBundle一些地方
+    - ECS,Prefab需要完全转换到ECS
+  + 如 10k Trees (PC) 实例化
+    - GameObject Prefab 1518ms
+    - ECS Prefab 262ms
+  + 如 1k Trees (Mi9 Pro) 实例化
+    - GameObject Prefab 97ms
+    - ECS 15ms
+<br/>
+
+------------------------
+<span id='7'/>
+
+## **7. UI**
+* ## **DOTS UI**
+  + DOTS UI
+    - https://github.com/supron54321/DotsUI
+  + DOTS UGUI
+    - https://github.com/initialPrefabs/UGUIDOTS
+  + ECS+Job+Burst加速网格重建
+<br/>
+
+------------------------
+<span id='8'/>
+
+## **8. 建议**
+* ## **项目中使用DOTS建议**
+  + 交互简单,数量多的物体尝试ECS化
+    - 植物,副本建筑等静态环境物体
+      - 加载/实例化
+      - batch/instancing
+      - 降低场景开销
+    - 子弹,物理道具等交互简单的物体
+      - 属性多线程更新
+      - DOTS Physics
+      - instancing
+      - 快速查询
+    - 小怪等重复动画
+      - GPU Skinning + Instancing
+      - 属性多线程更新
+<br/>
+
+------------------------
+
+Emmmm,差不多都看完了,应该更新完了.
+剩下的一些视频一些不方便总结(<<手中的银河>>,<<​轻量级Web3D引擎关键技术及移动网页在线可视化示范应用>>)
+还有一些视频可能不感兴趣,偏美术向,偏项目管理和立项,偏项目QA测试
+
