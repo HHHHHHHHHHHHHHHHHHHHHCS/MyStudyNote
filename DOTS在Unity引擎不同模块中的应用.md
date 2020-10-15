@@ -132,7 +132,7 @@
     - ECS 的 Set pass call 更少,因为GameObject的渲染时,材质被打乱,Shader切换导致
     - Batches 一样 , 因为大家都没有合批
     - ECS 的 CPU耗时更低 , FPS更高
-  + EC  VS  GameObject(有Instance)
+  + ECS VS  GameObject(有Instance)
     - Batches 减少,GameObject的渲染,材质球合批被打乱导致
     - ECS 的 CPU耗时更低 , FPS更高
   + ECS  VS  GameObject
