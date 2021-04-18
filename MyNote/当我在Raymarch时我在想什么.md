@@ -1,7 +1,7 @@
 当我在Raymarch时我在想什么
 =================
 
-(Github正常排版: [当我在Raymarch时我在想什么]())
+(Github正常排版: [当我在Raymarch时我在想什么](https://github.com/HHHHHHHHHHHHHHHHHHHHHCS/MyStudyNote/blob/main/MyNote/%E5%BD%93%E6%88%91%E5%9C%A8Raymarch%E6%97%B6%E6%88%91%E5%9C%A8%E6%83%B3%E4%BB%80%E4%B9%88.md))
 
 -----------------
 
@@ -15,20 +15,32 @@
 先放下我做完的效果图.一些是双拼魔改都搞乱了,找不到原作者见谅...感觉越做越像棉花XD
 
 ![Cloud_0](Images/Cloud_0.jpg)
+
 这个来自WalkingFat大佬的绒毛做法,我加了曲面细分(http://walkingfat.com/bump-noise-cloud-3d%e5%99%aa%e7%82%b9gpu-instancing%e5%88%b6%e4%bd%9c%e5%9f%ba%e4%ba%8e%e6%a8%a1%e5%9e%8b%e7%9a%84%e4%bd%93%e7%a7%af%e4%ba%91/)
+
 ![Cloud_1](Images/Cloud_1.jpg)
+
 这个是视差的做法(https://zhuanlan.zhihu.com/p/83355147)
+
 ![Cloud_2](Images/Cloud_2.jpg)
+
 ![Cloud_3](Images/Cloud_3.jpg)
+
 ![Cloud_4](Images/Cloud_4.jpg)
+
 ![Cloud_5](Images/Cloud_5.jpg)
+
 ![Cloud_6](Images/Cloud_6.jpg)
+
 ![Cloud_7](Images/Cloud_7.jpg)
+
 这个是我最后被采纳的版本hhhhh开心.
 
 
 然后我就把它放到了我的**小米10Pro高通865安卓手机**(打钱)上,结果FPS只有9.吶吶,电脑上明明这么高的FPS!!!所以就开始了优化之旅.
+
 ![Cloud_8](Images/Cloud_8.jpg)
+
 ![Cloud_9](Images/Cloud_9.jpg)
 
 -----------------
