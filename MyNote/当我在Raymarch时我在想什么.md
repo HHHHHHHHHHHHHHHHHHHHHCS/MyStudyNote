@@ -81,6 +81,7 @@
          - finalColor.a = noise
       + 之前每一步ray都会计算,现在只用进行采样就好了.虽然效果不一定正确,但是优化嘛,不磕碜.
       + 下面三张图分别为原来的noise,finalColor.rgb,finalColor.a
+
       ![Cloud_10](Images/Cloud_10.jpg)
       ![Cloud_11](Images/Cloud_11.jpg)
       ![Cloud_12](Images/Cloud_12.jpg)
