@@ -71,4 +71,13 @@
       + https://zhuanlan.zhihu.com/p/350058989
 
 * ### **我做了什么**
-&emsp;&emsp; 做了一个违背组训的决定!
+&emsp;&emsp; 经过深思熟虑后,我做出了一个违背祖训的决定----把这一堆都糅杂再一起.
+
+  0. 光照提前计算
+      + 正常的的时候,我们的光照计算是在raymarch的for循环中进行的.因此会产生大量的性能消耗
+      + 我这里离线把噪音贴图做了一个混合处理.把albedo和specular直接叠加写在了噪音贴图的RGB上,Alpha则是再次随机化后的噪音.
+      + 做法是:把原来的噪音图进行随机采样,生出新的noise,之后计算光照输出finalColor. 
+         - finalColor.rgb = albedo * specular * noise
+         - finalColor.a = noise
+      + 之前每一步ray都会计算,现在只用进行采样就好了.虽然效果不一定正确,但是优化嘛,不磕碜.
+   1. mask提前计算
