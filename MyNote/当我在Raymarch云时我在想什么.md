@@ -115,8 +115,8 @@
 
 &emsp;&emsp; 上面 0 1 2 3 优化完帧数就提高了几FPS . 4 进行极端对比,FPS相差65(Emmmm,不过噪点,分层线) . 为了进一步满足效果和性能,便进行更进一步的优化处理了.
 
-      ![RaymarchCloud_15](Images/RaymarchCloud_15.jpg)
-      ![RaymarchCloud_16](Images/RaymarchCloud_16.jpg)
+  ![RaymarchCloud_15](Images/RaymarchCloud_15.jpg)
+  ![RaymarchCloud_16](Images/RaymarchCloud_16.jpg)
 
   5. 降低分辨率
       + 单纯的降低分辨率是非常非常有效的.而且手机的分辨率都挺高的 , 适当降低不影响.
