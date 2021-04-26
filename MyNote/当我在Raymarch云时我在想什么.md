@@ -5,7 +5,7 @@
 
 -----------------
 
-## &emsp;&emsp; 标题灵感来自于村上春树的<<当我谈跑步时我谈些什么>>.没有什么Raymarch相关的内容,主要是偏优化方向.
+## &emsp;&emsp; 标题灵感来自于村上春树的<<当我谈跑步时我谈些什么>>.没有什么Raymarch相关的内容,主要是偏优化方向(多图杀猫).
 
 -----------------
 
@@ -108,14 +108,38 @@
   4. for的次数减少
       + 如果步长很短 , for循环次数过大. 虽然效果不错 , 但是性能消耗也会过高
       + 步长过大 , for循环次数明显减少. 性能大幅度提高 , 但是会出现明显的分层线和噪点
+      + 因为步长变大颜色采样会有比较大的偏差 , 可以根据步长去乘一些系数
       + 啊这....自己取舍吧.
 
       ![RaymarchCloud_14](Images/RaymarchCloud_14.jpg)
 
-&emsp;&emsp; 上面 0 1 2 3 优化完帧数就提高了几FPS . 4 进行极端对比,FPS相差65(不过噪点,边缘线) . 为了进一步满足效果和性能,便进行更进一步的优化处理了.
+&emsp;&emsp; 上面 0 1 2 3 优化完帧数就提高了几FPS . 4 进行极端对比,FPS相差65(Emmmm,不过噪点,分层线) . 为了进一步满足效果和性能,便进行更进一步的优化处理了.
 
-  ![RaymarchCloud_15](Images/RaymarchCloud_15.jpg)
-  ![RaymarchCloud_16](Images/RaymarchCloud_16.jpg)
+      ![RaymarchCloud_15](Images/RaymarchCloud_15.jpg)
+      ![RaymarchCloud_16](Images/RaymarchCloud_16.jpg)
 
-todo:远处锯齿  dof
+  5. 降低分辨率
+      + 单纯的降低分辨率是非常非常有效的.而且手机的分辨率都挺高的 , 适当降低不影响.
+      + 宽高 1/1 即 1/1 分辨率 9 FPS
+      + 宽高 1/2 即 1/4 分辨率 28 FPS
+      + 宽高 1/4 即 1/16 分辨率 68 FPS
+      + 可以观察云和cube的交界处,有比较明显的锯齿
+      + 同时远处的时候也会出现一个深度的问题
+        + 因为当前的分辨率是缩小的 , 我们无法很好的选择当前的像素去使用原分辨率的深度图的哪个像素(或用周围点 最大,平均,最小)
+        + 远处这样可能会出现边缘不正确的问题 , 这里可以去添加 DOF/Blur去欺骗处理
+
+      ![RaymarchCloud_17](Images/RaymarchCloud_17.jpg)
+      ![RaymarchCloud_18](Images/RaymarchCloud_18.jpg)
+
+  6. 多图叠加(MulRT Blend)
+      + 原来是渲染宽高1/1的步长为1/20的 , 我们这里开启多图叠加
+      + 创建两个RT ab . A:宽高为1/2步长1/20 , B:宽高为1/4步长为1/20
+      + 其实分辨率降低可以进一步缩短步长提高效果 , 如 A步长可以为1/30 , B为1/40
+      + 这样做还能柔化边缘的锯齿
+      + 而且FPS可以提高从 9 提高到 22 
+
+      ![RaymarchCloud_19](Images/RaymarchCloud_19.jpg)
+      ![RaymarchCloud_20](Images/RaymarchCloud_20.jpg)
+
+
 todo:taa
