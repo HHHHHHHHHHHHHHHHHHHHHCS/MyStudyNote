@@ -72,7 +72,7 @@
 * ### **我做了什么**
 &emsp;&emsp; 经过深思熟虑后,我做出了一个违背祖训的决定----把这一堆都糅杂再一起.
 
-  0. 光照提前计算
+  0. **光照提前计算**
       + 正常的的时候,我们的光照计算是在raymarch的for循环中进行的.因此会产生大量的性能消耗
       + 我这里离线把噪音贴图做了一个混合处理.把albedo和specular直接叠加写在了噪音贴图的RGB上,Alpha则是再次随机化后的噪音.
       + 做法是:把原来的噪音图进行随机采样,生出新的noise,之后计算光照输出finalColor. 
@@ -85,27 +85,27 @@
       ![RaymarchCloud_11](Images/RaymarchCloud_11.jpg)
       ![RaymarchCloud_12](Images/RaymarchCloud_12.jpg)
 
-  1. 云的轻微扰动
+  1. **云的轻微扰动**
       + 因为根据需求云会轻微的起伏晃动
       + 这里可以了利用类似于双线性滤波的原理,进行实现
       + 在raymarchCloud之前加一个Pass , 把噪音图分为四块 或者 传入四张噪音图 , 输入time 进行sincos(time) 
       + finalColor = lerp(lerp(a,b,cos(t)),lerp(c,d,cos(t)),sin(t))
 
-  2. mask提前计算
+  2. **mask提前计算**
       + 在raymarch的时候是否输出这个颜色为alpha=noise-mask
       + 而在for循环的时候会对noise和mask分别进行采样,造成多次采样计算
       + 可以在云的轻微扰动阶段提前对alpha进行处理
 
       ![RaymarchCloud_13](Images/RaymarchCloud_13.jpg)
 
-  3. 阴影的优化
+  3. **阴影的优化**
       + for循环的时候,阴影的矩阵计算比较消耗性能
       + 因为已经知道了起点位置,终点位置,当前的位置
       + 所以在没有CSM的时候,可以计算出起点的shadowCoords0和终点的shadowCoords1
       + 在for循环的时候 , shadowCoords = lerp(shadowCooords0,shadowCoords1,t) , 然后SampleShadowmap
       + 不知道数学上是不是正确,但是结果看起来好像没有什么问题.
 
-  4. for的次数减少
+  4. **for的次数减少**
       + 如果步长很短 , for循环次数过大. 虽然效果不错 , 但是性能消耗也会过高
       + 步长过大 , for循环次数明显减少. 性能大幅度提高 , 但是会出现明显的分层线和噪点
       + 因为步长变大颜色采样会有比较大的偏差 , 可以根据步长去乘一些系数
@@ -118,7 +118,7 @@
   ![RaymarchCloud_15](Images/RaymarchCloud_15.jpg)
   ![RaymarchCloud_16](Images/RaymarchCloud_16.jpg)
 
-  5. 降低分辨率
+  5. **降低分辨率**
       + 单纯的降低分辨率是非常非常有效的.而且手机的分辨率都挺高的 , 适当降低不影响.
       + 宽高 1/1 即 1/1 分辨率 9 FPS
       + 宽高 1/2 即 1/4 分辨率 28 FPS
@@ -131,7 +131,7 @@
       ![RaymarchCloud_17](Images/RaymarchCloud_17.jpg)
       ![RaymarchCloud_18](Images/RaymarchCloud_18.jpg)
 
-  6. 多图叠加(MulRT Blend)
+  6. **多图叠加(MulRT Blend)**
       + 原来是渲染宽高1/1的步长为1/20的 , 我们这里开启多图叠加
       + 创建两个RT ab . A:宽高为1/2步长1/20 , B:宽高为1/4步长为1/20
       + 其实分辨率降低可以进一步缩短步长提高效果 , 如 A步长可以为1/30 , B为1/40
@@ -141,5 +141,29 @@
       ![RaymarchCloud_19](Images/RaymarchCloud_19.jpg)
       ![RaymarchCloud_20](Images/RaymarchCloud_20.jpg)
 
+  7. **分帧绘制(FrameRT)**
+      + 其实云的绘制和更新,可以分多帧完成,减少压力或提高清晰度
+      + 但是在帧数过低的时候会出现拖影,可以添加MotionBlur的算法大概率解决
+      + 可以配合TAA食用,但TAA在分辨率过低的时候会闪烁
+      + 不绘制的区域DontCare/Load(很多手机DontCare就可以了,但是华为需要Load)
+      + **只绘制1/4**
+          - 假设1/1(其它分辨率同理)的分辨率,用一个小的quad/三角形在A区域进行绘制,下一帧数在B区域进行绘制,然后C,D
+          - 这样每次raymarch的像素就只有1/4了
+          - 帧数FPS从9变成了30,下面的图只是懒得截图了示意一下区域
 
-todo:taa
+      ![RaymarchCloud_21](Images/RaymarchCloud_21.jpg)
+
+      + **全分辨率,绘制1/4**
+        - 
+
+		+小洞洞模式
+		可以用alpha为0活着discard
+
+
+  8. **MulRTBlend+FrameRT**
+      + 把两个合二为一,要考虑的有点多
+      + 然后尽量减少RT的切换,极限情况有6个Pass.根据不同情况,可以做到Pass的删减
+          - 1个 离线Pass 
+          - 1个 随机扰动Pass
+          - 3个 MulRT Blend Pass (FrameRT在这里进行)
+          - 1个 Blend到最终屏幕
