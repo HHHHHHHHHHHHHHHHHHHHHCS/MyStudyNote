@@ -149,6 +149,7 @@
           - 未及时更新错误:比如物体一直向前走,其背后的区域没有及时更新会出现**镂空** , 前面的区域已被遮挡但是**未被擦除**
       + 可以配合TAA食用,但TAA在分辨率过低的时候会闪烁
       + 不绘制的区域DontCare/Load(很多手机DontCare就可以了,但是华为需要Load)
+
       ![RaymarchCloud_24](Images/RaymarchCloud_24.jpg)
       ![RaymarchCloud_25](Images/RaymarchCloud_25.jpg)
 
@@ -169,7 +170,8 @@
         - 第三帧不绘制是为了性能考虑,如果撕裂严重可以绘制
         - 耗时就是(1帧数ms+2帧数ms)/3
         - 绘制完整的分辨率要循环要三帧数,屏幕中间会有竖着的画面撕裂
-        ![RaymarchCloud_26](Images/RaymarchCloud_26.jpg)
+
+      ![RaymarchCloud_26](Images/RaymarchCloud_26.jpg)
 
       + **3. 用1/2的分辨率,绘制1/2横屏**
         - 和 **2方法** 大致相同
@@ -182,8 +184,9 @@
         - 可以用alpha为0或者discard,我这里用的是discard
         - 性能没有前面的**0 1 2 3 方法**好
         - 虽然没有画面撕裂了,但是会产生拖影
-        ![RaymarchCloud_27](Images/RaymarchCloud_27.jpg)
-        ![RaymarchCloud_28](Images/RaymarchCloud_28.jpg)
+
+      ![RaymarchCloud_27](Images/RaymarchCloud_27.jpg)
+      ![RaymarchCloud_28](Images/RaymarchCloud_28.jpg)
 
 
   8. **MulRTBlend+FrameRT**
