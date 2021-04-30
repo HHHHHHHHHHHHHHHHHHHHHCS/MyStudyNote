@@ -150,15 +150,16 @@
       + 可以配合TAA食用,但TAA在分辨率过低的时候会闪烁
       + 不绘制的区域DontCare/Load(很多手机DontCare就可以了,但是华为需要Load)
 
-      ![RaymarchCloud_24](Images/RaymarchCloud_24.jpg)
-      ![RaymarchCloud_25](Images/RaymarchCloud_25.jpg)
+        ![RaymarchCloud_24](Images/RaymarchCloud_24.jpg)
+        ![RaymarchCloud_25](Images/RaymarchCloud_25.jpg)
 
       + **0. 用1/4分辨率,绘制1/4**
           - 假设1/1(其它分辨率同理)的分辨率,用一个小的quad/三角形在A区域进行绘制,下一帧数在B区域进行绘制,然后C,D
           - 这样每次raymarch的像素就只有1/4了,清晰度有所下降
           - 绘制完整的分辨率循环要4帧,ABCD边界会有画面撕裂
-      ![RaymarchCloud_21](Images/RaymarchCloud_21.jpg)
-      ![RaymarchCloud_23](Images/RaymarchCloud_23.jpg)
+
+        ![RaymarchCloud_21](Images/RaymarchCloud_21.jpg)
+        ![RaymarchCloud_23](Images/RaymarchCloud_23.jpg)
       
       + **1. 用全分辨率,绘制1/4**
           - 和 **0方法** 大致相同,但是是用1/1(其它分辨率同理)的分辨率绘制一个区域,而不是1/4
@@ -171,7 +172,7 @@
         - 耗时就是(1帧数ms+2帧数ms)/3
         - 绘制完整的分辨率要循环要三帧数,屏幕中间会有竖着的画面撕裂
 
-      ![RaymarchCloud_26](Images/RaymarchCloud_26.jpg)
+        ![RaymarchCloud_26](Images/RaymarchCloud_26.jpg)
 
       + **3. 用1/2的分辨率,绘制1/2横屏**
         - 和 **2方法** 大致相同
@@ -185,8 +186,8 @@
         - 性能没有前面的**0 1 2 3 方法**好
         - 虽然没有画面撕裂了,但是会产生拖影
 
-      ![RaymarchCloud_27](Images/RaymarchCloud_27.jpg)
-      ![RaymarchCloud_28](Images/RaymarchCloud_28.jpg)
+        ![RaymarchCloud_27](Images/RaymarchCloud_27.jpg)
+        ![RaymarchCloud_28](Images/RaymarchCloud_28.jpg)
 
 
   8. **MulRTBlend+FrameRT**
