@@ -1,7 +1,7 @@
 简单的RayTrace_CPU
 =================
 
-(Github正常排版: [简单的RayTrace_CPU]())
+(Github正常排版: [简单的RayTrace_CPU](https://github.com/HHHHHHHHHHHHHHHHHHHHHCS/MyStudyNote/blob/main/MyNote/%E7%AE%80%E5%8D%95%E7%9A%84RayTrace_CPU.md))
 
 -----------------
 
