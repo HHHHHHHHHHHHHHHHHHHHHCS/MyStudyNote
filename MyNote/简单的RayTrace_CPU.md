@@ -8,7 +8,7 @@
 ## **0.原因**
 
 &emsp;&emsp; 看到gayhub上有一个项目,抄着学习一下(jiu shi wan),项目地址:[ToyPathTracer](https://github.com/aras-p/ToyPathTracer).
-效果虽然不是很好,而且也没有什么高大上的东西,甚至都只有球的计算,但是拿来入门学习还是够用的.
+效果虽然不是很好,而且也没有什么高大上的东西,甚至都只有球的计算,但是拿来入门学习还是够用的.里面还有C++和C#的案例,这里就拿Unity来举个栗子.
 顺便安利一下闫老师的Games101讲的更详细,而且还搭配逐步的练习.PS:202也出了,yyds!
 
 ![CPURayTrace_0](Images/CPURayTrace_0.jpg)
@@ -19,6 +19,8 @@
 
 &emsp;&emsp; 项目需要安装Packages:Burst,Jobs,Mathematics.
 创建一个**RawImage**,设置为全屏幕大小,用于显示最后的效果.当然也可以用**CommandBuffer.DrawFullScreen**或者**Graphics.Blit**都可以.
+
+cmd.draw 要注意渲染队列   要在unity 的渲染之后   因为不会走后处理    绘制UI 基本不会走后处理
 
 ![CPURayTrace_1](Images/CPURayTrace_1.png)
 
@@ -41,11 +43,11 @@ public class CPURayTracingTest : MonoBehaviour
 ```
 
 挂载给摄像机,并且把刚才的**RawImage**给**uiImage**进行赋值.**screenWidth screenHeight** 给960和540.
-屏幕尺寸这里建议给小一点,为了后面方便快速呈现效果.(当然3080当我没有话说!)因为一个像素点会发射很多的光线进行大量的计算,所以给的点越少计算量越少,但是效果越差.
+屏幕尺寸这里建议给小一点,为了后面方便快速呈现效果.(当然银河电脑当我没有话说!)因为一个像素点会发射很多的光线进行大量的计算,所以给的点越少计算量越少,但是效果越差.
 
 ![CPURayTrace_2](Images/CPURayTrace_2.png)
 
-**RawImage**的图片需要**Texture2D**,而**Texture2D**的颜色需要**Color Buffer**来填充数据.
+**RawImage**的图片需要**Texture2D**(**Texture2D**需要申请为Linear Color Space,不过写成false对最终渲染的画面也没有影响),而**Texture2D**的颜色需要**Color Buffer**来填充数据.
 **Color Buffer**说白了就是一堆**Color**(需要屏幕像素数量的Color即width*height),便可以直接用**NativeArray<Color>t**来代替.(因为是长生命周期,所以用Allocator.Persistent. Allocator不知道的可以点击[Native Container Allocator](https://blog.csdn.net/lrh3025/article/details/102869011))
 创建**Texture2D**和**NativeArray<Color>**,对其进行默认设置.
 因为**Color Buffer**每帧数都要做计算更新,所以**Texture2D**需要每帧数回读**Color Buffer**,那便在**Update**进行**Texture2D.LoadRawTextureData**.
@@ -66,7 +68,7 @@ public class CPURayTracingTest : MonoBehaviour
 		int width = screenWidth; //Screen.width;
 		int height = screenHeight; // Screen.height;
 
-		backBufferTex = new Texture2D(width, height, TextureFormat.RGBAFloat, false);
+		backBufferTex = new Texture2D(width, height, TextureFormat.RGBAFloat, false, true);
 		backBuffer = new NativeArray<Color>(width * height, Allocator.Persistent);
 		for (int i = 0; i < backBuffer.Length; i++)
 		{
@@ -204,7 +206,7 @@ aperture = 0.5
 aperture = 0.1
 ![CPURayTrace_4](Images/CPURayTrace_4.png)
 
-因为光追是从摄像机发出射线,所以我们还需要写一个方法用于得到射线.因为存在焦距,即我们可能需要虚化/模糊的效果.我们可以让发出去的射线不会太规则,让其加点随机位移和方向,然后把得到的颜色除权,这样就可以得到虚化的效果了.
+因为光追是从近平面(near plane)发出射线(摄像机到像素点方向),所以我们还需要写一个方法用于得到射线.因为存在焦距,即我们可能需要虚化/模糊的效果.我们可以让发出去的射线不会太规则,让其加点随机位移和方向,然后把得到的颜色除权,这样就可以得到虚化的效果了.
 随机方向这块可以用别的方法替代,甚至可以用do-while,但是要确保要在圆/球的外面,且不能超过单位1的cube.
 
 ```C#
@@ -440,7 +442,7 @@ public struct SpheresSOA
 		// set trailing data to "impossible sphere" state
 		for (int i = len; i < simdLen; ++i)
 		{
-			centerX[i] = centerY[i] = centerZ[i] = INFINITY;
+			centerX[i] = centerY[i] = centerZ[i] = float.MaxValue;
 			sqRadius[i] = 0.0f;
 			invRadius[i] = 0.0f;
 		}
@@ -515,7 +517,7 @@ public struct SpheresSOA
 ```
 
 射线点和圆心点的距离是A,它的平方即(len(P圆-P线))^2 => dot(P圆-P线,P圆-P线) => A^2. 因为方向是法向量,所以B线段的距离平方也可以描述为(dot(P圆-P线,Dir线))^2 => B^2. 那么C^2 = A^2-B^2 , 然后在拿C^2 和 半径平方D^2进行比较 , 如果 D^2 - C^2 == 0 则交点只有一个 刚相交(我们这里不算碰撞成功). <0 则无交点,不相交. >0 两个交点,碰撞成功. 因为D=E都是半径 , 所以可以求得F. 两个碰撞点到射线点的距离分别为B+F和B-F. 和保存的最短距离的进行比较,选出最短的距离. 然后再储存球的id和距离. 依次循环
-注意一些球可能是为了凑齐数据4个一组格式而不存在的数据,所以需要sCenterX != INFINITY来做mask跳过
+注意一些球可能是为了凑齐数据4个一组格式而不存在的数据,所以需要sCenterX < float.MaxValue 来做mask跳过
 这时候储存的是4个float距离,还需要在之后进一步选出4个中的最小一个.
 
 
@@ -547,7 +549,7 @@ for (int i = 0; i < simdLen; ++i)
 
 		// if t0 is above min, take it (since it's the earlier hit); else try t1.
 		float4 t = select(t1, t0, t0 > tMin4);
-		bool4 mask = discrPos & (t > tMin4) & (t < hitT) & (sCenterX != INFINITY);
+		bool4 mask = discrPos & (t > tMin4) & (t < hitT) & (sCenterX < float.MaxValue);
 		//if hit ,take it
 		id = select(id, curId, mask);
 		hitT = select(hitT, t, mask);
@@ -567,6 +569,7 @@ for (int i = 0; i < simdLen; ++i)
 碰撞点 = 射线点 + dir*t
 法线 = (碰撞点 - 圆心) / r    (/r是为了归一化)
 最短距离 = t
+如果什么都没有找到 则返回-1
 
 ```C#
 ...
@@ -600,4 +603,40 @@ return -1;
 
 ```
 
-//TODO:自发光
+-----------------
+
+## **4.材质**
+
+&emsp;&emsp; 每个球都会有自己的材质属性,所以要创建材质结构体用来储存属性.
+创建一个C# **CPURayTracing.cs**,在上面添加一个结构体**Material**
+这里把材质分为简单的三类:光线不反射的**Lambert**,光线镜面反射的**Metal**,光线穿过内部在内部发生折射的**Dielectric**
+
+```C#
+	public struct Material
+	{
+		public enum Type
+		{
+			Lambert,
+			Metal,
+			Dielectric
+		}
+
+		private static int GuidSpawn;
+
+		public int guid;
+		public Type type;
+		public float3 albedo;
+		public float3 emissive;
+		public float roughness;
+		public float ri;
+
+		public Material(Type t, float3 a, float3 e, float r, float i)
+			=> (guid, type, albedo, emissive, roughness, ri) = (GuidSpawn++, t, a, e, r, i);
+
+		public bool HasEmission => emissive.x > 0 || emissive.y > 0 || emissive.z > 0;
+	}
+
+	public class CPURayTracing
+	{
+	}
+```
