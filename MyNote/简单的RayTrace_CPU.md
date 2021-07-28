@@ -747,12 +747,145 @@ public class CPURayTracing
 ```
 
 再准备要渲染的球的数据和材质数据,关系是一对一的.可以利用**define**对数据做区分,用**region**让代码看起来干净.
-先在顶部定义**#define DO_BIG_SCENE**
+先在顶部定义#define DO_BIG_SCENE, 然后在下面写两个属性**static Sphere[] spheresData**和**static Material[] sphereMatsData**用来储存球和材质球,别忘了用region包起来.
 
 ```C#
 
 #define DO_BIG_SCENE
 
 using Unity.Burst;
+....
+
+public class CPURayTracing
+{
+
+	private const int kMaxDepth = 10;
+
+	#region Data
+	private static Sphere[] spheresData =
+	{
+		//TODO:Data
+	}
+
+	private static Material[] sphereMatsData =
+	{
+		//TODO:Data
+	}
+	#endregion
+}
 
 ```
+
+之后就是把数据丢进去,数据可以随便写...只要数量一致的就好了.
+
+```C#
+
+		private static Sphere[] spheresData =
+		{
+			new Sphere(new float3(0, -100.5f, -1), 100),
+			new Sphere(new float3(2, 0, -1), 0.5f),
+			new Sphere(new float3(0, 0, -1), 0.5f),
+			new Sphere(new float3(-2, 0, -1), 0.5f),
+			new Sphere(new float3(2, 0, 1), 0.5f),
+			new Sphere(new float3(0, 0, 1), 0.5f),
+			new Sphere(new float3(-2, 0, 1), 0.5f),
+			new Sphere(new float3(0.5f, 1, 0.5f), 0.5f),
+			new Sphere(new float3(-1.5f, 1.5f, 0f), 0.3f),
+#if DO_BIG_SCENE
+			new Sphere(new float3(4, 0, -3), 0.5f),
+			new Sphere(new float3(3, 0, -3), 0.5f),
+			new Sphere(new float3(2, 0, -3), 0.5f),
+			new Sphere(new float3(1, 0, -3), 0.5f),
+			new Sphere(new float3(0, 0, -3), 0.5f),
+			new Sphere(new float3(-1, 0, -3), 0.5f),
+			new Sphere(new float3(-2, 0, -3), 0.5f),
+			new Sphere(new float3(-3, 0, -3), 0.5f),
+			new Sphere(new float3(-4, 0, -3), 0.5f),
+			new Sphere(new float3(4, 0, -4), 0.5f),
+			new Sphere(new float3(3, 0, -4), 0.5f),
+			new Sphere(new float3(2, 0, -4), 0.5f),
+			new Sphere(new float3(1, 0, -4), 0.5f),
+			new Sphere(new float3(0, 0, -4), 0.5f),
+			new Sphere(new float3(-1, 0, -4), 0.5f),
+			new Sphere(new float3(-2, 0, -4), 0.5f),
+			new Sphere(new float3(-3, 0, -4), 0.5f),
+			new Sphere(new float3(-4, 0, -4), 0.5f),
+			new Sphere(new float3(4, 0, -5), 0.5f),
+			new Sphere(new float3(3, 0, -5), 0.5f),
+			new Sphere(new float3(2, 0, -5), 0.5f),
+			new Sphere(new float3(1, 0, -5), 0.5f),
+			new Sphere(new float3(0, 0, -5), 0.5f),
+			new Sphere(new float3(-1, 0, -5), 0.5f),
+			new Sphere(new float3(-2, 0, -5), 0.5f),
+			new Sphere(new float3(-3, 0, -5), 0.5f),
+			new Sphere(new float3(-4, 0, -5), 0.5f),
+			new Sphere(new float3(4, 0, -6), 0.5f),
+			new Sphere(new float3(3, 0, -6), 0.5f),
+			new Sphere(new float3(2, 0, -6), 0.5f),
+			new Sphere(new float3(1, 0, -6), 0.5f),
+			new Sphere(new float3(0, 0, -6), 0.5f),
+			new Sphere(new float3(-1, 0, -6), 0.5f),
+			new Sphere(new float3(-2, 0, -6), 0.5f),
+			new Sphere(new float3(-3, 0, -6), 0.5f),
+			new Sphere(new float3(-4, 0, -6), 0.5f),
+			new Sphere(new float3(1.5f, 1.5f, -2), 0.3f),
+#endif // #if DO_BIG_SCENE        
+		};
+
+		private static Material[] sphereMatsData =
+		{
+			new Material(Material.Type.Lambert, new float3(0.8f, 0.8f, 0.8f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.8f, 0.4f, 0.4f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.4f, 0.8f, 0.4f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.4f, 0.4f, 0.8f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.4f, 0.8f, 0.4f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.4f, 0.8f, 0.4f), new float3(0, 0, 0), 0.2f, 0),
+			new Material(Material.Type.Metal, new float3(0.4f, 0.8f, 0.4f), new float3(0, 0, 0), 0.6f, 0),
+			new Material(Material.Type.Dielectric, new float3(0.4f, 0.4f, 0.4f), new float3(0, 0, 0), 0, 1.5f),
+			new Material(Material.Type.Lambert, new float3(0.8f, 0.6f, 0.2f), new float3(30, 25, 15), 0, 0),
+#if DO_BIG_SCENE
+			new Material(Material.Type.Lambert, new float3(0.1f, 0.1f, 0.1f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.2f, 0.2f, 0.2f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.3f, 0.3f, 0.3f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.4f, 0.4f, 0.4f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.5f, 0.5f, 0.5f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.6f, 0.6f, 0.6f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.7f, 0.7f, 0.7f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.8f, 0.8f, 0.8f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.9f, 0.9f, 0.9f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.1f, 0.1f, 0.1f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.2f, 0.2f, 0.2f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.3f, 0.3f, 0.3f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.4f, 0.4f, 0.4f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.5f, 0.5f, 0.5f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.6f, 0.6f, 0.6f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.7f, 0.7f, 0.7f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.8f, 0.8f, 0.8f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.9f, 0.9f, 0.9f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.8f, 0.1f, 0.1f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.8f, 0.5f, 0.1f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.8f, 0.8f, 0.1f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.4f, 0.8f, 0.1f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.1f, 0.8f, 0.1f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.1f, 0.8f, 0.5f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.1f, 0.8f, 0.8f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.1f, 0.1f, 0.8f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.5f, 0.1f, 0.8f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.8f, 0.1f, 0.1f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.8f, 0.5f, 0.1f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.8f, 0.8f, 0.1f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.4f, 0.8f, 0.1f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.1f, 0.8f, 0.1f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.1f, 0.8f, 0.5f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.1f, 0.8f, 0.8f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.1f, 0.1f, 0.8f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Metal, new float3(0.5f, 0.1f, 0.8f), new float3(0, 0, 0), 0, 0),
+			new Material(Material.Type.Lambert, new float3(0.1f, 0.2f, 0.5f), new float3(3, 10, 20), 0, 0),
+#endif
+		};
+
+```
+
+然后还要创建之前写的求交数据结构体**SpheresSOA**
+
+//todo:
