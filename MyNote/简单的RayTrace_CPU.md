@@ -8,10 +8,16 @@
 ## **0.原因**
 
 &emsp;&emsp; 看到gayhub上有一个项目,抄着学习一下(jiu shi wan),项目地址:[ToyPathTracer](https://github.com/aras-p/ToyPathTracer).
-效果虽然不是很好,而且也没有什么高大上的东西,甚至都只有球的计算,但是拿来入门学习还是够用的.里面还有C++和C#的案例,这里就拿Unity来举个栗子.
+效果虽然不是很好,而且也没有什么高大上的东西,甚至都只有球的计算,但是拿来入门学习还是够用的.里面还有C++和C#的案例,这里就拿Unity来举个栗子,比较容易理解也比较直观.
 顺便安利一下闫老师的Games101讲的更详细,而且还搭配逐步的练习.PS:202也出了,yyds!
 
-![CPURayTrace_0](Images/CPURayTrace_0.jpg)
+下图分别是C++,Unity+Job,纯C#(图三和四).效果基本都差不多,但是就是效率差很大.不过Job的效率居然比想象中的强大.
+
+![CPURayTrace_0](Images/CPURayTrace_0.png)
+![CPURayTrace_1](Images/CPURayTrace_1.jpg)
+![CPURayTrace_2](Images/CPURayTrace_2.jpg)
+![CPURayTrace_3](Images/CPURayTrace_3.jpg)
+
 
 -----------------
 
@@ -22,7 +28,7 @@
 
 cmd.draw 要注意渲染队列   要在unity 的渲染之后   因为不会走后处理    绘制UI 基本不会走后处理
 
-![CPURayTrace_1](Images/CPURayTrace_1.png)
+![CPURayTrace_4](Images/CPURayTrace_4.png)
 
 创建一个C# **CPURayTracingTest.cs**
 
@@ -45,9 +51,9 @@ public class CPURayTracingTest : MonoBehaviour
 挂载给摄像机,并且把刚才的**RawImage**给**uiImage**进行赋值.**screenWidth screenHeight** 给960和540.
 屏幕尺寸这里建议给小一点,为了后面方便快速呈现效果.(当然银河电脑当我没有话说!)因为一个像素点会发射很多的光线进行大量的计算,所以给的点越少计算量越少,但是效果越差.
 
-![CPURayTrace_2](Images/CPURayTrace_2.png)
+![CPURayTrace_5](Images/CPURayTrace_5.png)
 
-**RawImage**的图片需要**Texture2D**(**Texture2D**需要申请为Linear Color Space,不过写成false对最终渲染的画面也没有影响),而**Texture2D**的颜色需要**Color Buffer**来填充数据.
+**RawImage**的图片需要**Texture2D**(**Texture2D**需要申请为Linear Color Space, 不过写成false对最终渲染的画面也没有影响),而**Texture2D**的颜色需要**Color Buffer**来填充数据.
 **Color Buffer**说白了就是一堆**Color**(需要屏幕像素数量的Color即width*height),便可以直接用**NativeArray<Color>t**来代替.(因为是长生命周期,所以用Allocator.Persistent. Allocator不知道的可以点击[Native Container Allocator](https://blog.csdn.net/lrh3025/article/details/102869011))
 创建**Texture2D**和**NativeArray<Color>**,对其进行默认设置.
 因为**Color Buffer**每帧数都要做计算更新,所以**Texture2D**需要每帧数回读**Color Buffer**,那便在**Update**进行**Texture2D.LoadRawTextureData**.
@@ -155,7 +161,7 @@ public static class CPURayTracingMathUtil
 再创建摄像机(Camera)结构体.
 摄像机需要起始点**lookFrom**,看的方向**lookAt**,向上的方向**vup**默认float3(0,1,0),视场角**fov**,屏幕宽高**aspect**,焦聚**aperture**,近平面距离**focusDist**.(Games101-P19有超级详细的说明)
 **aperture**值越大,图像会被虚化.下面的图可以看到效果,显而易见远处虚化,没有聚焦成功.
-构建摄像机完成基础属性的配置.
+用传入的数据构建摄像机完成基础的属性.
 
 ```C#
 
@@ -201,12 +207,13 @@ public static class CPURayTracingMathUtil
 }
 
 ```
-aperture = 0.5
-![CPURayTrace_3](Images/CPURayTrace_3.png)
-aperture = 0.1
-![CPURayTrace_4](Images/CPURayTrace_4.png)
 
-因为光追是从近平面(near plane)发出射线(摄像机到像素点方向),所以我们还需要写一个方法用于得到射线.因为存在焦距,即我们可能需要虚化/模糊的效果.我们可以让发出去的射线不会太规则,让其加点随机位移和方向,然后把得到的颜色除权,这样就可以得到虚化的效果了.
+aperture = 0.5 * 0.2
+![CPURayTrace_6](Images/CPURayTrace_6.jpg)
+aperture = 0.1 * 0.2
+![CPURayTrace_7](Images/CPURayTrace_7.jpg)
+
+因为光追是从近平面(near plane)像素点发出方向为相机到这个像素点的单位向量的射线,所以我们还需要写一个方法用于得到射线.因为存在焦距,即我们可能需要虚化/模糊的效果.我们可以让发出去的射线不会太规则,让其加点随机位移和方向,然后把得到的颜色除权,这样就可以得到虚化的效果了.
 随机方向这块可以用别的方法替代,甚至可以用do-while,但是要确保要在圆/球的外面,且不能超过单位1的cube.
 
 ```C#
@@ -256,6 +263,7 @@ public static class CPURayTracingMathUtil
 		// {
 		// 	p = 2.0f * new float3(RandomFloat01(ref state), RandomFloat01(ref state), 0) - new float3(1, 1, 0);
 		// } while (lengthsq(p) >= 1.0);
+		// return p;
 
 		var x = RandomFloat01(ref state);
 		var y = RandomFloat01(ref state);
@@ -316,6 +324,7 @@ public static class CPURayTracingMathUtil
 		// 	p = 2.0f * new float3(RandomFloat01(ref state), RandomFloat01(ref state), RandomFloat01(ref state)) -
 		// 	    new float3(1, 1, 1);
 		// } while (lengthsq(p) >= 1.0);
+		// return p;
 
 		var x = RandomFloat01(ref state);
 		var y = RandomFloat01(ref state);
@@ -479,6 +488,8 @@ public struct Camera
 ```
 
 之后就是复杂的射线和球碰撞计算了.用到了unsafe功能.
+tMin就是判断射中的阀值
+tMax是初始化射线用的距离(默认最大值)
 先初始化射线的起始点和方向,循环次数,中心点半径等.
 
 ```C#
@@ -510,7 +521,7 @@ public struct SpheresSOA
 		float4* ptrCenterY = (float4*) centerY.GetUnsafeReadOnlyPtr();
 		float4* ptrCenterZ = (float4*) centerZ.GetUnsafeReadOnlyPtr();
 		float4* ptrSqRadius = (float4*) sqRadius.GetUnsafeReadOnlyPtr();
-		
+		//TODO:
 	}
 }
 
@@ -548,6 +559,7 @@ for (int i = 0; i < simdLen; ++i)
 		float4 t1 = nb + discrSq;
 
 		// if t0 is above min, take it (since it's the earlier hit); else try t1.
+		//如果t0>tmin4 那就试一试t1  如果t1还不行  mask也是失败
 		float4 t = select(t1, t0, t0 > tMin4);
 		bool4 mask = discrPos & (t > tMin4) & (t < hitT) & (sCenterX < float.MaxValue);
 		//if hit ,take it
@@ -563,7 +575,7 @@ for (int i = 0; i < simdLen; ++i)
 }
 
 ```
-![CPURayTrace_5](Images/CPURayTrace_5.png)
+![CPURayTrace_8](Images/CPURayTrace_8.png)
 
 之后就是从float4中找出最短的距离t,然后返回物体id和碰撞信息.
 碰撞点 = 射线点 + dir*t
@@ -609,34 +621,138 @@ return -1;
 
 &emsp;&emsp; 每个球都会有自己的材质属性,所以要创建材质结构体用来储存属性.
 创建一个C# **CPURayTracing.cs**,在上面添加一个结构体**Material**
-这里把材质分为简单的三类:光线不反射的**Lambert**,光线镜面反射的**Metal**,光线穿过内部在内部发生折射的**Dielectric**
+这里把材质分为简单的三类:光线不反射的**Lambert**,光线镜面反射的**Metal**,光线穿过内部在内部发生折射的**Dielectric**,这三类的计算方式不同,所以用枚举**Type**加以区分.
+guid:后面需要判断是否是自身,从而跳过用.C++可以不用这一属性,C#为了避免拷贝的地址不同,所以用guid来避免.
+type:材质球属性
+albedo:表面颜色
+emissive:自发光颜色
+roughness:粗糙度,反射用
+ri:折射系数,内部折射用
+
+![CPURayTrace_9](Images/CPURayTrace_9.jpg)
 
 ```C#
-	public struct Material
+public struct Material
+{
+	public enum Type
 	{
-		public enum Type
+		Lambert,
+		Metal,
+		Dielectric
+	}
+
+	private static int GuidSpawn;
+
+	public int guid;
+	public Type type;
+	public float3 albedo;
+	public float3 emissive;
+	public float roughness;
+	public float ri;
+
+	public Material(Type t, float3 a, float3 e, float r, float i)
+		=> (guid, type, albedo, emissive, roughness, ri) = (GuidSpawn++, t, a, e, r, i);
+
+	public bool HasEmission => emissive.x > 0 || emissive.y > 0 || emissive.z > 0;
+}
+
+public class CPURayTracing
+{
+}
+```
+
+因为材质球有自发光属性,是光照计算需要的数据.所以记录全部的自发光球体.返回**CPURayTracingMathUtil.cs**的**struct SpheresSOA**添加一点自发光数据的代码.
+
+```C#
+public struct SpheresSOA
+{	
+	...
+	[ReadOnly] public NativeArray<float> invRadius;
+	[ReadOnly] public NativeArray<int> emissives;
+	public int emissiveCount;
+
+	public SpheresSOA(int len)
+	{
+		...
+		emissives = new NativeArray<int>(simdLen, Allocator.Persistent);
+		emissiveCount = 0;
+	}
+
+	public void Dispose()
+	{
+		...
+		emissives.Dispose();
+	}
+
+	public void Update(Sphere[] src, Material[] mat)
+	{
+		emissiveCount = 0;
+		for (var i = 0; i < src.Length; i++)
 		{
-			Lambert,
-			Metal,
-			Dielectric
+			...
+			if (mat[i].HasEmission)
+			{
+				emissives[emissiveCount++] = i;
+			}
 		}
-
-		private static int GuidSpawn;
-
-		public int guid;
-		public Type type;
-		public float3 albedo;
-		public float3 emissive;
-		public float roughness;
-		public float ri;
-
-		public Material(Type t, float3 a, float3 e, float r, float i)
-			=> (guid, type, albedo, emissive, roughness, ri) = (GuidSpawn++, t, a, e, r, i);
-
-		public bool HasEmission => emissive.x > 0 || emissive.y > 0 || emissive.z > 0;
 	}
 
-	public class CPURayTracing
-	{
-	}
+	...
+}
+```
+
+-----------------
+
+## **5.数据准你吧**
+
+&emsp;&emsp; 上面我们基本把工具都做的差不多了,在搭建上面之前还要做一点数据准备.在**CPURayTracing.cs**中导入一堆namespace和static namespace.
+
+```C#
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
+using UnityEngine;
+using static Unity.Mathematics.math;
+using static MyGraphics.Scripts.CPURayTracing.CPURayTracingMathUtil;
+
+public struct Material
+{
+	...
+}
+
+public class CPURayTracing
+{
+	...
+}
+```
+
+然后自己规定一点数据.比如说:
+  + DO_SAMPLES_PER_PIXEL:一个像素要发射多少射线
+  + DO_ANIMATE_SMOOTHING:给后面动画准备缓动
+  + kMinT:判断射中的阈值
+  + tMaxT:初始化射线的最大值
+  + kMaxDepth:光线深度循环最大的次数.光线碰到物体会进行一次新的弹射,然后再碰到物体,再次弹射,循环ing.所以可能会出现一束光反复弹来弹去,很难终止.次数一旦上去会对性能造成很大的压力,当然次数给少了渲染效果也不好看.
+
+```C#
+public class CPURayTracing
+{
+	private const int DO_SAMPLES_PER_PIXEL = 4;
+	private const float DO_ANIMATE_SMOOTHING = 0.5f;
+
+	private const float kMinT = 0.001f;
+	private const float kMaxT = float.MaxValue; //1.0e7f;
+	private const int kMaxDepth = 10;
+}
+```
+
+再准备要渲染的球的数据和材质数据,关系是一对一的.可以利用**define**对数据做区分,用**region**让代码看起来干净.
+先在顶部定义**#define DO_BIG_SCENE**
+
+```C#
+
+#define DO_BIG_SCENE
+
+using Unity.Burst;
+
 ```
