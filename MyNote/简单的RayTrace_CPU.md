@@ -703,9 +703,10 @@ public struct SpheresSOA
 
 -----------------
 
-## **5.数据准你吧**
+## **5.数据准备**
 
-&emsp;&emsp; 上面我们基本把工具都做的差不多了,在搭建上面之前还要做一点数据准备.在**CPURayTracing.cs**中导入一堆namespace和static namespace.
+&emsp;&emsp; 上面我们基本把工具都做的差不多了,在渲染之前还要做一点点(亿点点)数据准备.
+在**CPURayTracing.cs**中导入一堆namespace和static namespace.
 
 ```C#
 using Unity.Burst;
@@ -728,7 +729,7 @@ public class CPURayTracing
 ```
 
 然后自己规定一点数据.比如说:
-  + DO_SAMPLES_PER_PIXEL:一个像素要发射多少射线
+  + DO_SAMPLES_PER_PIXEL:一个像素要发射多少射线,
   + DO_ANIMATE_SMOOTHING:给后面动画准备缓动
   + kMinT:判断射中的阈值
   + tMaxT:初始化射线的最大值
