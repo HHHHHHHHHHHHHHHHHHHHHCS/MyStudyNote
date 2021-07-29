@@ -593,6 +593,8 @@ public struct SpheresSOA
 
 射线点和圆心点的距离是A,它的平方即(len(P圆-P线))^2 => dot(P圆-P线,P圆-P线) => A^2. 因为方向是法向量,所以B线段的距离平方也可以描述为(dot(P圆-P线,Dir线))^2 => B^2. 那么C^2 = A^2-B^2 , 然后在拿C^2 和 半径平方D^2进行比较 , 如果 D^2 - C^2 == 0 则交点只有一个 刚相交(我们这里不算碰撞成功). <0 则无交点,不相交. >0 两个交点,碰撞成功. 因为D=E都是半径 , 所以可以求得F. 两个碰撞点到射线点的距离分别为B+F和B-F. 和保存的最短距离的进行比较,选出最短的距离. 然后再储存球的id和距离. 依次循环
 
+![CPURayTrace_8](Images/CPURayTrace_8.png)
+
 注意一些球可能是为了凑齐数据4个一组格式而不存在的数据,所以需要sCenterX < float.MaxValue 来做mask跳过
 
 这时候储存的是4个float距离,还需要在之后进一步选出4个中的最小一个.
@@ -641,7 +643,6 @@ for (int i = 0; i < simdLen; ++i)
 }
 
 ```
-![CPURayTrace_8](Images/CPURayTrace_8.png)
 
 之后就是从float4中找出最短的距离t,然后返回物体id和碰撞信息.
 
