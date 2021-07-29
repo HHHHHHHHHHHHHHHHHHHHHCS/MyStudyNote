@@ -13,7 +13,9 @@
 ## **0.原因**
 
 &emsp;&emsp; 看到gayhub上有一个项目,抄着学习一下(jiu shi wan),项目地址:[ToyPathTracer](https://github.com/aras-p/ToyPathTracer).
+
 效果虽然不是很好,而且也没有什么高大上的东西,甚至都只有球的计算,但是拿来入门学习还是够用的.里面还有C++和C#的案例,这里就拿Unity来举个栗子,比较容易理解也比较直观.
+
 顺便安利一下闫老师的Games101讲的更详细,而且还搭配逐步的练习.PS:202也出了,yyds!
 
 下图分别是C++,Unity+Job,纯C#(图三和四).效果基本都差不多,但是效率差很大.不过Job的效率居然比想象中的强大.
@@ -32,12 +34,14 @@ CPU都被拉满了,比博人传都要燃啊,堪比献给未来的游戏--某剑�
 ![CPURayTrace_11](Images/CPURayTrace_11.jpg)
 
 回归正题其实学光追还有一个原因,就是很多东西光栅化的确很难办到(但是这个demo只讲简单的光追学习).
+
 比如这个[网站](https://www.imaginationtech.com/blog/hybrid-rendering-for-real-time-lighting/)就举了一些例子,对比说明了光追和光栅化的一些区别.
+
 比如说雨伞是可以轻微透光的,当然光栅化也可以用再次渲染一个shadowmap实现两个shadow的叠加.
 
 ![CPURayTrace_12](Images/CPURayTrace_12.gif)
 
-还有全面产生的自发光.遥想Unity当年面片自发光还要离线呢!
+还有曲面产生的自发光效果.遥想Unity当年面片自发光还要离线呢!
 
 ![CPURayTrace_13](Images/CPURayTrace_13.png)
 
@@ -50,6 +54,7 @@ CPU都被拉满了,比博人传都要燃啊,堪比献给未来的游戏--某剑�
 ## **1.基础配置**
 
 &emsp;&emsp; 项目需要安装Packages:Burst,Jobs,Mathematics.
+
 创建一个**RawImage**,设置为全屏幕大小,用于显示最后的效果.当然也可以用**CommandBuffer.DrawFullScreen**或者**Graphics.Blit**都可以.这里用UI,首先是偷懒,第二是确保不会被后处理/颜色校正/颜色转换.
 
 ![CPURayTrace_4](Images/CPURayTrace_4.png)
@@ -73,16 +78,21 @@ public class CPURayTracingTest : MonoBehaviour
 ```
 
 挂载给摄像机,并且把刚才的**RawImage**给**uiImage**进行赋值.**screenWidth screenHeight** 给960和540.
+
 屏幕尺寸这里建议给小一点,为了后面方便快速呈现效果.(当然银河电脑当我没有话说!)因为一个像素点会发射很多的光线进行大量的计算,所以给的点越少计算量越少,但是效果越差.
 
 ![CPURayTrace_5](Images/CPURayTrace_5.png)
 
 **RawImage**的图片需要**Texture2D**(**Texture2D**需要申请为Linear Color Space, 不过写成false对最终渲染的画面也没有影响),而**Texture2D**的颜色需要**Color Buffer**来填充数据.
+
 **Color Buffer**说白了就是一堆**Color**(需要屏幕像素数量的Color即width*height),便可以直接用**NativeArray<Color>t**来代替.(因为是长生命周期,所以用Allocator.Persistent. Allocator不知道的可以点击[Native Container Allocator](https://blog.csdn.net/lrh3025/article/details/102869011))
+
 创建**Texture2D**和**NativeArray<Color>**,对其进行默认设置.
+
 因为**Color Buffer**每帧数都要做计算更新,所以**Texture2D**需要每帧数回读**Color Buffer**,那便在**Update**进行**Texture2D.LoadRawTextureData**.
-最后别忘了
-在脚本销毁的时候需要释放**NativeArray<Color>**.
+
+最后别忘了在脚本销毁的时候需要释放**NativeArray<Color>**.
+
 这样一来基础的配置就完成了.
 
 ```C#
@@ -126,6 +136,7 @@ public class CPURayTracingTest : MonoBehaviour
 ## **2.工具类准备**
 
 &emsp;&emsp; 在做光追的时候,先要提前准备一些结构体和求交计算.
+
 创建一个static class**CPURayTracingMathUtil.cs**.为了后面写代码方便用**static**方法导入**Mathematics**.
 
 ```C#
@@ -141,8 +152,11 @@ public static class CPURayTracingMathUtil
 ```
 
 先创建几个结构体用于储存数据.
+
 射线:**Ray**,需要起始点**ori**和方向**dir**,射线上的某一个点可以表示为ori+dir*t,t>=0,t即距离
+
 碰撞结果:**Hit**,用于一个射线碰撞到场景物体记录的信息结构体.碰撞的点**pos**,记录碰撞点的法线**normal**,射线走了多少距离**t**.
+
 球:**Sphere**,球就是圆心位置**center**和半径**radius**.
 
 ```C#
@@ -183,7 +197,9 @@ public static class CPURayTracingMathUtil
 ```
 
 再创建摄像机(Camera)结构体.
+
 摄像机需要起始点**lookFrom**,看的方向**lookAt**,向上的方向**vup**默认float3(0,1,0),视场角**fov**(也就是俗称的底),屏幕宽高**aspect**,光圈大小**aperture**(虚化用),聚焦距离**focusDist**.(Games101-P19有超级详细的说明)
+
 **aperture**值越大,代表光圈越大.因为镜片是薄棱镜,所以产生折射角度会越大,光线不会聚集到一起,最后图像会被模糊.下面的图可以看到效果,显而易见远处模糊.
 
 ![CPURayTrace_15](Images/CPURayTrace_15.jpg)
@@ -253,7 +269,9 @@ public static class CPURayTracingMathUtil
 
 
 因为光追是从相机点出发射向聚焦平面,所以我们还需要写一个方法用于得到射线.
+
 因为存在光圈,即我们可能会得到虚化/模糊的图片.可以参考上面的图,其实就是没有完美成像在平面上.那么我们可以反过来想,可以让发出去的射线不会太规则,让其加点随机偏移和方向偏离,然后把得到的颜色平均,这样就可以得到虚化的效果了.
+
 随机方向这块可以用别的方法替代,甚至可以用do-while.但是要确保要在圆/球的外面,且不能超过单位1的cube.因为在球内则可能值过小,如果是归一化,则分布的还不够随机过于密集.
 
 ```C#
@@ -461,7 +479,10 @@ public static class CPURayTracingMathUtil
 
 ## **3.射线和球相交**
 
-接下来就就是比较麻烦的射线和球的相交计算.创建一个**struct SpheresSOA**在**CPURayTracingMathUtil.cs**.先添加点属性用来储存全部球的信息.本来可以用**NativeArray<float4> XYZRadius**来记录,但是为了后面计算的方便快捷,就改成单独记录centerX,centerY,centerZ,radius. radius甚至可以提前计算好r*r和1/r,节约运算.
+接下来就就是比较麻烦的射线和球的相交计算.
+
+创建一个**struct SpheresSOA**在**CPURayTracingMathUtil.cs**.先添加点属性用来储存全部球的信息.本来可以用**NativeArray<float4> XYZRadius**来记录,但是为了后面计算的方便快捷,就改成单独记录centerX,centerY,centerZ,radius. radius甚至可以提前计算好r*r和1/r,节约运算.
+
 然后一组是4个,因为floatN最大是float4,开辟一个向上4取整的长度进行初始化.并且别忘记添加销毁代码.
 
 ```C#
@@ -528,8 +549,11 @@ public struct Camera
 ```
 
 之后就是复杂的射线和球碰撞计算了.用到了unsafe功能.
+
 tMin就是判断射中的阀值
+
 tMax是初始化射线用的距离(默认最大值)
+
 先初始化射线的起始点和方向,循环次数,中心点半径等.
 
 ```C#
@@ -568,7 +592,9 @@ public struct SpheresSOA
 ```
 
 射线点和圆心点的距离是A,它的平方即(len(P圆-P线))^2 => dot(P圆-P线,P圆-P线) => A^2. 因为方向是法向量,所以B线段的距离平方也可以描述为(dot(P圆-P线,Dir线))^2 => B^2. 那么C^2 = A^2-B^2 , 然后在拿C^2 和 半径平方D^2进行比较 , 如果 D^2 - C^2 == 0 则交点只有一个 刚相交(我们这里不算碰撞成功). <0 则无交点,不相交. >0 两个交点,碰撞成功. 因为D=E都是半径 , 所以可以求得F. 两个碰撞点到射线点的距离分别为B+F和B-F. 和保存的最短距离的进行比较,选出最短的距离. 然后再储存球的id和距离. 依次循环
+
 注意一些球可能是为了凑齐数据4个一组格式而不存在的数据,所以需要sCenterX < float.MaxValue 来做mask跳过
+
 这时候储存的是4个float距离,还需要在之后进一步选出4个中的最小一个.
 
 
@@ -618,9 +644,13 @@ for (int i = 0; i < simdLen; ++i)
 ![CPURayTrace_8](Images/CPURayTrace_8.png)
 
 之后就是从float4中找出最短的距离t,然后返回物体id和碰撞信息.
+
 碰撞点 = 射线点 + dir*t
+
 法线 = (碰撞点 - 圆心) / r    (/r是为了归一化)
+
 最短距离 = t
+
 如果什么都没有找到 则返回-1
 
 ```C#
@@ -660,14 +690,16 @@ return -1;
 ## **4.材质**
 
 &emsp;&emsp; 每个球都会有自己的材质属性,所以要创建材质结构体用来储存属性.
+
 创建一个C# **CPURayTracing.cs**,在上面添加一个结构体**Material**
+
 这里把材质分为简单的三类:光线不反射的**Lambert**,光线镜面反射的**Metal**,光线穿过内部在内部发生折射的**Dielectric**,这三类的计算方式不同,所以用枚举**Type**加以区分.
-guid:后面需要判断是否是自身,从而跳过用.C++可以不用这一属性,C#为了避免拷贝的地址不同,所以用guid来避免.
-type:材质球属性
-albedo:表面颜色
-emissive:自发光颜色
-roughness:粗糙度,反射用
-ri:折射系数,内部折射用
+  + guid:后面需要判断是否是自身,从而跳过用.C++可以不用这一属性,C#为了避免拷贝的地址不同,所以用guid来避免.
+  + type:材质球属性
+  + albedo:表面颜色
+  + emissive:自发光颜色
+  + roughness:粗糙度,反射用
+  + ri:折射系数,内部折射用
 
 ![CPURayTrace_9](Images/CPURayTrace_9.jpg)
 
@@ -746,6 +778,7 @@ public struct SpheresSOA
 ## **5.数据准备**
 
 &emsp;&emsp; 上面我们基本把工具都做的差不多了,在渲染之前还要做一点点(亿点点)数据准备.
+
 在**CPURayTracing.cs**中导入一堆namespace和static namespace.
 
 ```C#
@@ -788,6 +821,7 @@ public class CPURayTracing
 ```
 
 再准备要渲染的球的数据和材质数据,关系是一对一的.可以利用**define**对数据做区分,用**region**让代码看起来干净.
+
 先在顶部定义#define DO_BIG_SCENE, 然后在下面写两个属性**static Sphere[] spheresData**和**static Material[] sphereMatsData**用来储存球和材质球,别忘了用region包起来.
 
 ```C#
@@ -952,8 +986,11 @@ public class CPURayTracing
 ```
 
 当然还要创建相机,不然连拍什么都不知道...
+
 创建一个**DoDraw**方法,用于渲染绘制的.
+
 如果我们要拍大场景,光圈建议小一点,模糊不会那么严重.
+
 同时我们这里也把球和材质的更新也写到这里.
 
 ```C#
@@ -988,4 +1025,5 @@ public class CPURayTracing
 ## **6.渲染**
 
 &emsp;&emsp; 老乡别跑,终于开始讲光照了.
+
 屏幕是由像素组成的.那么我们可以由遍历像素,让它发出N(DO_SAMPLES_PER_PIXEL)根射线求结果.这样就能得到最后效果了
