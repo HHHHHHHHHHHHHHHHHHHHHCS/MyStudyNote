@@ -3,7 +3,12 @@
 
 (Github正常排版: [简单的RayTrace_CPU](https://github.com/HHHHHHHHHHHHHHHHHHHHHCS/MyStudyNote/blob/main/MyNote/%E7%AE%80%E5%8D%95%E7%9A%84RayTrace_CPU.md))
 
+------------------------
+
+[0. 原因](#0)<br>
+
 -----------------
+<span id='0'/>
 
 ## **0.原因**
 
@@ -11,22 +16,41 @@
 效果虽然不是很好,而且也没有什么高大上的东西,甚至都只有球的计算,但是拿来入门学习还是够用的.里面还有C++和C#的案例,这里就拿Unity来举个栗子,比较容易理解也比较直观.
 顺便安利一下闫老师的Games101讲的更详细,而且还搭配逐步的练习.PS:202也出了,yyds!
 
-下图分别是C++,Unity+Job,纯C#(图三和四).效果基本都差不多,但是就是效率差很大.不过Job的效率居然比想象中的强大.
+下图分别是C++,Unity+Job,纯C#(图三和四).效果基本都差不多,但是效率差很大.不过Job的效率居然比想象中的强大.
 
 ![CPURayTrace_0](Images/CPURayTrace_0.png)
 ![CPURayTrace_1](Images/CPURayTrace_1.jpg)
 ![CPURayTrace_2](Images/CPURayTrace_2.jpg)
 ![CPURayTrace_3](Images/CPURayTrace_3.jpg)
 
+CPU都被拉满了,比博人传都要燃啊,堪比献给未来的游戏--某剑六,希望七不要拉胯了,拉胯了就说明别人是CPU光追游戏!!!
+
+![CPURayTrace_10](Images/CPURayTrace_10.jpg)
+
+不过也有解决办法(doge)
+
+![CPURayTrace_11](Images/CPURayTrace_11.jpg)
+
+回归正题其实学光追还有一个原因,就是很多东西光栅化的确很难办到(但是这个demo只讲简单的光追学习).
+比如这个[网站](https://www.imaginationtech.com/blog/hybrid-rendering-for-real-time-lighting/)就举了一些例子,对比说明了光追和光栅化的一些区别.
+比如说雨伞是可以轻微透光的,当然光栅化也可以用再次渲染一个shadowmap实现两个shadow的叠加.
+
+![CPURayTrace_12](Images/CPURayTrace_12.gif)
+
+还有全面产生的自发光.遥想Unity当年面片自发光还要离线呢!
+
+![CPURayTrace_13](Images/CPURayTrace_13.png)
+
+再比如你撑着遮阳伞着伞走在马路上.伞的内部其实是会被来自地砖的光照亮的.如果按照shadowmap的原理内部应该是暗的.虽然也可以添加**Reflection Probe**来解决.
+
+![CPURayTrace_14](Images/CPURayTrace_14.jpg)
 
 -----------------
 
 ## **1.基础配置**
 
 &emsp;&emsp; 项目需要安装Packages:Burst,Jobs,Mathematics.
-创建一个**RawImage**,设置为全屏幕大小,用于显示最后的效果.当然也可以用**CommandBuffer.DrawFullScreen**或者**Graphics.Blit**都可以.
-
-cmd.draw 要注意渲染队列   要在unity 的渲染之后   因为不会走后处理    绘制UI 基本不会走后处理
+创建一个**RawImage**,设置为全屏幕大小,用于显示最后的效果.当然也可以用**CommandBuffer.DrawFullScreen**或者**Graphics.Blit**都可以.这里用UI,首先是偷懒,第二是确保不会被后处理/颜色校正/颜色转换.
 
 ![CPURayTrace_4](Images/CPURayTrace_4.png)
 
@@ -159,8 +183,27 @@ public static class CPURayTracingMathUtil
 ```
 
 再创建摄像机(Camera)结构体.
-摄像机需要起始点**lookFrom**,看的方向**lookAt**,向上的方向**vup**默认float3(0,1,0),视场角**fov**,屏幕宽高**aspect**,焦聚**aperture**,近平面距离**focusDist**.(Games101-P19有超级详细的说明)
-**aperture**值越大,图像会被虚化.下面的图可以看到效果,显而易见远处虚化,没有聚焦成功.
+摄像机需要起始点**lookFrom**,看的方向**lookAt**,向上的方向**vup**默认float3(0,1,0),视场角**fov**(也就是俗称的底),屏幕宽高**aspect**,光圈大小**aperture**(虚化用),聚焦距离**focusDist**.(Games101-P19有超级详细的说明)
+**aperture**值越大,代表光圈越大.因为镜片是薄棱镜,所以产生折射角度会越大,光线不会聚集到一起,最后图像会被模糊.下面的图可以看到效果,显而易见远处模糊.
+
+![CPURayTrace_15](Images/CPURayTrace_15.jpg)
+![CPURayTrace_16](Images/CPURayTrace_16.jpg)
+![CPURayTrace_17](Images/CPURayTrace_17.jpg)
+aperture = 0.5 * 0.2
+![CPURayTrace_6](Images/CPURayTrace_6.jpg)
+aperture = 0.1 * 0.2
+![CPURayTrace_7](Images/CPURayTrace_7.jpg)
+
+**focusDist**聚焦距离,正常改动影响不会很大.但是如果**aperture**值比较大的时候就很重要,它能确保聚焦距离对应的一块的图像是清晰的.
+
+![CPURayTrace_18](Images/CPURayTrace_18.jpg)
+![CPURayTrace_19](Images/CPURayTrace_19.png)
+
+aperture = 1 * 0.2 , distToFocus = 3
+![CPURayTrace_20](Images/CPURayTrace_20.jpg)
+aperture = 1 * 0.2 , distToFocus = 6
+![CPURayTrace_21](Images/CPURayTrace_21.jpg)
+
 用传入的数据构建摄像机完成基础的属性.
 
 ```C#
@@ -182,7 +225,7 @@ public struct Camera
 	private float lensRadius;
 
 	// vfov is top to bottom in degrees
-	//aperture焦聚 聚焦虚焦用   focusDist是near distance
+	//aperture光圈大小 模糊用   focusDist是聚焦的距离
 	public Camera(float3 lookFrom, float3 lookAt, float3 vup, float vfov, float aspect, float aperture, 
 	float focusDist)
 	{
@@ -208,13 +251,10 @@ public static class CPURayTracingMathUtil
 
 ```
 
-aperture = 0.5 * 0.2
-![CPURayTrace_6](Images/CPURayTrace_6.jpg)
-aperture = 0.1 * 0.2
-![CPURayTrace_7](Images/CPURayTrace_7.jpg)
 
-因为光追是从近平面(near plane)像素点发出方向为相机到这个像素点的单位向量的射线,所以我们还需要写一个方法用于得到射线.因为存在焦距,即我们可能需要虚化/模糊的效果.我们可以让发出去的射线不会太规则,让其加点随机位移和方向,然后把得到的颜色除权,这样就可以得到虚化的效果了.
-随机方向这块可以用别的方法替代,甚至可以用do-while,但是要确保要在圆/球的外面,且不能超过单位1的cube.
+因为光追是从相机点出发射向聚焦平面,所以我们还需要写一个方法用于得到射线.
+因为存在光圈,即我们可能会得到虚化/模糊的图片.可以参考上面的图,其实就是没有完美成像在平面上.那么我们可以反过来想,可以让发出去的射线不会太规则,让其加点随机偏移和方向偏离,然后把得到的颜色平均,这样就可以得到虚化的效果了.
+随机方向这块可以用别的方法替代,甚至可以用do-while.但是要确保要在圆/球的外面,且不能超过单位1的cube.因为在球内则可能值过小,如果是归一化,则分布的还不够随机过于密集.
 
 ```C#
 
@@ -729,7 +769,7 @@ public class CPURayTracing
 ```
 
 然后自己规定一点数据.比如说:
-  + DO_SAMPLES_PER_PIXEL:一个像素要发射多少射线,
+  + DO_SAMPLES_PER_PIXEL:一个像素要发射多少射线
   + DO_ANIMATE_SMOOTHING:给后面动画准备缓动
   + kMinT:判断射中的阈值
   + tMaxT:初始化射线的最大值
@@ -887,6 +927,65 @@ public class CPURayTracing
 
 ```
 
-然后还要创建之前写的求交数据结构体**SpheresSOA**
+然后还要创建之前写的球交数据结构体**SpheresSOA**,别忘了销毁.
 
-//todo:
+```C#
+public class CPURayTracing
+{
+	#region Data
+	...
+	#endregion
+	
+	private SpheresSOA spheresSOA;
+
+	public CPURayTracing()
+	{
+		spheresSOA = new SpheresSOA(spheresData.Length);
+	}
+
+	public void Dispose()
+	{
+		spheresSOA.Dispose();
+	}
+}
+
+```
+
+当然还要创建相机,不然连拍什么都不知道...
+创建一个**DoDraw**方法,用于渲染绘制的.
+如果我们要拍大场景,光圈建议小一点,模糊不会那么严重.
+同时我们这里也把球和材质的更新也写到这里.
+
+```C#
+public class CPURayTracing
+{
+
+	public void Dispose()
+	{
+		...
+	}
+
+	public void DoDraw(int screenWidth, int screenHeight)
+	{
+		float3 lookFrom = new float3(0, 2, 3);
+		float3 lookAt = new float3(0, 0, 0);
+		float distToFocus = 3f;
+		float aperture = 0.1f;
+#if DO_BIG_SCENE
+		aperture *= 0.2f;
+#endif
+		Camera cam = new Camera(lookFrom, lookAt, new float3(0, 1, 0), 60,
+			(float) screenWidth / (float) screenHeight, aperture, distToFocus);
+		
+		spheresSOA.Update(spheresData, sphereMatsData);
+
+	}
+}
+```
+
+-----------------
+
+## **6.渲染**
+
+&emsp;&emsp; 老乡别跑,终于开始讲光照了.
+屏幕是由像素组成的.那么我们可以由遍历像素,让它发出N(DO_SAMPLES_PER_PIXEL)根射线求结果.这样就能得到最后效果了
