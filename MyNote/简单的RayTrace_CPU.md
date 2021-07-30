@@ -45,7 +45,7 @@ CPU都被拉满了,比博人传都要燃啊,堪比献给未来的游戏--某剑�
 
 ![CPURayTrace_13](Images/CPURayTrace_13.png)
 
-再比如你撑着遮阳伞着伞走在马路上.伞的内部其实是会被来自地砖的光照亮的.如果按照shadowmap的原理内部应该是暗的.虽然也可以添加**Reflection Probe**来解决.
+再比如你撑着遮阳伞着伞走在马路上.伞的内部其实是会被来自地砖的光照亮的.如果按照shadowmap的原理内部应该是暗的.虽然也可以添加**Reflection Probe**来解决,或者进行**Screen Space Reflection**.
 
 ![CPURayTrace_14](Images/CPURayTrace_14.jpg)
 
@@ -272,7 +272,7 @@ public static class CPURayTracingMathUtil
 
 因为存在光圈,即我们可能会得到虚化/模糊的图片.可以参考上面的图,其实就是没有完美成像在平面上.那么我们可以反过来想,可以让发出去的射线不会太规则,让其加点随机偏移和方向偏离,然后把得到的颜色平均,这样就可以得到虚化的效果了.
 
-随机方向这块可以用别的方法替代,甚至可以用do-while.但是要确保要在圆/球的外面,且不能超过单位1的cube.因为在球内则可能值过小,如果是归一化,则分布的还不够随机过于密集.
+随机方向这块可以用别的方法替代(这里用ref传入是为了保证下一次的结果不一致),甚至可以用do-while.但是要确保要在圆/球的外面,且不能超过单位1的cube.因为在球内则可能值过小,如果是归一化,则分布的还不够随机过于密集.
 
 ```C#
 
@@ -1023,8 +1023,344 @@ public class CPURayTracing
 
 -----------------
 
-## **6.渲染**
+## **6.射线**
 
-&emsp;&emsp; 老乡别跑,终于开始讲光照了.
+屏幕是由像素组成的.那么我们可以由遍历像素,让它发出N(DO_SAMPLES_PER_PIXEL)根射线计算光照求结果.这样就能得到最后效果了.
 
-屏幕是由像素组成的.那么我们可以由遍历像素,让它发出N(DO_SAMPLES_PER_PIXEL)根射线求结果.这样就能得到最后效果了
+这里我们用Job来遍历height,然后再在Job里面嵌套一个for width,从而实现遍历全部的像素.
+
+在**CPURayTracing.cs**中创建Job **TraceRowJob**
+
+```C#
+	public class CPURayTracing
+	{
+		...
+
+		public void Dispose()
+		{
+			...
+		}
+
+		[BurstCompile]
+		private struct TraceRowJob : IJobParallelFor
+		{
+			public void Execute(int y)
+			{
+			}
+		}
+
+		public void DoDraw(int screenWidth, int screenHeight)
+		{
+			...
+		}
+	}
+```
+
+给**TraceRowJob**添加基础的属性
+  + screenWidth/screenHeight:屏幕尺寸
+  + frameCount:主要做颜色lerp和随机种子用
+  + cam:摄像机属性
+  + backbuffer:颜色数据
+  + rayCounter:射线统计
+  + spheres:球的信息
+  + materials:材质信息
+
+```C#
+
+private struct TraceRowJob : IJobParallelFor
+{
+	public int screenWidth, screenHeight, frameCount;
+	public Camera cam;
+
+	[NativeDisableParallelForRestriction] public NativeArray<Color> backbuffer;
+	[NativeDisableParallelForRestriction] public NativeArray<int> rayCounter;
+	[NativeDisableParallelForRestriction] public SpheresSOA spheres;
+	[NativeDisableParallelForRestriction] public NativeArray<Material> materials;
+
+	public void Execute(int y)
+	{
+	}
+}
+
+```
+
+修改**DoDraw(int screenWidth, int screenHeight)**方法 , 在里面创建Job并且完成数据的配置. Job要执行的长度即**screenHeight**
+
+```C#
+public class CPURayTracing
+{
+	[BurstCompile]
+	private struct TraceRowJob : IJobParallelFor
+	{
+		...
+	}
+
+	public void DoDraw(float time, int frameCount, int screenWidth, int screenHeight,
+		NativeArray<Color> backbuffer, out int outRayCount)
+	{
+		int rayCount = 0;
+
+		float3 lookFrom = new float3(0, 2, 3);
+		...
+		spheresSOA.Update(spheresData, sphereMatsData);
+			
+		TraceRowJob job;
+		job.screenWidth = screenWidth;
+		job.screenHeight = screenHeight;
+		job.frameCount = frameCount;
+		job.backbuffer = backbuffer;
+		job.cam = cam;
+		job.rayCounter = new NativeArray<int>(1, Allocator.TempJob);
+		job.spheres = spheresSOA;
+		job.materials = new NativeArray<Material>(sphereMatsData, Allocator.TempJob);
+
+		var fence = job.Schedule(screenHeight, 4);
+		fence.Complete();
+
+		rayCount = job.rayCounter[0];
+		job.rayCounter.Dispose();
+		job.materials.Dispose();
+		
+		outRayCount = rayCount;
+	}
+}
+
+```
+
+返回Job继续编写.
+
+为了达到遍历像素数量,所以Job里面要For screenWidth.然后每个像素还要发出N(DO_SAMPLES_PER_PIXEL)根射线,所以还要For一次.
+
+```C#
+private struct TraceRowJob : IJobParallelFor
+{
+	...
+
+	public void Execute(int y)
+	{
+		for (int x = 0; x < screenWidth; ++x)
+		{
+			for (int s = 0; s < DO_SAMPLES_PER_PIXEL; s++)
+			{
+				//TODO:发射射线
+			}
+		}
+	}
+}
+
+```
+
+因为像素不是一个点,也是有大小的.为了让结果更接近真实准确,可以在像素的大小内随机分布射线去发射,而不是只在像素的中心点发射.
+
+初始化随机种子(随便写,开心就好),创建射线.
+
+```C#
+
+	public void Execute(int y)
+	{
+		float invWidth = 1.0f / screenWidth;
+		float invHeight = 1.0f / screenHeight;
+
+		uint state = (uint) (y * 9781 + frameCount * 6271) | 1;
+
+
+		for (int x = 0; x < screenWidth; ++x)
+		{
+			for (int s = 0; s < DO_SAMPLES_PER_PIXEL; s++)
+			{
+				float u = (x + RandomFloat01(ref state)) * invWidth;
+				float v = (y + RandomFloat01(ref state)) * invHeight;
+				Ray r = cam.GetRay(u, v, ref state);
+
+				//TODO:光照采样
+			}
+		}
+	}
+
+```
+
+有了射线之后就可以利用之前写的**SpheresSOA**和**Material**进行光线追踪了.
+
+在**CPURayTracing.cs**中创建**HitWorld**用于判断光线是否碰撞成功
+
+```C#
+	public class CPURayTracing
+	{
+		public void Dispose()
+		{
+			...
+		}
+
+		private static bool HitWorld(Ray r, float tMin, float tMax
+			, ref Hit outHit, ref int outID, ref SpheresSOA spheres)
+		{
+			outID = spheres.HitSpheres(ref r, tMin, tMax, ref outHit);
+			return outID != -1;
+		}
+
+		[BurstCompile]
+		private struct TraceRowJob : IJobParallelFor
+		{
+			....
+		}
+
+		...
+	}
+```
+
+-----------------
+
+## **7.基础颜色**
+
+&emsp;&emsp; 老乡别跑,终于开始讲渲染了.
+
+创建一个方法**Trace**,主要用于颜色的累加.
+
+```C#
+private static bool HitWorld(Ray r, float tMin, float tMax
+	, ref Hit outHit, ref int outID, ref SpheresSOA spheres)
+{
+	...
+}
+
+private static float3 Trace(Ray r, int depth, ref int inoutRayCount, ref SpheresSOA spheres,
+	NativeArray<Material> materials, ref uint randState, bool doMaterialE = true)
+{
+	//TODO:
+}
+
+[BurstCompile]
+private struct TraceRowJob : IJobParallelFor
+{
+	....
+}
+```
+
+然后完善**Trace**方法.**Scatter**方法讲在后面讲到,主要用于得到颜色和和决定射线继续怎么走.
+  + inoutRayCount,每产生一根射线就累加一次,用于信息统计
+  + doMaterialE,走自发光还是光照详细计算,后面还会在补充
+  + kMaxDepth,光线弹射的最大次数,避免弹射过多,造成性能紧张.而且如果albedo<1越到后面的弹射造成的颜色几乎衰减为0
+
+这里的最终颜色的公式比较简单.
+
+color = 自发光 + 灯光产生的颜色 + 吸收率(albedo) * 继续弹射的颜色.
+
+albedo:可以直白理解越黑色越吸收光.比如吸光材料/布是黑色的.
+
+如果弹射过多(depth < kMaxDepth),则直接返回自发光.
+
+如果没有射中,返回天空颜色.
+
+比如我们假设albedo(吸收率)为0.5,然后需要把光线经过的全部颜色递归累加起来.可以发现随着弹射系数变小,后面产生的颜色已经影响很小了.(简单demo不考虑光线弹射一次会散开多根,但是图画了).
+
+![CPURayTrace_22](Images/CPURayTrace_22.jpg)
+
+
+```C#
+
+private static float3 Trace(Ray r, int depth, ref int inoutRayCount, ref SpheresSOA spheres,
+			NativeArray<Material> materials, ref uint randState, bool doMaterialE = true)
+{
+	Hit rec = default;
+	int id = 0;
+	++inoutRayCount;
+	if (HitWorld(r, kMinT, kMaxT, ref rec, ref id, ref spheres))
+	{
+		var mat = materials[id];
+		var matE = mat.emissive;
+		if (depth < kMaxDepth && Scatter(mat, r, rec, out float3 attenuation, out Ray scattered,
+			out float3 lightE, ref inoutRayCount, ref spheres, materials, ref randState))
+		{
+			if (all(attenuation == float3.zero))
+			{
+				return matE + lightE;
+			}
+			else
+			{
+				return matE + lightE + attenuation * Trace(scattered, depth + 1, ref inoutRayCount, ref spheres,
+					materials, ref randState, doMaterialE);
+			}
+		}
+		else
+		{
+			return matE;
+		}
+	}
+	else
+	{
+		// sky
+		float3 unitDir = r.dir;
+		float t = 0.5f * (unitDir.y + 1.0f);
+		return ((1.0f - t) * new float3(1.0f, 1.0f, 1.0f) + t * new float3(0.5f, 0.7f, 1.0f)) * 0.3f;
+	}
+}
+
+```
+
+然后编写**Scatter**方法
+
+```C#
+
+public class CPURayTracing
+{
+	private static bool HitWorld(Ray r, float tMin, float tMax
+	, ref Hit outHit, ref int outID, ref SpheresSOA spheres)
+	{
+		...
+	}
+
+	private static bool Scatter(Material mat, Ray r_in, Hit rec, out float3 attenuation, out Ray scattered,
+		out float3 outLightE, ref int inoutRayCount, ref SpheresSOA spheres, NativeArray<Material> materials,
+		ref uint randState)
+	{
+		//TODO:
+	}
+
+
+	private static float3 Trace(Ray r, int depth, ref int inoutRayCount, ref SpheresSOA spheres,
+		NativeArray<Material> materials, ref uint randState, bool doMaterialE = true)
+	{
+		...
+	}
+}
+
+```
+
+我们这里线不考虑光线会散开多根.
+
+先计算**Material.Type.Lambert**,同时把光照计算先去掉
+
+```C#
+private static bool Scatter(Material mat, Ray r_in, Hit rec, out float3 attenuation, out Ray scattered,
+	out float3 outLightE, ref int inoutRayCount, ref SpheresSOA spheres, NativeArray<Material> materials,
+	ref uint randState)
+{
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+为了方便观察自发光产生的效果,需要 #define DO_LIGHT_SAMPLING 进行开关处理.
+
+```C#
+#define DO_LIGHT_SAMPLING
+#define DO_BIG_SCENE
+
+public struct Material
+{
+}
+
+public class CPURayTracing
+{
+}
+
+```
