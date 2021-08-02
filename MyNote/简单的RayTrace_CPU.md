@@ -16,6 +16,9 @@
 
 效果虽然不是很好,而且也没有什么高大上的东西,甚至都只有球的计算,但是拿来入门学习还是够用的.里面还有C++和C#的案例,这里就拿Unity来举个栗子,比较容易理解也比较直观.
 
+[一篇光线追踪的入门](https://zhuanlan.zhihu.com/p/41269520)
+[光线追踪的QA](https://zhuanlan.zhihu.com/p/51493136)
+
 顺便安利一下闫老师的Games101讲的更详细,而且还搭配逐步的练习.PS:202也出了,yyds!
 
 下图分别是C++,Unity+Job,纯C#(图三和四).效果基本都差不多,但是效率差很大.不过Job的效率居然比想象中的强大.
@@ -45,7 +48,7 @@ CPU都被拉满了,比博人传都要燃啊,堪比献给未来的游戏--某剑�
 
 ![CPURayTrace_13](Images/CPURayTrace_13.png)
 
-再比如你撑着遮阳伞着伞走在马路上.伞的内部其实是会被来自地砖的光照亮的.如果按照shadowmap的原理内部应该是暗的.虽然也可以添加**Reflection Probe**来解决,或者进行**Screen Space Reflection**.
+再比如你撑着遮阳伞着伞走在马路上.伞的内部其实是会被来自地砖的光照亮的.如果按照shadowmap的原理内部应该是暗的,但是实际上会被地砖的反射光照亮.虽然也可以添加**Reflection Probe**来解决,或者进行**Screen Space Reflection**,但是效果比较一般.
 
 ![CPURayTrace_14](Images/CPURayTrace_14.jpg)
 
@@ -1241,6 +1244,12 @@ private struct TraceRowJob : IJobParallelFor
   + doMaterialE,走自发光还是光照详细计算,后面还会在补充
   + kMaxDepth,光线弹射的最大次数,避免弹射过多,造成性能紧张.而且如果albedo<1越到后面的弹射造成的颜色几乎衰减为0
 
+kMaxDepth:比如我们假设albedo(吸收率)为0.5,然后需要把光线经过的全部颜色递归累加起来(简单demo不考虑光线弹射一次会散开多根).可以发现随着弹射,系数变小,后面产生的颜色已经影响很小了.而可能出现反复弹射,那么天河二号来了也会死循环.
+
+![CPURayTrace_22](Images/CPURayTrace_22.png)
+
+![CPURayTrace_23](Images/CPURayTrace_23.jpg)
+
 这里的最终颜色的公式比较简单.
 
 color = 自发光 + 灯光产生的颜色 + 吸收率(albedo) * 继续弹射的颜色.
@@ -1250,11 +1259,6 @@ albedo:可以直白理解越黑色越吸收光.比如吸光材料/布是黑色�
 如果弹射过多(depth < kMaxDepth),则直接返回自发光.
 
 如果没有射中,返回天空颜色.
-
-比如我们假设albedo(吸收率)为0.5,然后需要把光线经过的全部颜色递归累加起来.可以发现随着弹射系数变小,后面产生的颜色已经影响很小了.(简单demo不考虑光线弹射一次会散开多根,但是图画了).
-
-![CPURayTrace_22](Images/CPURayTrace_22.jpg)
-
 
 ```C#
 
@@ -1271,7 +1275,7 @@ private static float3 Trace(Ray r, int depth, ref int inoutRayCount, ref Spheres
 		if (depth < kMaxDepth && Scatter(mat, r, rec, out float3 attenuation, out Ray scattered,
 			out float3 lightE, ref inoutRayCount, ref spheres, materials, ref randState))
 		{
-			if (all(attenuation == float3.zero))
+			if (all(attenuation == 0))
 			{
 				return matE + lightE;
 			}
@@ -1326,28 +1330,304 @@ public class CPURayTracing
 
 ```
 
-我们这里线不考虑光线会散开多根.
+先计算**Material.Type.Lambert**,同时把光照计算先去掉.
 
-先计算**Material.Type.Lambert**,同时把光照计算先去掉
+光线进来,在碰撞点,随机选择一个向外的方向再次反弹出去.本来可能反弹很多很多条的,但是计算量非常大.这里只随机选择一条.
+
+![CPURayTrace_24](Images/CPURayTrace_24.jpg)
 
 ```C#
 private static bool Scatter(Material mat, Ray r_in, Hit rec, out float3 attenuation, out Ray scattered,
 	out float3 outLightE, ref int inoutRayCount, ref SpheresSOA spheres, NativeArray<Material> materials,
 	ref uint randState)
 {
+	outLightE = new float3(0, 0, 0);
+	if (mat.type == Material.Type.Lambert)
+	{
+		//随机在表面一个点发散
+		float3 target = rec.pos + rec.normal + RandomUnitVector(ref randState);
+		scattered = new Ray(rec.pos, normalize(target - rec.pos));
+		attenuation = mat.albedo;
+
+		//TODO:光照
+
+		return true;
+	}
+	else if (mat.type == Material.Type.Metal)
+	{
+		//TODO:
+	}
+	else if (mat.type == Material.Type.Dielectric)
+	{
+		//TODO:
+	}
+	else
+	{
+		//TODO:BUG标记
+	}
+
+	return false;
 }
 ```
 
+然后就是**Material.Type.Metal**.类似于镜面反射,可以之用**reflect**方法搞定.然后这里存在rougness,即不是光滑的平面.所以反射可能不会那么规则,那么加一点随机偏移既可.但是也有可能会偏移到平面内部,直接不发生反射,所以需要做检测.
+
+![CPURayTrace_25](Images/CPURayTrace_25.jpg)
+
+```C#
+
+if (mat.type == Material.Type.Lambert)
+{
+	...
+}
+else if (mat.type == Material.Type.Metal)
+{
+	float3 refl = reflect(r_in.dir, rec.normal);
+	scattered = new Ray(rec.pos, normalize(refl + mat.roughness * RandomInUnitSphere(ref randState)));
+	attenuation = mat.albedo;
+	return dot(scattered.dir, rec.normal) > 0;
+}
+...
+
+```
+
+然后就是**Material.Type.Dielectric**.类似于折射.光线要折射进球内部再折射出去.所以在此之前要先写两个数学方法.
+
+在**CPURayTracingMathUtil.cs**中补充两个方法
+  + **Refract**,折射
+  + **Schlick**,Schlick Fresnel
+  + 详细可以参考这篇: https://graphics.stanford.edu/courses/cs148-10-summer/docs/2006--degreve--reflection_refraction.pdf
+
+```C#
+public static class CPURayTracingMathUtil
+{
+	//Math
+	//----------------------------
+
+	public static bool Refract(float3 v, float3 n, float nint, out float3 outRefracted)
+	{
+		float dt = dot(v, n);
+		float discr = 1.0f - nint * nint * (1 - dt * dt);
+		if (discr > 0)
+		{
+			outRefracted = nint * (v - n * dt) - n * sqrt(discr);
+			return true;
+		}
+
+		outRefracted = new float3(0, 0, 0);
+		return false;
+	}
+
+	// cosine越大  reflProb越小    ri越大  reflProb越大
+	public static float Schlick(float cosine, float ri)
+	{
+		float r0 = (1 - ri) / (1 + ri);
+		r0 = r0 * r0;
+		return r0 + (1 - r0) * pow(1 - cosine, 5);
+	}
+
+	//Random
+	//-------------------
+
+	//生成随机数
+	private static uint XorShift32(ref uint state)
+	{
+		...
+	}
+	...
+}
+```
+
+返回继续写**Material.Type.Dielectric**.如果折射失败,或者是靠近边缘的菲涅尔,则直接走发生反射.
+
+![CPURayTrace_26](Images/CPURayTrace_26.jpg)
 
 
+```C#
+
+else if (mat.type == Material.Type.Metal)
+{
+	...
+}
+else if (mat.type == Material.Type.Dielectric)
+{
+	float3 outWN; //out world normal
+	float3 rdir = r_in.dir;
+	float nint;
+	attenuation = new float3(1, 1, 1);
+	float3 refr;
+	float reflProb;
+	float cosine;
+	float dn = dot(rdir, rec.normal);
+	//折射的  射入和射出
+	if (dn > 0)
+	{
+		outWN = -rec.normal;
+		nint = mat.ri;
+		cosine = mat.ri * dn;
+	}
+	else
+	{
+		outWN = rec.normal;
+		nint = 1.0f / mat.ri;
+		cosine = -dn;
+	}
+	
+	//如果折射射入成功  计算光滑度
+	//reflProb越大则越粗糙    走反射概率越大
+	//cosine越大  reflProb越小    ri越大  reflProb越大
+	if (Refract(rdir, outWN, nint, out refr))
+	{
+		reflProb = Schlick(cosine, mat.ri);
+	}
+	else
+	{
+		reflProb = 1;
+	}
+
+	//越光滑  
+	if (RandomFloat01(ref randState) < reflProb)
+	{
+		float3 refl = reflect(rdir, rec.normal);
+		scattered = new Ray(rec.pos, normalize(refl));
+	}
+	else
+	{
+		scattered = new Ray(rec.pos, normalize(refr));
+	}
+
+	return true;
+}
+else
+{
+	...
+}
+
+```
+
+最后就是BUG标记.避免意外情况
+
+```C#
+...
+else if (mat.type == Material.Type.Dielectric)
+{
+	...
+}
+else
+{
+	//Bug标记
+	attenuation = new float3(1, 0, 1);
+	scattered = default;
+	return false;
+}
+return false;
+```
+
+这样一份简单的着色基本写完了.接着可以完善一下代码看看效果.
+
+-----------------
+
+## **8.基础效果**
+
+完善**TraceRowJob**的**Execute(int y)**.利用**Trace**得到颜色再除权.之后再和之前的颜色做lerp,以便得到少噪点和错误的颜色.
+
+finalColor = lerp(nowColor,oldColor,frameCount/(frameCount+1))
+
+```C#
+
+private struct TraceRowJob : IJobParallelFor
+{
+	...
+
+	public void Execute(int y)
+	{
+		int backbufferIdx = y * screenWidth;
+		float invWidth = 1.0f / screenWidth;
+		float invHeight = 1.0f / screenHeight;
+		float lerpFac = ((float) frameCount / (frameCount + 1));
+		uint state = (uint) (y * 9781 + frameCount * 6271) | 1;
+		int rayCount = 0;
+		for (int x = 0; x < screenWidth; ++x)
+		{
+			float3 col = new float3(0, 0, 0);
+			for (int s = 0; s < DO_SAMPLES_PER_PIXEL; s++)
+			{
+				float u = (x + RandomFloat01(ref state)) * invWidth;
+				float v = (y + RandomFloat01(ref state)) * invHeight;
+				Ray r = cam.GetRay(u, v, ref state);
+				col += Trace(r, 0, ref rayCount, ref spheres, materials, ref state);
+			}
+
+			col /= (float) DO_SAMPLES_PER_PIXEL;
+
+			Color prev = backbuffer[backbufferIdx];
+			col = new float3(prev.r, prev.g, prev.b) * lerpFac + col * (1 - lerpFac);
+			backbuffer[backbufferIdx] = new Color(col.x, col.y, col.z, 1);
+			backbufferIdx++;
+		}
+
+		//TODO: how to do atomics add?
+		rayCounter[0] += rayCount;
+	}
+}
+
+```
+
+返回**CPURayTracingTest.cs**.
+
+创建**CPURayTracing rayTracing**,别忘记销毁.
+
+创建**int frameCounter**,统计当前的帧数,也是finalColor,lerp用的参数.
+
+```C#
+public class CPURayTracingTest : MonoBehaviour
+{
+...
+
+private NativeArray<Color> backBuffer;
+private CPURayTracing rayTracing;
+
+private int frameCounter;
+
+private void Start()
+{
+	...
+
+	uiImage.texture = backBufferTex;
+
+	rayTracing = new CPURayTracing();
+}
+
+private void OnDestroy()
+{
+	backBuffer.Dispose();
+	rayTracing.Dispose();
+}
+
+```
+
+创建一个函数**UpdateLoop**,执行绘制
+
+```C#
+private void Update()
+{
+	UpdateLoop();
+
+	backBufferTex.LoadRawTextureData(backBuffer);
+	backBufferTex.Apply();
+}
+		
+private void UpdateLoop()
+{
+	int rayCount;
+	rayTracing.DoDraw(Time.timeSinceLevelLoad, frameCounter++, backBufferTex.width, backBufferTex.height,
+		backBuffer, out rayCount);
+}
+
+```
 
 
-
-
-
-
-
-
+不过存在自发光,所以**Material.Type.Lambert**还需要继续改造下.
 
 为了方便观察自发光产生的效果,需要 #define DO_LIGHT_SAMPLING 进行开关处理.
 
