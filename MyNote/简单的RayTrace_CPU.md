@@ -19,7 +19,7 @@
 [一篇光线追踪的入门](https://zhuanlan.zhihu.com/p/41269520)
 [光线追踪的QA](https://zhuanlan.zhihu.com/p/51493136)
 
-顺便安利一下闫老师的Games101讲的更详细,而且还搭配逐步的练习.PS:202也出了,yyds!
+当然还有光追A Week三件套.顺便安利一下闫老师的Games101讲的更详细,而且还搭配逐步的练习.PS:202也出了,yyds!
 
 下图分别是C++,Unity+Job,纯C#(图三和四).效果基本都差不多,但是效率差很大.不过Job的效率居然比想象中的强大.
 
@@ -1217,7 +1217,7 @@ private struct TraceRowJob : IJobParallelFor
 
 &emsp;&emsp; 老乡别跑,终于开始讲渲染了.
 
-创建一个方法**Trace**,主要用于颜色的累加.
+创建一个方法**Trace**,主要用于得到最终的颜色.
 
 ```C#
 private static bool HitWorld(Ray r, float tMin, float tMax
@@ -1301,7 +1301,7 @@ private static float3 Trace(Ray r, int depth, ref int inoutRayCount, ref Spheres
 
 ```
 
-然后编写**Scatter**方法
+然后编写**Scatter**方法,**outLightE**后面写光照计算用.
 
 ```C#
 
@@ -1442,7 +1442,6 @@ public static class CPURayTracingMathUtil
 
 ![CPURayTrace_26](Images/CPURayTrace_26.jpg)
 
-
 ```C#
 
 else if (mat.type == Material.Type.Metal)
@@ -1577,7 +1576,7 @@ private struct TraceRowJob : IJobParallelFor
 
 创建**CPURayTracing rayTracing**,别忘记销毁.
 
-创建**int frameCounter**,统计当前的帧数,也是finalColor,lerp用的参数.
+创建**int frameCounter**,统计帧数,也是finalColor,lerp用的参数.
 
 ```C#
 public class CPURayTracingTest : MonoBehaviour
@@ -1626,10 +1625,23 @@ private void UpdateLoop()
 
 ```
 
+运行,可以看到有很多的黑点/噪点.
 
-不过存在自发光,所以**Material.Type.Lambert**还需要继续改造下.
+![CPURayTrace_27](Images/CPURayTrace_27.jpg)
 
-为了方便观察自发光产生的效果,需要 #define DO_LIGHT_SAMPLING 进行开关处理.
+那是在一块区域上一些光线的反射弹到了自发光上面,而一些没有.所以会出现这种感觉(其实这种效果是错的,后面说).
+
+把自发光去除,效果就正常很多.
+
+![CPURayTrace_28](Images/CPURayTrace_28.jpg)
+
+-----------------
+
+## **9.自发光**
+
+因为自发光的存在,所以**Material.Type.Lambert**还需要继续改造下.
+
+为了方便观察自发光产生的效果,需要在**CPURayTracing*.cs** #define DO_LIGHT_SAMPLING 进行开关处理.
 
 ```C#
 #define DO_LIGHT_SAMPLING
@@ -1637,10 +1649,166 @@ private void UpdateLoop()
 
 public struct Material
 {
+	...
 }
 
 public class CPURayTracing
 {
+	...
 }
 
 ```
+
+之前的问题我们已经了解到.噪点主要原因是随机的光线一些弹射在了自发光上面,一些没有.所以我们在**Trace**中可以单独对lambert的反射进行处理,让它计算最终颜色的时候不加自发光.把自发光的计算放到**Scatter**中处理.
+
+```C#
+private static float3 Trace(Ray r, int depth, ref int inoutRayCount, ref SpheresSOA spheres,
+			NativeArray<Material> materials, ref uint randState, bool doMaterialE = true)
+{
+	...
+	if (HitWorld(r, kMinT, kMaxT, ref rec, ref id, ref spheres))
+	{
+		...
+		if (depth < kMaxDepth && Scatter(mat, r, rec, out float3 attenuation, out Ray scattered,
+			out float3 lightE, ref inoutRayCount, ref spheres, materials, ref randState))
+		{
+#if DO_LIGHT_SAMPLING
+			if (!doMaterialE)
+			{
+				matE = new float3(0, 0, 0);
+			}
+
+			doMaterialE = (mat.type != Material.Type.Lambert);
+#endif
+			if (all(attenuation == 0))
+			{
+				return matE + lightE;
+			}
+			else
+			{
+				return matE + lightE + attenuation * Trace(scattered, depth + 1, ref inoutRayCount, ref spheres,
+					materials, ref randState, doMaterialE);
+			}
+		}
+		else
+		{
+			return matE;
+		}
+	}
+	else
+	{
+		...
+	}
+}
+```
+
+![CPURayTrace_29](Images/CPURayTrace_29.jpg)
+
+可以看到噪点好像少了很多.但是这样就没有了自发光的计算,所以在**Scatter**完善它.
+
+可以让每次碰撞,碰撞点都必定向自发光发射射线,判断这个点是否应该被光照亮,将产生什么颜色.
+
+想想地球OL也是.射线到被红灯照亮的A球,A球泛红.再弹射到被绿灯照亮的B球,泛绿.再到被蓝灯(Doge)照亮的C球,泛蓝.那么最终颜色是1*红+0.5*绿+0.25*蓝.
+
+而如果按照之前的写法就是,射线经过A球,到B球,再到C球,最后到蓝灯.颜色可能就只有蓝色了.
+
+注意计算自发光的时候要跳过自己.
+
+不过它这里这样计算好像会过量...算了抄它...
+
+```C#
+private static bool Scatter(Material mat, Ray r_in, Hit rec, out float3 attenuation, out Ray scattered,
+	out float3 outLightE, ref int inoutRayCount, ref SpheresSOA spheres, NativeArray<Material> materials,
+	ref uint randState)
+{
+	outLightE = new float3(0, 0, 0);
+	if (mat.type == Material.Type.Lambert)
+	{
+		//随机在表面一个点发散
+		float3 target = rec.pos + rec.normal + RandomUnitVector(ref randState);
+		scattered = new Ray(rec.pos, normalize(target - rec.pos));
+		attenuation = mat.albedo;
+
+#if DO_LIGHT_SAMPLING
+		for (int j = 0; j < spheres.emissiveCount; ++j)
+		{
+			int i = spheres.emissives[j];
+			//if mat is self then skip
+			//if(&mat == &smat)
+			//	continue;//skip self
+			if (mat.guid == materials[i].guid)
+			{
+				continue;
+			}
+
+			//var s = spheres[i];
+			float3 sCenter = new float3(spheres.centerX[i], spheres.centerY[i], spheres.centerZ[i]);
+			float sqRadius = spheres.sqRadius[i];
+
+			float sqLen = lengthsq(rec.pos - sCenter);
+
+			if (sqLen == 0)
+			{
+				continue;
+			}
+
+			//create a random direction towards sphere
+			//coord system for sampling: sw,su,sv
+			float3 sw = normalize(sCenter - rec.pos);
+			float3 su = normalize(cross(abs(sw.x) > 0.01f ? new float3(0, 1, 0) : new float3(1, 0, 0), sw));
+			float3 sv = cross(sw, su);
+			//create a random direction towards sphere
+			//coord system for sampling: sw,su,sv
+			float3 sw = normalize(sCenter - rec.pos);
+			float3 su = normalize(cross(abs(sw.x) > 0.01f ? new float3(0, 1, 0) : new float3(1, 0, 0), sw));
+			float3 sv = cross(sw, su);
+			//sample sphere by solid anglePI
+			//为了准确性   发光球的半径越小或者两球距离过大  射线越会朝向发光球
+			//否则  发光球的半径越大或者两球距离过小  采样会分散一点 射线越会偏离发光球
+			float cosAMax = sqrt(max(0.0f, 1.0f - sqRadius / sqLen));
+			float eps1 = RandomFloat01(ref randState);
+			float eps2 = RandomFloat01(ref randState);
+			float cosA = 1 - eps1 * (1 - cosAMax);
+			float sinA = sqrt(1.0f - cosA * cosA);
+			float phi = 2 * PI * eps2;
+			// 碰撞点朝向自发光球 做 随机半球偏离  
+			float3 l = su * cos(phi) * sinA + sv * sin(phi) * sinA + sw * cosA;
+			l = normalize(l);
+
+			//shoot shadow ray
+			Hit lightHit = default(Hit);
+			int hitID = 0;
+			inoutRayCount++;
+			if (HitWorld(new Ray(rec.pos, l), kMinT, kMaxT, ref lightHit, ref hitID, ref spheres) && hitID == i)
+			{
+				//TODO:是否存在能量不守恒
+				//如  E * 2*kPI*(1-0)/kPI => E*2  超出范围了
+				//如  E * 2*kPI*(1-0.5)/kPI => E  一半角度的时候 已经满能量了
+				float omega = 2 * PI * (1 - cosAMax);
+
+				float3 rdir = r_in.dir;
+				float3 nl = dot(rec.normal, rdir) < 0.0f ? rec.normal : -rec.normal;
+				outLightE += (mat.albedo * materials[i].emissive) * (max(0.0f, dot(l, nl)) * omega / PI);
+			}
+		}
+#endif
+		return true;
+	}
+	...
+}
+```
+
+这样自发光的光照就做好了.我用完了是这个样子,你们用完了也是这个样子.
+
+![CPURayTrace_31](Images/CPURayTrace_31.jpg)
+
+![CPURayTrace_30](Images/CPURayTrace_30.jpg)
+
+
+有兴趣也可以去看看这两个效果
+
+https://www.shadertoy.com/view/MlX3RH
+https://www.shadertoy.com/view/tl23Rm
+
+
+c v 被磨平 奖励炸弹人 不想回家相亲
