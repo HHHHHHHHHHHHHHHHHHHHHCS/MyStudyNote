@@ -17,6 +17,7 @@
 效果虽然不是很好,而且也没有什么高大上的东西,甚至都只有球的计算,但是拿来入门学习还是够用的.里面还有C++和C#的案例,这里就拿Unity来举个栗子,比较容易理解也比较直观.
 
 [一篇光线追踪的入门](https://zhuanlan.zhihu.com/p/41269520)
+
 [光线追踪的QA](https://zhuanlan.zhihu.com/p/51493136)
 
 当然还有光追A Week三件套.顺便安利一下闫老师的Games101讲的更详细,而且还搭配逐步的练习.PS:202也出了,yyds!
@@ -1576,7 +1577,7 @@ private struct TraceRowJob : IJobParallelFor
 
 创建**CPURayTracing rayTracing**,别忘记销毁.
 
-创建**int frameCounter**,统计帧数,也是finalColor,lerp用的参数.
+创建**int frameCounter**,统计帧数,随机种子,也是finalColor的lerp用的参数.
 
 ```C#
 public class CPURayTracingTest : MonoBehaviour
@@ -1808,6 +1809,7 @@ private static bool Scatter(Material mat, Ray r_in, Hit rec, out float3 attenuat
 有兴趣也可以去看看这两个效果
 
 https://www.shadertoy.com/view/MlX3RH
+
 https://www.shadertoy.com/view/tl23Rm
 
 
