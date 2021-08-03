@@ -812,7 +812,6 @@ public class CPURayTracing
 
 然后自己规定一点数据.比如说:
   + DO_SAMPLES_PER_PIXEL:一个像素要发射多少射线
-  + DO_ANIMATE_SMOOTHING:给后面动画准备缓动
   + kMinT:判断射中的阈值
   + tMaxT:初始化射线的最大值
   + kMaxDepth:光线深度循环最大的次数.光线碰到物体会进行一次新的弹射,然后再碰到物体,再次弹射,循环ing.所以可能会出现一束光反复弹来弹去,很难终止.次数一旦上去会对性能造成很大的压力,当然次数给少了渲染效果也不好看.
@@ -821,7 +820,6 @@ public class CPURayTracing
 public class CPURayTracing
 {
 	private const int DO_SAMPLES_PER_PIXEL = 4;
-	private const float DO_ANIMATE_SMOOTHING = 0.5f;
 
 	private const float kMinT = 0.001f;
 	private const float kMaxT = float.MaxValue; //1.0e7f;
@@ -1033,7 +1031,7 @@ public class CPURayTracing
 
 ## **6.射线**
 
-屏幕是由像素组成的.那么我们可以由遍历像素,让它发出N(DO_SAMPLES_PER_PIXEL)根射线计算光照求结果.这样就能得到最后效果了.
+&emsp;&emsp; 屏幕是由像素组成的.那么我们可以由遍历像素,让它发出N(DO_SAMPLES_PER_PIXEL)根射线计算光照求结果.这样就能得到最后效果了.
 
 这里我们用Job来遍历height,然后再在Job里面嵌套一个for width,从而实现遍历全部的像素.
 
@@ -1407,6 +1405,7 @@ else if (mat.type == Material.Type.Metal)
 public static class CPURayTracingMathUtil
 {
 	//Math
+	//https://graphics.stanford.edu/courses/cs148-10-summer/docs/2006--degreve--reflection_refraction.pdf
 	//----------------------------
 
 	public static bool Refract(float3 v, float3 n, float nint, out float3 outRefracted)
@@ -1533,9 +1532,11 @@ return false;
 
 ## **8.基础效果**
 
-完善**TraceRowJob**的**Execute(int y)**.利用**Trace**得到颜色再除权.之后再和之前的颜色做lerp,以便得到少噪点和错误的颜色.
+&emsp;&emsp; 完善**TraceRowJob**的**Execute(int y)**.利用**Trace**得到颜色再除权.之后再和之前的颜色做lerp,以便得到少噪点和错误的颜色.
 
 finalColor = lerp(nowColor,oldColor,frameCount/(frameCount+1))
+
+![CPURayTrace_32](Images/CPURayTrace_32.jpg)
 
 ```C#
 
@@ -1645,7 +1646,7 @@ private void UpdateLoop()
 
 ## **9.自发光**
 
-因为自发光的存在,所以**Material.Type.Lambert**还需要继续改造下.
+&emsp;&emsp; 因为自发光的存在,所以**Material.Type.Lambert**还需要继续改造下.
 
 为了方便观察自发光产生的效果,需要在**CPURayTracing*.cs** #define DO_LIGHT_SAMPLING 进行开关处理.
 
@@ -1810,13 +1811,198 @@ private static bool Scatter(Material mat, Ray r_in, Hit rec, out float3 attenuat
 
 ## **10.其它**
 
-他这里还有一点点别的模块**动画**,**全走主线程**,**性能显示**.
+&emsp;&emsp; 他这里还有一点点别的模块**动画**,**主线程**,**性能显示**.
 
-有兴趣也可以去看看这两个效果
+### **10.1.动画**
+
+&emsp;&emsp; 先说动画吧.其实就是让两个球动起来.
+
+在**CPURayTracing.cs**中 #define DO_ANIMATE 方便开关和观察. 还有 **float DO_ANIMATE_SMOOTHING** 因为是动态的,所以lerpColor到后面的权重不能接近于1. 然后球就是根据输入的时间进行sin或cos运动就好了.
+
+```C#
+#define DO_ANIMATE 
+#define DO_LIGHT_SAMPLING
+
+...
+
+public class CPURayTracing
+{
+	private const int DO_SAMPLES_PER_PIXEL = 4;
+	private const float DO_ANIMATE_SMOOTHING = 0.5f;
+	...
+
+	[BurstCompile]
+	private struct TraceRowJob : IJobParallelFor
+	{
+		...
+
+		public void Execute(int y)
+		{
+			...
+			float lerpFac = ((float) frameCount / (frameCount + 1));
+#if DO_ANIMATE
+			lerpFac = lerpFac * DO_ANIMATE_SMOOTHING;//saturate(lerpFac * DO_ANIMATE_SMOOTHING);
+#endif
+			...
+		}
+	}
+
+	public void DoDraw(float time, int frameCount, int screenWidth, int screenHeight,
+			NativeArray<Color> backbuffer, out int outRayCount)
+	{
+		int rayCount = 0;
+#if DO_ANIMATE
+		spheresData[1].center.y = cos(time) + 1.0f;
+		spheresData[8].center.z = sin(time) * 0.3f;
+#endif
+		...
+	}
+}
+
+```
+
+![CPURayTrace_33](Images/CPURayTrace_33.jpg)
+
+可以看到残影和很明显的噪点,建议关闭23333.注释掉#define DO_ANIMATE就好了
+
+```C#
+
+// #define DO_ANIMATE
+#define DO_LIGHT_SAMPLING
+...
+
+```
+
+### **10.2.动画**
+
+&emsp;&emsp; 就是不用Job直接走主线程.会严重卡死强烈建议别这么做.毕竟我们不是做某剑六
+
+在**CPURayTracing.cs**中 #define DO_THREADED 方便开关和观察. 如果开启则走多线程的Job,否则走主线程. Job可以直接用for循环来Execute,所以改造比较简单.
+
+```C#
+// #define DO_ANIMATE
+#define DO_LIGHT_SAMPLING
+#define DO_THREADED
+...
+
+
+public class CPURayTracing
+{
+	...
+
+	public void DoDraw(float time, int frameCount, int screenWidth, int screenHeight,
+		NativeArray<Color> backbuffer, out int outRayCount)
+	{
+		...
+		job.materials = new NativeArray<Material>(sphereMatsData, Allocator.TempJob);
+
+#if DO_THREADED
+		var fence = job.Schedule(screenHeight, 4);
+		fence.Complete();
+#else
+		for (int y = 0; y < screenHeight; ++y)
+		{
+			job.Execute(y);
+		}
+#endif
+	}
+}
+
+```
+
+### **10.3.性能现实**
+
+&emsp;&emsp; 把性能现实到屏幕上,方便观察.
+
+创建一个**UI.Text**,如下图设置.
+
+![CPURayTrace_34](Images/CPURayTrace_34.jpg)
+
+在**CPURayTracingTest.cs**中添加组件代码,并且在外面绑定刚添加的创建的**UI Text**.
+
+```C#
+
+public class CPURayTracingTest : MonoBehaviour
+{
+	...
+
+	public Text uiPrefText;
+	public RawImage uiImage;
+
+	...
+}
+
+```
+
+![CPURayTrace_35](Images/CPURayTrace_35.jpg)
+
+继续返回**CPURayTracingTest.cs**,完成性能统计. 用**Stopwatch**做耗时统计. 因为存在随机,每隔N帧统计一次平均值即可,不然会跳来跳去. 射线总数量我们之前也已经统计好了.
+
+```C#
+
+public class CPURayTracingTest : MonoBehaviour
+{
+	...
+
+	private Stopwatch stopWatch;
+	private int updateCounter;
+	private int frameCounter;
+	private long rayCounter;
+
+	private void Start()
+	{
+		...
+
+		rayTracing = new CPURayTracing();
+		stopWatch = new Stopwatch();
+	}
+
+	private void Update()
+	{
+		UpdateLoop();
+		if (updateCounter == 10)
+		{
+			var s = (float) ((double) stopWatch.ElapsedTicks / Stopwatch.Frequency) / updateCounter;
+			var ms = s * 1000.0f;
+			//1.0e-6f 百万
+			var mrayS = (float) rayCounter / updateCounter / s * 1.0e-6f;
+			var mrayFr = (float) rayCounter / updateCounter * 1.0e-6f;
+			uiPrefText.text =
+				$"{ms:F2}ms ({1.0f / s:F2}FPS) {mrayS:F2}Mrays/s {mrayFr:F2}Mrays/frame {frameCounter} frames";
+			updateCounter = 0;
+			rayCounter = 0;
+			stopWatch.Reset();
+		}
+
+		...
+	}
+
+	private void UpdateLoop()
+	{
+		stopWatch.Start();
+		int rayCount;
+		rayTracing.DoDraw(Time.timeSinceLevelLoad, frameCounter++, backBufferTex.width, backBufferTex.height,
+			backBuffer, out rayCount);
+		stopWatch.Stop();
+		updateCounter++;
+		rayCounter += rayCount;
+	}
+}
+
+```
+
+到此完结散花!!!
+
+有兴趣也可以去看看这两个效果.第一个简单很多也符合这篇,第二个就有很多数学相关的.
 
 https://www.shadertoy.com/view/MlX3RH
 
+![CPURayTrace_37](Images/CPURayTrace_37.jpg)
+
 https://www.shadertoy.com/view/tl23Rm
 
+![CPURayTrace_38](Images/CPURayTrace_38.jpg)
 
-c v 被磨平 奖励炸弹人 不想回家相亲
+-----------------
+
+ctrl+c+v被磨平了! 打开Dota2,奖励自己一把炸弹人,开心下! 我不想回老家相亲呀!
