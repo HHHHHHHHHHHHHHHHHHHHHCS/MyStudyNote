@@ -217,7 +217,7 @@ public static class CPURayTracingMathUtil
 
 ```
 
-再创建**摄像机(Camera)**结构体.
+再创建 **摄像机(Camera)** 结构体.
 
 摄像机需要起始点**lookFrom**,看的方向**lookAt**,向上的方向**vup**默认float3(0,1,0),视场角**fov**(也就是俗称的底),屏幕宽高**aspect**,光圈大小**aperture**(虚化用),聚焦距离**focusDist**.(Games101-P19有超级详细的说明)
 
