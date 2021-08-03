@@ -751,6 +751,10 @@ public struct SpheresSOA
 	public SpheresSOA(int len)
 	{
 		...
+		for (int i = len; i < simdLen; ++i)
+		{
+			...
+		}
 		emissives = new NativeArray<int>(simdLen, Allocator.Persistent);
 		emissiveCount = 0;
 	}
@@ -838,7 +842,7 @@ using Unity.Burst;
 
 public class CPURayTracing
 {
-
+	...
 	private const int kMaxDepth = 10;
 
 	#region Data
@@ -909,7 +913,7 @@ public class CPURayTracing
 			new Sphere(new float3(-3, 0, -6), 0.5f),
 			new Sphere(new float3(-4, 0, -6), 0.5f),
 			new Sphere(new float3(1.5f, 1.5f, -2), 0.3f),
-#endif // #if DO_BIG_SCENE        
+#endif // #if DO_BIG_SCENE
 		};
 
 		private static Material[] sphereMatsData =
@@ -1302,7 +1306,7 @@ private static float3 Trace(Ray r, int depth, ref int inoutRayCount, ref Spheres
 
 ```
 
-然后编写**Scatter**方法,**outLightE**后面写光照计算用.
+然后编写**Scatter**方法.**outLightE**后面写光照计算用.
 
 ```C#
 
@@ -1541,6 +1545,7 @@ private struct TraceRowJob : IJobParallelFor
 
 	public void Execute(int y)
 	{
+		<span style="color:blue">
 		int backbufferIdx = y * screenWidth;
 		float invWidth = 1.0f / screenWidth;
 		float invHeight = 1.0f / screenHeight;
@@ -1568,6 +1573,7 @@ private struct TraceRowJob : IJobParallelFor
 
 		//TODO: how to do atomics add?
 		rayCounter[0] += rayCount;
+		</span>
 	}
 }
 
@@ -1582,31 +1588,32 @@ private struct TraceRowJob : IJobParallelFor
 ```C#
 public class CPURayTracingTest : MonoBehaviour
 {
-...
-
-private NativeArray<Color> backBuffer;
-private CPURayTracing rayTracing;
-
-private int frameCounter;
-
-private void Start()
-{
 	...
 
-	uiImage.texture = backBufferTex;
+	private NativeArray<Color> backBuffer;
+	private CPURayTracing rayTracing;
 
-	rayTracing = new CPURayTracing();
-}
+	private int frameCounter;
 
-private void OnDestroy()
-{
-	backBuffer.Dispose();
-	rayTracing.Dispose();
+	private void Start()
+	{
+		...
+
+		uiImage.texture = backBufferTex;
+
+		rayTracing = new CPURayTracing();
+	}
+
+	private void OnDestroy()
+	{
+		backBuffer.Dispose();
+		rayTracing.Dispose();
+	}
 }
 
 ```
 
-创建一个函数**UpdateLoop**,执行绘制
+创建一个函数**UpdateLoop**,执行绘制.并且在**Update**中调用.
 
 ```C#
 private void Update()
@@ -1758,11 +1765,6 @@ private static bool Scatter(Material mat, Ray r_in, Hit rec, out float3 attenuat
 			float3 sw = normalize(sCenter - rec.pos);
 			float3 su = normalize(cross(abs(sw.x) > 0.01f ? new float3(0, 1, 0) : new float3(1, 0, 0), sw));
 			float3 sv = cross(sw, su);
-			//create a random direction towards sphere
-			//coord system for sampling: sw,su,sv
-			float3 sw = normalize(sCenter - rec.pos);
-			float3 su = normalize(cross(abs(sw.x) > 0.01f ? new float3(0, 1, 0) : new float3(1, 0, 0), sw));
-			float3 sv = cross(sw, su);
 			//sample sphere by solid anglePI
 			//为了准确性   发光球的半径越小或者两球距离过大  射线越会朝向发光球
 			//否则  发光球的半径越大或者两球距离过小  采样会分散一点 射线越会偏离发光球
@@ -1805,6 +1807,12 @@ private static bool Scatter(Material mat, Ray r_in, Hit rec, out float3 attenuat
 
 ![CPURayTrace_30](Images/CPURayTrace_30.jpg)
 
+
+-----------------
+
+## **10.其它**
+
+他这里还有一点点别的模块**动画**,**全走主线程**,**性能显示**.
 
 有兴趣也可以去看看这两个效果
 
