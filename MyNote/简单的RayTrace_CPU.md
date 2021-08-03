@@ -1545,7 +1545,6 @@ private struct TraceRowJob : IJobParallelFor
 
 	public void Execute(int y)
 	{
-		<span style="color:blue">
 		int backbufferIdx = y * screenWidth;
 		float invWidth = 1.0f / screenWidth;
 		float invHeight = 1.0f / screenHeight;
@@ -1573,7 +1572,6 @@ private struct TraceRowJob : IJobParallelFor
 
 		//TODO: how to do atomics add?
 		rayCounter[0] += rayCount;
-		</span>
 	}
 }
 
