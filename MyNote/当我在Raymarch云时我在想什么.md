@@ -185,6 +185,8 @@
         - 可以用alpha为0或者discard,我这里用的是discard
         - 性能没有前面的**0 1 2 3 方法**好
         - 虽然没有画面撕裂了,但是会产生拖影
+        - https://zhuanlan.zhihu.com/p/127435500
+        - https://zhuanlan.zhihu.com/p/130785313
 
         ![RaymarchCloud_27](Images/RaymarchCloud_27.jpg)
         ![RaymarchCloud_28](Images/RaymarchCloud_28.jpg)
