@@ -20,7 +20,7 @@
 	- [**9.自发光**](#9自发光)
 	- [**10.其它**](#10其它)
 		- [**10.1.动画**](#101动画)
-		- [**10.2.动画**](#102动画)
+		- [**10.2.主线程**](#102主线程)
 		- [**10.3.性能现实**](#103性能现实)
 
 -----------------
@@ -30,6 +30,8 @@
 &emsp;&emsp; 看到gayhub上有一个项目,抄着学习一下(jiu shi wan),项目地址:[ToyPathTracer](https://github.com/aras-p/ToyPathTracer).
 
 效果虽然不是很好,而且也没有什么高大上的东西,甚至都只有球的计算,但是拿来入门学习还是够用的.里面还有C++和C#的案例,这里就拿Unity来举个栗子,比较容易理解也比较直观.
+
+洛城大神的两篇可以快速了解基础原理.
 
 [一篇光线追踪的入门](https://zhuanlan.zhihu.com/p/41269520)
 
@@ -96,9 +98,9 @@ public class CPURayTracingTest : MonoBehaviour
 }
 ```
 
-挂载给摄像机,并且把刚才的**RawImage**给**uiImage**进行赋值.**screenWidth screenHeight** 给960和540.
+挂载给摄像机,并且把刚才的**RawImage**给**uiImage**进行赋值.**screenWidth screenHeight** 给960和540.(忽略这个Text组件,它是后面的)
 
-屏幕尺寸这里建议给小一点,为了后面方便快速呈现效果.(当然银河电脑当我没有话说!)因为一个像素点会发射很多的光线进行大量的计算,所以给的点越少计算量越少,但是效果越差.(忽略这个Text组件,它是后面的)
+屏幕尺寸这里建议给小一点,为了后面方便快速呈现效果.(当然银河电脑当我没有话说!)因为一个像素会发射很多的光线进行大量的计算,所以给的点越少计算量越少,但是效果越差.
 
 ![CPURayTrace_5](Images/CPURayTrace_5.png)
 
@@ -106,7 +108,7 @@ public class CPURayTracingTest : MonoBehaviour
 
 **Color Buffer**说白了就是一堆**Color**(需要屏幕像素数量的Color即width*height),便可以直接用**NativeArray<Color>t**来代替.(因为是长生命周期,所以用Allocator.Persistent. Allocator不知道的可以点击[Native Container Allocator](https://blog.csdn.net/lrh3025/article/details/102869011))
 
-创建**Texture2D**和**NativeArray<Color>**,对其进行默认设置.
+创建**Texture2D**和**NativeArray<Color>**,对其进行初始化设置.
 
 因为**Color Buffer**每帧数都要做计算更新,所以**Texture2D**需要每帧数回读**Color Buffer**,那便在**Update**进行**Texture2D.LoadRawTextureData**.
 
@@ -215,7 +217,7 @@ public static class CPURayTracingMathUtil
 
 ```
 
-再创建摄像机(Camera)结构体.
+再创建**摄像机(Camera)**结构体.
 
 摄像机需要起始点**lookFrom**,看的方向**lookAt**,向上的方向**vup**默认float3(0,1,0),视场角**fov**(也就是俗称的底),屏幕宽高**aspect**,光圈大小**aperture**(虚化用),聚焦距离**focusDist**.(Games101-P19有超级详细的说明)
 
@@ -500,7 +502,7 @@ public static class CPURayTracingMathUtil
 
 接下来就就是比较麻烦的射线和球的相交计算.
 
-创建一个**struct SpheresSOA**在**CPURayTracingMathUtil.cs**.先添加点属性用来储存全部球的信息.本来可以用**NativeArray<float4> XYZRadius**来记录,但是为了后面计算的方便快捷,就改成单独记录centerX,centerY,centerZ,radius. radius甚至可以提前计算好r*r和1/r,节约运算.
+创建一个**struct SpheresSOA**在**CPURayTracingMathUtil.cs**.先添点属性用来储存全部球的信息.本来可以用**NativeArray<float4> XYZRadius**来记录,但是为了后面计算的方便快捷,就改成单独记录centerX,centerY,centerZ,radius. radius甚至可以提前计算好r*r和1/r,节约运算次数.
 
 然后一组是4个,因为floatN最大是float4,开辟一个向上4取整的长度进行初始化.并且别忘记添加销毁代码.
 
@@ -1053,28 +1055,28 @@ public class CPURayTracing
 在**CPURayTracing.cs**中创建Job **TraceRowJob**
 
 ```C#
-	public class CPURayTracing
+public class CPURayTracing
+{
+	...
+
+	public void Dispose()
 	{
 		...
+	}
 
-		public void Dispose()
+	[BurstCompile]
+	private struct TraceRowJob : IJobParallelFor
+	{
+		public void Execute(int y)
 		{
-			...
-		}
-
-		[BurstCompile]
-		private struct TraceRowJob : IJobParallelFor
-		{
-			public void Execute(int y)
-			{
-			}
-		}
-
-		public void DoDraw(int screenWidth, int screenHeight)
-		{
-			...
 		}
 	}
+
+	public void DoDraw(int screenWidth, int screenHeight)
+	{
+		...
+	}
+}
 ```
 
 给**TraceRowJob**添加基础的属性
@@ -1457,7 +1459,7 @@ public static class CPURayTracingMathUtil
 }
 ```
 
-返回继续写**Material.Type.Dielectric**.如果折射失败,或者是靠近边缘的菲涅尔,则直接走发生反射.
+返回继续写**Material.Type.Dielectric**.如果折射失败,或者是靠近边缘的菲涅尔,则可能发生反射.
 
 ![CPURayTrace_26](Images/CPURayTrace_26.jpg)
 
@@ -1736,7 +1738,7 @@ private static float3 Trace(Ray r, int depth, ref int inoutRayCount, ref Spheres
 
 注意计算自发光的时候要跳过自己.
 
-不过它这里这样计算好像会过量...算了抄它...
+不过它这里这样计算好像会过亮...算了抄它...
 
 ```C#
 private static bool Scatter(Material mat, Ray r_in, Hit rec, out float3 attenuation, out Ray scattered,
@@ -1888,7 +1890,7 @@ public class CPURayTracing
 
 ```
 
-### **10.2.动画**
+### **10.2.主线程**
 
 &emsp;&emsp; 就是不用Job直接走主线程.会严重卡死强烈建议别这么做.毕竟我们不是做某剑六
 
@@ -2020,4 +2022,4 @@ https://www.shadertoy.com/view/tl23Rm
 
 -----------------
 
-ctrl+c+v被磨平了! 打开Dota2,奖励自己一把炸弹人,开心下! 我不想回老家相亲呀!
+ctrl+c+v被磨平了! 打开Dota2,奖励自己一把炸弹人,开心下! 我不想回老家相亲呀,心好累!
