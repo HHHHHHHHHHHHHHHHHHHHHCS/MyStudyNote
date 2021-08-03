@@ -2014,11 +2014,11 @@ public class CPURayTracingTest : MonoBehaviour
 
 https://www.shadertoy.com/view/MlX3RH
 
-![CPURayTrace_37](Images/CPURayTrace_37.jpg)
+![CPURayTrace_36](Images/CPURayTrace_36.jpg)
 
 https://www.shadertoy.com/view/tl23Rm
 
-![CPURayTrace_38](Images/CPURayTrace_38.jpg)
+![CPURayTrace_37](Images/CPURayTrace_37.jpg)
 
 -----------------
 
