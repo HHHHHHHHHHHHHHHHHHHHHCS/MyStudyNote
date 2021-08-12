@@ -10,6 +10,8 @@
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812")]
 
 
+### editor ui 还没有写
+
 ### 获取位置 创建并且 选中物体
 ```C#
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812")]
@@ -43,3 +45,11 @@ m_EditorResourcesAsset = objs != null && objs.Length > 0
 	? objs.First() as MyUniversalRenderPipelineEditorResources
 	: null;
 ```
+
+
+### Editor API
+EditorApplication.delayCall
+EditorUtility.InstanceIDToObject
+
+### GetSettingsForRenderPipeline
+GraphicsSettings.GetSettingsForRenderPipeline<UniversalRenderPipeline>() as UniversalRenderPipelineGlobalSettings;
