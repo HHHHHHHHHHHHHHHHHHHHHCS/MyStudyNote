@@ -42,20 +42,19 @@ URP的SSAO
 
 ## **1.拆解C#**
 
-&emsp;&emsp; 我的习惯是先拆解C#,再学习shader. 我这里是自己复制改动了一些,可以对照源码看.
+&emsp;&emsp; 我的习惯是先拆解C#,再学习shader. 我这里是自己复制改动了一些,方便自己区分.可以对照源码看.
 
 先拆解设置属性,看看都有啥. 看上面属性面板很简单, 看了一眼代码果然很简单呢.
 
 ```C#
 [Serializable]
-public class ScreenSpaceAmbientOcclusionSettings
+public class URPSSAOSettings
 {
 	// Enums
 	public enum DepthSource
 	{
 		Depth = 0,
 		DepthNormals = 1,
-		//GBuffer = 2
 	}
 
 	public enum NormalQuality
@@ -67,31 +66,40 @@ public class ScreenSpaceAmbientOcclusionSettings
 
 	// Parameters
 	[SerializeField] public bool Downsample = false;
+	[SerializeField] public bool AfterOpaque = false;
 	[SerializeField] public DepthSource Source = DepthSource.DepthNormals;
 	[SerializeField] public NormalQuality NormalSamples = NormalQuality.Medium;
 	[SerializeField] public float Intensity = 3.0f;
 	[SerializeField] public float DirectLightingStrength = 0.25f;
 	[SerializeField] public float Radius = 0.035f;
-	[SerializeField] public int SampleCount = 6;
+	[SerializeField] public int SampleCount = 4;
 }
 ```
 
-然后再看**RendererFeature**. 这个里面基本就是创建个渲染Pass,创建材质和存个设置. 
-因为[DisallowMultipleRendererFeature]是**internal**修饰符(坏文明),作用是禁止多次添加用的,要去掉不然会报错.
+然后再看**RendererFeature**. 这个里面基本就是创建个渲染Pass,是否添加到渲染队列,创建材质和存个设置. 
+**[DisallowMultipleRendererFeature]**这个标签作用是禁止多次添加用的,在2020是**internal**加上去会报错,2021是**public**.
+**Dispose**在切换**RendererData**的时候会触发,销毁创建的材质.
 
 ```C#
-//[DisallowMultipleRendererFeature]
-public class ScreenSpaceAmbientOcclusion : ScriptableRendererFeature
+using System;
+using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
+
+[DisallowMultipleRendererFeature]
+[Tooltip("The Ambient Occlusion effect darkens creases, holes, intersections and surfaces that are close to each other.")]
+public class URPSSAORenderFeature : ScriptableRendererFeature
 {
+	// Constants
 	private const string k_ShaderName = "Hidden/Universal Render Pipeline/ScreenSpaceAmbientOcclusion";
 
 	// Serialized Fields
 	[SerializeField, HideInInspector] private Shader m_Shader = null;
-	[SerializeField] private ScreenSpaceAmbientOcclusionSettings m_Settings = new ScreenSpaceAmbientOcclusionSettings();
+	[SerializeField] private URPSSAOSettings m_Settings = new URPSSAOSettings();
 
 	// Private Fields
 	private Material m_Material;
-	private ScreenSpaceAmbientOcclusionPass m_SSAOPass = null;
+	private URPSSAORenderPass m_SSAOPass = null;
 
 	/// <inheritdoc/>
 	public override void Create()
@@ -99,12 +107,10 @@ public class ScreenSpaceAmbientOcclusion : ScriptableRendererFeature
 		// Create the pass...
 		if (m_SSAOPass == null)
 		{
-			m_SSAOPass = new ScreenSpaceAmbientOcclusionPass();
+			m_SSAOPass = new URPSSAORenderPass();
 		}
 
 		GetMaterial();
-		m_SSAOPass.profilerTag = name;
-		m_SSAOPass.renderPassEvent = RenderPassEvent.BeforeRenderingOpaques;
 	}
 
 	/// <inheritdoc/>
@@ -118,7 +124,7 @@ public class ScreenSpaceAmbientOcclusion : ScriptableRendererFeature
 			return;
 		}
 
-		bool shouldAdd = m_SSAOPass.Setup(m_Settings);
+		bool shouldAdd = m_SSAOPass.Setup(m_Settings, renderer, m_Material);
 		if (shouldAdd)
 		{
 			renderer.EnqueuePass(m_SSAOPass);
@@ -148,9 +154,48 @@ public class ScreenSpaceAmbientOcclusion : ScriptableRendererFeature
 		}
 
 		m_Material = CoreUtils.CreateEngineMaterial(m_Shader);
-		m_SSAOPass.material = m_Material;
 		return m_Material != null;
 	}
 }
 
 ```
+
+然后就再看**RenderPass**.
+这里先看构造函数和Setup
+因为我这里是抄写的,比较符合我自己的代码习惯,而且还是一步一步慢慢填充的,所以跟原来的代码不一样.但是大体上的思想基本一致.
+比如说**ProfilingSampler.Get(URPProfileId.SSAO)**外部获取不了,我这里用**k_tag**来自己创建.
+再比如**isRendererDeferred**判断是否为延迟渲染.因为 **renderer.renderingMode** 是internal, 所以没有办法判断, 只能先写成false. 后面再在settings里面加个bool吧.
+
+```C#
+using System;
+using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
+
+public class URPSSAORenderPass : ScriptableRenderPass
+{
+	private const string k_tag = "URPSSAO";
+
+	// Private Variables
+	// private ProfilingSampler m_ProfilingSampler = ProfilingSampler.Get(URPProfileId.SSAO);
+	private URPSSAOSettings m_CurrentSettings;
+
+	// Properties
+	private bool isRendererDeferred =>
+			false; //m_Renderer is UniversalRenderer renderer && renderer.renderingMode == RenderingMode.Deferred;
+
+	internal URPSSAORenderPass()
+	{
+		profilingSampler = new ProfilingSampler(k_tag);
+		m_CurrentSettings = new URPSSAOSettings();
+	}
+
+	public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+	{
+		throw new System.NotImplementedException();
+	}
+}
+
+```
+
+
