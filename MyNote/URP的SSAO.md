@@ -161,10 +161,10 @@ public class URPSSAORenderFeature : ScriptableRendererFeature
 ```
 
 然后就再看**RenderPass**.
-这里先看构造函数和Setup
+这里先看构造函数
 因为我这里是抄写的,比较符合我自己的代码习惯,而且还是一步一步慢慢填充的,所以跟原来的代码不一样.但是大体上的思想基本一致.
 比如说**ProfilingSampler.Get(URPProfileId.SSAO)**外部获取不了,我这里用**k_tag**来自己创建.
-再比如**isRendererDeferred**判断是否为延迟渲染.因为 **renderer.renderingMode** 是internal, 所以没有办法判断, 只能先写成false. 后面再在settings里面加个bool吧.
+再比如**isRendererDeferred**判断是否为延迟渲染.因为 **renderer.renderingMode** 是internal, 所以没有办法判断, 只能先写成false. 后面再在settings里面加个bool(后面再写).
 
 ```C#
 using System;
@@ -198,4 +198,68 @@ public class URPSSAORenderPass : ScriptableRenderPass
 
 ```
 
+然后再看看每帧执行的**Setup**.
+把**Feature**的属性传递进去.
+根据属性决定是否要开启SSAO,渲染队列,和需要的场景信息.
+(URP2021**ConfigureInput**终于支持**Motion Vector**)
 
+```C#
+
+internal URPSSAORenderPass()
+{
+	...
+}
+
+internal bool Setup(URPSSAOSettings featureSettings, ScriptableRenderer renderer,
+			Material material)
+{
+	m_Material = material;
+	m_Renderer = renderer;
+	m_CurrentSettings = featureSettings;
+
+	URPSSAOSettings.DepthSource source;
+	if (isRendererDeferred)
+	{
+		renderPassEvent = featureSettings.AfterOpaque
+			? RenderPassEvent.AfterRenderingOpaques
+			: RenderPassEvent.AfterRenderingGbuffer;
+		source = URPSSAOSettings.DepthSource.DepthNormals;
+	}
+	else
+	{
+		// Rendering after PrePasses is usually correct except when depth priming is in play:
+		// then we rely on a depth resolve taking place after the PrePasses in order to have it ready for SSAO.
+		// Hence we set the event to RenderPassEvent.AfterRenderingPrePasses + 1 at the earliest.
+		renderPassEvent = featureSettings.AfterOpaque
+			? RenderPassEvent.AfterRenderingOpaques
+			: RenderPassEvent.AfterRenderingPrePasses + 1;
+		source = m_CurrentSettings.Source;
+	}
+
+
+	switch (source)
+	{
+		case URPSSAOSettings.DepthSource.Depth:
+			ConfigureInput(ScriptableRenderPassInput.Depth);
+			break;
+		case URPSSAOSettings.DepthSource.DepthNormals:
+			// need depthNormal prepass for forward-only geometry
+			ConfigureInput(ScriptableRenderPassInput.Normal);
+			break;
+		default:
+			throw new ArgumentOutOfRangeException();
+	}
+
+	return m_Material != null
+			&& m_CurrentSettings.Intensity > 0.0f
+			&& m_CurrentSettings.Radius > 0.0f
+			&& m_CurrentSettings.SampleCount > 0;
+}
+
+```
+
+当成功加入到渲染队列之后,就是**OnCameraSetup**.
+(这里只是按照用到的方法顺序说明,比如**Configure**,**FrameCleanup**都是空方法就跳过顺序说明了.)
+这里主要是对材质球的属性设置.所以需要属性ID.粘贴一下,啪很快啊.
+ 
+ 
