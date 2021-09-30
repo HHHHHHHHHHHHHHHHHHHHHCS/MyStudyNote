@@ -37,14 +37,20 @@ URP的SSAO
 
 ![URPSSAO_6](Images/URPSSAO_6.jpg)
 
+-----------------
+
+## **1.原理**
+TODO:
 
 -----------------
 
-## **1.拆解C#**
+## **2.拆解C#**
 
 &emsp;&emsp; 我的习惯是先拆解C#,再学习shader. 我这里是自己复制改动了一些,方便自己区分.可以对照源码看.
 
-先拆解设置属性,看看都有啥. 看上面属性面板很简单, 看了一眼代码果然很简单呢.
+### **2.1 URPSSAOSettings**
+
+先拆解设置属性,看看都有啥. 看上面属性面板很简单, 看了一眼代码果然很简单呢. 所以这里创建C# **URPSSAORenderFeature.cs**. 直接复制Settings Class.
 
 ```C#
 [Serializable]
@@ -74,17 +80,33 @@ public class URPSSAOSettings
 	[SerializeField] public float Radius = 0.035f;
 	[SerializeField] public int SampleCount = 4;
 }
+
+public class URPSSAORenderFeature: MonoBehaviour
+{
+	...
+}
+
 ```
+
+### **2.2 URPSSAORenderFeature**
 
 然后再看**RendererFeature**. 这个里面基本就是创建个渲染Pass,是否添加到渲染队列,创建材质和存个设置. 
 **[DisallowMultipleRendererFeature]**这个标签作用是禁止多次添加用的,在2020是**internal**加上去会报错,2021是**public**.
 **Dispose**在切换**RendererData**的时候会触发,销毁创建的材质.
+**URPSSAORenderPass**在后面补充.
+修改完善**class URPSSAORenderFeature**.
 
 ```C#
 using System;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+
+[Serializable]
+public class URPSSAOSettings
+{
+	...
+}
 
 [DisallowMultipleRendererFeature]
 [Tooltip("The Ambient Occlusion effect darkens creases, holes, intersections and surfaces that are close to each other.")]
@@ -160,7 +182,12 @@ public class URPSSAORenderFeature : ScriptableRendererFeature
 
 ```
 
+### **2.2 URPSSAORenderFeature**
+
 然后就再看**RenderPass**.
+
+#### **2.2.1 构造函数**
+
 这里先看构造函数
 因为我这里是抄写的,比较符合我自己的代码习惯,而且还是一步一步慢慢填充的,所以跟原来的代码不一样.但是大体上的思想基本一致.
 比如说**ProfilingSampler.Get(URPProfileId.SSAO)**外部获取不了,我这里用**k_tag**来自己创建.
@@ -198,12 +225,15 @@ public class URPSSAORenderPass : ScriptableRenderPass
 
 ```
 
+#### **2.2.2 Setup**
+
 然后再看看每帧执行的**Setup**.
 把**Feature**的属性传递进去.
 根据属性决定是否要开启SSAO,渲染队列,和需要的场景信息.
 (URP2021**ConfigureInput**终于支持**Motion Vector**)
 
 ```C#
+...
 
 internal URPSSAORenderPass()
 {
@@ -256,10 +286,75 @@ internal bool Setup(URPSSAOSettings featureSettings, ScriptableRenderer renderer
 			&& m_CurrentSettings.SampleCount > 0;
 }
 
+public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+{
+	...
+}
+
 ```
 
-当成功加入到渲染队列之后,就是**OnCameraSetup**.
-(这里只是按照用到的方法顺序说明,比如**Configure**,**FrameCleanup**都是空方法就跳过顺序说明了.)
-这里主要是对材质球的属性设置.所以需要属性ID.粘贴一下,啪很快啊.
+#### **2.2.3 Property**
+
+为了后面对材质球属性设置省事,我们可以提前粘贴需要的全部属性. Ctrl+C+V一下,啪很快啊.
  
- 
+```C#
+private const string k_tag = "URPSSAO";
+
+#region Property
+
+private static readonly int s_BaseMapID = Shader.PropertyToID("_BaseMap");
+private static readonly int s_SSAOParamsID = Shader.PropertyToID("_SSAOParams");
+private static readonly int s_SSAOTexture1ID = Shader.PropertyToID("_SSAO_OcclusionTexture1");
+private static readonly int s_SSAOTexture2ID = Shader.PropertyToID("_SSAO_OcclusionTexture2");
+private static readonly int s_SSAOTexture3ID = Shader.PropertyToID("_SSAO_OcclusionTexture3");
+private static readonly int s_SSAOTextureFinalID = Shader.PropertyToID("_SSAO_OcclusionTexture");
+private static readonly int s_CameraViewXExtentID = Shader.PropertyToID("_CameraViewXExtent");
+private static readonly int s_CameraViewYExtentID = Shader.PropertyToID("_CameraViewYExtent");
+private static readonly int s_CameraViewZExtentID = Shader.PropertyToID("_CameraViewZExtent");
+private static readonly int s_ProjectionParams2ID = Shader.PropertyToID("_ProjectionParams2");
+private static readonly int s_CameraViewProjectionsID = Shader.PropertyToID("_CameraViewProjections");
+private static readonly int s_CameraViewTopLeftCornerID = Shader.PropertyToID("_CameraViewTopLeftCorner");
+
+#endregion
+
+// Private Variables
+private Material m_Material;
+...
+
+internal URPSSAORenderPass()
+{
+	...
+}
+
+```
+
+#### **2.2.4 OnCameraSetup**
+
+我们这里按照渲染逻辑顺序依次说明.不过这里只写override的方法,比如**Configure**,**FrameCleanup**都没有重写就跳过顺序说明了.
+当成功加入到渲染队列之后,就是先执行**OnCameraSetup**.
+**OnCameraSetup**这里主要是对材质球的属性设置.
+
+先写ssaoParams的设置.
+```C#
+
+internal bool Setup(URPSSAOSettings featureSettings, ScriptableRenderer renderer,
+	Material material)
+{
+}
+
+public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
+{
+	RenderTextureDescriptor cameraTargetDescriptor = renderingData.cameraData.cameraTargetDescriptor;
+	int downsampleDivider = m_CurrentSettings.Downsample ? 2 : 1;
+
+	// Update SSAO parameters in the material
+	Vector4 ssaoParams = new Vector4(
+		m_CurrentSettings.Intensity, // Intensity
+		m_CurrentSettings.Radius, // Radius
+		1.0f / downsampleDivider, // Downsampling
+		m_CurrentSettings.SampleCount // Sample count
+	);
+	m_Material.SetVector(s_SSAOParamsID, ssaoParams);
+
+}
+```
