@@ -208,8 +208,8 @@ public class URPSSAORenderPass : ScriptableRenderPass
 	private URPSSAOSettings m_CurrentSettings;
 
 	// Properties
-	private bool isRendererDeferred =>
-			false; //m_Renderer is UniversalRenderer renderer && renderer.renderingMode == RenderingMode.Deferred;
+	//m_Renderer is UniversalRenderer renderer && renderer.renderingMode == RenderingMode.Deferred;
+	private bool isRendererDeferred => false; 
 
 	internal URPSSAORenderPass()
 	{
@@ -340,6 +340,7 @@ internal URPSSAORenderPass()
 internal bool Setup(URPSSAOSettings featureSettings, ScriptableRenderer renderer,
 	Material material)
 {
+	...
 }
 
 public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -356,5 +357,229 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 	);
 	m_Material.SetVector(s_SSAOParamsID, ssaoParams);
 
+}
+```
+
+然后就是摄像机属性的设置. 
+2021新加了XR的支持.**renderingData.cameraData.xr**因为是**internal**,我这里改成**renderingData.cameraData.xrRendering**. 因为我也没有VR已经不开发VR了(不会还有人在开发VR,不会吧不会吧), 根本不关心这个API hhh.
+XR主要是多了一个eye,让其成为**VectorArray**.但是总体没有什么大变化.主要是就是camera的起始点,xy方向,中心点最远的位置.
+
+
+```C#
+
+...
+
+// Private Variables
+private Material m_Material;
+
+private Vector4[] m_CameraTopLeftCorner = new Vector4[2];
+private Vector4[] m_CameraXExtent = new Vector4[2];
+private Vector4[] m_CameraYExtent = new Vector4[2];
+private Vector4[] m_CameraZExtent = new Vector4[2];
+private Matrix4x4[] m_CameraViewProjections = new Matrix4x4[2];
+
+private ScriptableRenderer m_Renderer = null;
+...
+
+public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
+{
+	...
+	m_Material.SetVector(s_SSAOParamsID, ssaoParams);
+
+	
+#if ENABLE_VR && ENABLE_XR_MODULE
+	//renderingData.cameraData.xr.enabled && renderingData.cameraData.xr.singlePassEnabled ->  renderingData.cameraData.xrRendering  
+	int eyeCount = renderingData.cameraData.xrRendering ? 2 : 1;
+#else
+	int eyeCount = 1;
+#endif
+	for (int eyeIndex = 0; eyeIndex < eyeCount; eyeIndex++)
+	{
+		Matrix4x4 view = renderingData.cameraData.GetViewMatrix(eyeIndex);
+		Matrix4x4 proj = renderingData.cameraData.GetProjectionMatrix(eyeIndex);
+		m_CameraViewProjections[eyeIndex] = proj * view;
+
+		// camera view space without translation, used by SSAO.hlsl ReconstructViewPos() to calculate view vector.
+		Matrix4x4 cview = view;
+		cview.SetColumn(3, new Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+		Matrix4x4 cviewProj = proj * cview;
+		Matrix4x4 cviewProjInv = cviewProj.inverse;
+
+		Vector4 topLeftCorner = cviewProjInv.MultiplyPoint(new Vector4(-1, 1, -1, 1));
+		Vector4 topRightCorner = cviewProjInv.MultiplyPoint(new Vector4(1, 1, -1, 1));
+		Vector4 bottomLeftCorner = cviewProjInv.MultiplyPoint(new Vector4(-1, -1, -1, 1));
+		Vector4 farCentre = cviewProjInv.MultiplyPoint(new Vector4(0, 0, 1, 1));
+		m_CameraTopLeftCorner[eyeIndex] = topLeftCorner;
+		m_CameraXExtent[eyeIndex] = topRightCorner - topLeftCorner;
+		m_CameraYExtent[eyeIndex] = bottomLeftCorner - topLeftCorner;
+		m_CameraZExtent[eyeIndex] = farCentre;
+	}
+
+	m_Material.SetVector(s_ProjectionParams2ID,
+		new Vector4(1.0f / renderingData.cameraData.camera.nearClipPlane, 0.0f, 0.0f, 0.0f));
+	m_Material.SetMatrixArray(s_CameraViewProjectionsID, m_CameraViewProjections);
+	m_Material.SetVectorArray(s_CameraViewTopLeftCornerID, m_CameraTopLeftCorner);
+	m_Material.SetVectorArray(s_CameraViewXExtentID, m_CameraXExtent);
+	m_Material.SetVectorArray(s_CameraViewYExtentID, m_CameraYExtent);
+	m_Material.SetVectorArray(s_CameraViewZExtentID, m_CameraZExtent);
+}
+```
+
+再后面就是一些**keyword**设置.
+添加关键字string并且设置.
+比如摄像机类型, Normal采样质量, 用Depth还是DepthNormal图.
+
+```C#
+
+private const string k_tag = "URPSSAO";
+
+#region Keyword
+
+private const string k_OrthographicCameraKeyword = "_ORTHOGRAPHIC";
+private const string k_NormalReconstructionLowKeyword = "_RECONSTRUCT_NORMAL_LOW";
+private const string k_NormalReconstructionMediumKeyword = "_RECONSTRUCT_NORMAL_MEDIUM";
+private const string k_NormalReconstructionHighKeyword = "_RECONSTRUCT_NORMAL_HIGH";
+private const string k_SourceDepthKeyword = "_SOURCE_DEPTH";
+private const string k_SourceDepthNormalsKeyword = "_SOURCE_DEPTH_NORMALS";
+
+#endregion
+
+#region Property
+...
+#endregion
+
+...
+
+public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
+{
+	m_Material.SetVectorArray(s_CameraViewZExtentID, m_CameraZExtent);
+	...
+
+	// Update keywords
+	CoreUtils.SetKeyword(m_Material, k_OrthographicCameraKeyword, renderingData.cameraData.camera.orthographic);
+
+	URPSSAOSettings.DepthSource source = this.isRendererDeferred
+		? URPSSAOSettings.DepthSource.DepthNormals
+		: m_CurrentSettings.Source;
+
+	if (source == URPSSAOSettings.DepthSource.Depth)
+	{
+		switch (m_CurrentSettings.NormalSamples)
+		{
+			case URPSSAOSettings.NormalQuality.Low:
+				CoreUtils.SetKeyword(m_Material, k_NormalReconstructionLowKeyword, true);
+				CoreUtils.SetKeyword(m_Material, k_NormalReconstructionMediumKeyword, false);
+				CoreUtils.SetKeyword(m_Material, k_NormalReconstructionHighKeyword, false);
+				break;
+			case URPSSAOSettings.NormalQuality.Medium:
+				CoreUtils.SetKeyword(m_Material, k_NormalReconstructionLowKeyword, false);
+				CoreUtils.SetKeyword(m_Material, k_NormalReconstructionMediumKeyword, true);
+				CoreUtils.SetKeyword(m_Material, k_NormalReconstructionHighKeyword, false);
+				break;
+			case URPSSAOSettings.NormalQuality.High:
+				CoreUtils.SetKeyword(m_Material, k_NormalReconstructionLowKeyword, false);
+				CoreUtils.SetKeyword(m_Material, k_NormalReconstructionMediumKeyword, false);
+				CoreUtils.SetKeyword(m_Material, k_NormalReconstructionHighKeyword, true);
+				break;
+			default:
+				throw new ArgumentOutOfRangeException();
+		}
+	}
+
+	switch (source)
+	{
+		case URPSSAOSettings.DepthSource.DepthNormals:
+			CoreUtils.SetKeyword(m_Material, k_SourceDepthKeyword, false);
+			CoreUtils.SetKeyword(m_Material, k_SourceDepthNormalsKeyword, true);
+			break;
+		default:
+			CoreUtils.SetKeyword(m_Material, k_SourceDepthKeyword, true);
+			CoreUtils.SetKeyword(m_Material, k_SourceDepthNormalsKeyword, false);
+			break;
+	}
+}
+
+```
+
+最后的最后就是descriptors的设置,RT的创建和画布的输入.
+因为AO的结果图是一个0-1的黑白图,所以单通道的R8就可以了.不过可能存在一些设备不支持,就用ARGB32.
+为了效果好,这里RT滤波用FilterMode.Bilinear.
+最后的画布输入,如果是AfterOpaque, 就画在Color RT上类似于贴上去, 否则就画在自己的RT上, 物体着色的时候进行采样变暗.
+
+
+```C#
+...
+
+#region Property
+...
+#endregion
+
+private bool m_SupportsR8RenderTextureFormat = SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.R8);
+
+private Material m_Material;
+
+...
+
+public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
+{
+	...
+	
+	switch (source)
+	{
+		...
+	}
+
+	// Set up the descriptors
+	RenderTextureDescriptor descriptor = cameraTargetDescriptor;
+	descriptor.msaaSamples = 1;
+	descriptor.depthBufferBits = 0;
+
+	m_AOPassDescriptor = descriptor;
+	m_AOPassDescriptor.width /= downsampleDivider;
+	m_AOPassDescriptor.height /= downsampleDivider;
+	m_AOPassDescriptor.colorFormat = RenderTextureFormat.ARGB32;
+
+	m_BlurPassesDescriptor = descriptor;
+	m_BlurPassesDescriptor.colorFormat = RenderTextureFormat.ARGB32;
+
+	m_FinalDescriptor = descriptor;
+	m_FinalDescriptor.colorFormat =
+		m_SupportsR8RenderTextureFormat ? RenderTextureFormat.R8 : RenderTextureFormat.ARGB32;
+
+	// Get temporary render textures
+	cmd.GetTemporaryRT(s_SSAOTexture1ID, m_AOPassDescriptor, FilterMode.Bilinear);
+	cmd.GetTemporaryRT(s_SSAOTexture2ID, m_BlurPassesDescriptor, FilterMode.Bilinear);
+	cmd.GetTemporaryRT(s_SSAOTexture3ID, m_BlurPassesDescriptor, FilterMode.Bilinear);
+	cmd.GetTemporaryRT(s_SSAOTextureFinalID, m_FinalDescriptor, FilterMode.Bilinear);
+
+	// Configure targets and clear color
+	ConfigureTarget(m_CurrentSettings.AfterOpaque ? m_Renderer.cameraColorTarget : s_SSAOTexture2ID);
+	ConfigureClear(ClearFlag.None, Color.white);
+}
+
+```
+
+#### **2.2.5 Execute**
+
+之后就是执行渲染了. 先写一个基础的框架.
+
+```C#
+
+ public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+{
+	if (m_Material == null)
+	{
+		Debug.LogErrorFormat("{0}.Execute(): Missing material. ScreenSpaceAmbientOcclusion pass will not execute. Check for missing reference in the renderer resources.", GetType().Name);
+		return;
+	}
+
+	CommandBuffer cmd = CommandBufferPool.Get();
+	using (new ProfilingScope(cmd, m_ProfilingSampler))
+	{
+		//TODO:
+	}
+
+	context.ExecuteCommandBuffer(cmd);
+	CommandBufferPool.Release(cmd);
 }
 ```
