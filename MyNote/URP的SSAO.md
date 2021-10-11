@@ -191,7 +191,7 @@ public class URPSSAORenderFeature : ScriptableRendererFeature
 这里先看构造函数
 因为我这里是抄写的,比较符合我自己的代码习惯,而且还是一步一步慢慢填充的,所以跟原来的代码不一样.但是大体上的思想基本一致.
 比如说**ProfilingSampler.Get(URPProfileId.SSAO)**外部获取不了,我这里用**k_tag**来自己创建.
-再比如**isRendererDeferred**判断是否为延迟渲染.因为 **renderer.renderingMode** 是internal, 所以没有办法判断, 只能先写成false. 后面再在settings里面加个bool(后面再写).
+再比如**isRendererDeferred**判断是否为延迟渲染.因为 **renderer.renderingMode** 是internal, 所以没有办法判断, 只能先写成false. 之后再在settings里面加个bool用于代替.
 
 ```C#
 using System;
@@ -201,10 +201,11 @@ using UnityEngine.Rendering.Universal;
 
 public class URPSSAORenderPass : ScriptableRenderPass
 {
+	// private ProfilingSampler m_ProfilingSampler = ProfilingSampler.Get(URPProfileId.SSAO);
 	private const string k_tag = "URPSSAO";
 
 	// Private Variables
-	// private ProfilingSampler m_ProfilingSampler = ProfilingSampler.Get(URPProfileId.SSAO);
+
 	private URPSSAOSettings m_CurrentSettings;
 
 	// Properties
@@ -228,11 +229,19 @@ public class URPSSAORenderPass : ScriptableRenderPass
 #### **2.2.2 Setup**
 
 然后再看看每帧执行的**Setup**.
-把**Feature**的属性传递进去.
-根据属性决定是否要开启SSAO,渲染队列,和需要的场景信息.
+把**Feature**的变量传递进去.
+根据变量决定是否要开启SSAO, 渲染队列, 和需要的场景信息.
 (URP2021**ConfigureInput**终于支持**Motion Vector**)
 
 ```C#
+...
+
+<span style="color:blue">
+private Material m_Material;
+private ScriptableRenderer m_Renderer;
+</span>
+private URPSSAOSettings m_CurrentSettings;
+
 ...
 
 internal URPSSAORenderPass()
@@ -240,8 +249,7 @@ internal URPSSAORenderPass()
 	...
 }
 
-internal bool Setup(URPSSAOSettings featureSettings, ScriptableRenderer renderer,
-			Material material)
+internal bool Setup(URPSSAOSettings featureSettings, ScriptableRenderer renderer, Material material)
 {
 	m_Material = material;
 	m_Renderer = renderer;
@@ -301,6 +309,9 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 private const string k_tag = "URPSSAO";
 
 #region Property
+
+public static readonly int s_SourceSize = Shader.PropertyToID("_SourceSize");
+
 
 private static readonly int s_BaseMapID = Shader.PropertyToID("_BaseMap");
 private static readonly int s_SSAOParamsID = Shader.PropertyToID("_SSAOParams");
@@ -362,7 +373,8 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 
 然后就是摄像机属性的设置. 
 2021新加了XR的支持.**renderingData.cameraData.xr**因为是**internal**,我这里改成**renderingData.cameraData.xrRendering**. 因为我也没有VR已经不开发VR了(不会还有人在开发VR,不会吧不会吧), 根本不关心这个API hhh.
-XR主要是多了一个eye,让其成为**VectorArray**.但是总体没有什么大变化.主要是就是camera的起始点,xy方向,中心点最远的位置.
+XR主要是多了一个eye,让其成为**VectorArray**.但是总体没有什么大变化.
+这里主要的计算就是把**proj空间**下的**最远的极值点**(最远左上点,最远右上点,最远右下点,最远中心点), 转换到**world空间**坐标. 然后记录左上,XY方向,中心方向.
 
 
 ```C#
@@ -434,6 +446,8 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 private const string k_tag = "URPSSAO";
 
 #region Keyword
+
+private const string k_ScreenSpaceOcclusion = "_SCREEN_SPACE_OCCLUSION";
 
 private const string k_OrthographicCameraKeyword = "_ORTHOGRAPHIC";
 private const string k_NormalReconstructionLowKeyword = "_RECONSTRUCT_NORMAL_LOW";
@@ -583,3 +597,109 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 	CommandBufferPool.Release(cmd);
 }
 ```
+
+然后填充框架.这里是先设置**Keyword**和**SourceSize**.
+**AfterOpaque**决定是由哪种方式采样表现AO效果.所以需要设置一个关键字**k_ScreenSpaceOcclusion**在shader中进行开关. 关键字重置在后面的**OnCameraCleanup**中完成.
+因为**SetSourceSize**是**interal**, 所以我这里直接拷贝出来了. 主要作用就是 传递画布尺寸(考虑动态画布缩放)到Shader中.
+
+```C#
+
+public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+{
+	...
+
+	using (new ProfilingScope(cmd, profilingSampler))
+	{
+		if (!m_CurrentSettings.AfterOpaque)
+		{
+			//ShaderKeywordStrings.ScreenSpaceOcclusion 拷贝出来
+			CoreUtils.SetKeyword(cmd, k_ScreenSpaceOcclusion, true);
+		}
+		//PostProcessUtils.SetSourceSize是internal,所以拷贝出来了
+		SetSourceSize(cmd, m_AOPassDescriptor);
+		
+	}
+
+	...
+}
+
+private void SetSourceSize(CommandBuffer cmd, RenderTextureDescriptor desc)
+{
+	float width = desc.width;
+	float height = desc.height;
+	if (desc.useDynamicScale)
+	{
+		width *= ScalableBufferManager.widthScaleFactor;
+		height *= ScalableBufferManager.heightScaleFactor;
+	}
+
+	cmd.SetGlobalVector(s_SourceSize, new Vector4(width, height, 1.0f / width, 1.0f / height));
+}
+
+```
+
+再后面就是渲染AO了. 在此之前 先写 **Enum ShaderPasses** 和 两个Render的公共方法.
+**Enum ShaderPasses**, 需要和shader pass index 对应.
+**Render**, 设置RT, 全屏绘制某个pass. 因为是全部覆盖的后处理绘制, 所以不关心(**DontCare**)输入的颜色 和 depth, 只需要**Store**输出的颜色就好了.
+**RenderAndSetBaseMap**, 同上, 并且多传入一个BaseMap.
+
+
+```C#
+
+public class URPSSAORenderPass : ScriptableRenderPass
+{
+	private enum ShaderPasses
+	{
+		AO = 0,
+		BlurHorizontal = 1,
+		BlurVertical = 2,
+		BlurFinal = 3,
+		AfterOpaque = 4
+	}
+	
+	
+	private const string k_tag = "URPSSAO";
+
+	...
+
+	public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+	{
+		...
+	}
+
+	private static void SetSourceSize(CommandBuffer cmd, RenderTextureDescriptor desc)
+	{
+		...
+	}
+
+	private void Render(CommandBuffer cmd, RenderTargetIdentifier target, ShaderPasses pass)
+	{
+		cmd.SetRenderTarget(
+			target,
+			RenderBufferLoadAction.DontCare,
+			RenderBufferStoreAction.Store,
+			target,
+			RenderBufferLoadAction.DontCare,
+			RenderBufferStoreAction.DontCare
+		);
+		cmd.DrawMesh(RenderingUtils.fullscreenMesh, Matrix4x4.identity, m_Material, 0, (int)pass);
+	}
+
+	private void RenderAndSetBaseMap(CommandBuffer cmd, RenderTargetIdentifier baseMap, RenderTargetIdentifier target, ShaderPasses pass)
+	{
+		cmd.SetGlobalTexture(s_BaseMapID, baseMap);
+		Render(cmd, target, pass);
+	}
+}
+
+```
+
+
+
+
+
+
+
+
+
+//defferred 设置
