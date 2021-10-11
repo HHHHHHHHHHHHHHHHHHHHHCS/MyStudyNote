@@ -235,10 +235,9 @@ public class URPSSAORenderPass : ScriptableRenderPass
 
 ```C#
 ...
-<font color=gray>
+
 private Material m_Material;
 private ScriptableRenderer m_Renderer;
-</font>
 private URPSSAOSettings m_CurrentSettings;
 
 ...
