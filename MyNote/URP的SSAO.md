@@ -95,6 +95,7 @@ public class URPSSAORenderFeature: MonoBehaviour
 **Dispose**在切换**RendererData**的时候会触发,销毁创建的材质.
 **URPSSAORenderPass**在后面补充.
 修改完善**class URPSSAORenderFeature**.
+**k_ShaderName**要和Shader中的name对应, 并且打包的时候注意别剔除了(可以添加材质球强制让其入包, 或者用**Shader Variant Collect**), 不然会找不到.
 
 ```C#
 using System;
@@ -205,7 +206,6 @@ public class URPSSAORenderPass : ScriptableRenderPass
 	private const string k_tag = "URPSSAO";
 
 	// Private Variables
-
 	private URPSSAOSettings m_CurrentSettings;
 
 	// Properties
@@ -229,7 +229,7 @@ public class URPSSAORenderPass : ScriptableRenderPass
 #### **2.2.2 Setup**
 
 然后再看看每帧执行的**Setup**.
-把**Feature**的变量传递进去.
+把**Feature**的变量传递进去,记录保存.
 根据变量决定是否要开启SSAO, 渲染队列, 和需要的场景信息.
 (URP2021**ConfigureInput**终于支持**Motion Vector**)
 
@@ -379,8 +379,7 @@ XR主要是多了一个eye,让其成为**VectorArray**.但是总体没有什么�
 
 ...
 
-// Private Variables
-private Material m_Material;
+private URPSSAOSettings m_CurrentSettings;
 
 private Vector4[] m_CameraTopLeftCorner = new Vector4[2];
 private Vector4[] m_CameraXExtent = new Vector4[2];
@@ -388,7 +387,6 @@ private Vector4[] m_CameraYExtent = new Vector4[2];
 private Vector4[] m_CameraZExtent = new Vector4[2];
 private Matrix4x4[] m_CameraViewProjections = new Matrix4x4[2];
 
-private ScriptableRenderer m_Renderer = null;
 ...
 
 public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -446,6 +444,8 @@ private const string k_tag = "URPSSAO";
 #region Keyword
 
 private const string k_ScreenSpaceOcclusion = "_SCREEN_SPACE_OCCLUSION";
+private const string k_SSAOTextureName = "_ScreenSpaceOcclusionTexture";
+private const string k_SSAOAmbientOcclusionParamName = "_AmbientOcclusionParam";
 
 private const string k_OrthographicCameraKeyword = "_ORTHOGRAPHIC";
 private const string k_NormalReconstructionLowKeyword = "_RECONSTRUCT_NORMAL_LOW";
@@ -513,10 +513,11 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 
 ```
 
-最后的最后就是descriptors的设置,RT的创建和画布的输入.
-因为AO的结果图是一个0-1的黑白图,所以单通道的R8就可以了.不过可能存在一些设备不支持,就用ARGB32.
-为了效果好,这里RT滤波用FilterMode.Bilinear.
-最后的画布输入,如果是AfterOpaque, 就画在Color RT上类似于贴上去, 否则就画在自己的RT上, 物体着色的时候进行采样变暗.
+最后的最后就是 **descriptors**创建和设置, **RenderTargetIdentifier**的初始化, RT的创建, 和画布的输入.
+因为AO的结果图是一个0-1的黑白图,所以单通道的**R8**就可以了.不过可能存在一些设备不支持,就用**ARGB32**.
+为了效果好,这里RT的用**FilterMode**用**Bilinear**.
+最后的画布输入,如果是**AfterOpaque**, 就画在Color RT上类似于贴上去, 否则就创建一个RT, 物体着色的时候进行采样, 让其变暗.
+**RenderTargetIdentifier** , 是和**ID**进行绑定的. 在后面渲染的时候用到, 作用是避免每次传递的时候都进行创建, 所以在这里先初始化.
 
 
 ```C#
@@ -531,6 +532,25 @@ private bool m_SupportsR8RenderTextureFormat = SystemInfo.SupportsRenderTextureF
 private Material m_Material;
 
 ...
+private Matrix4x4[] m_CameraViewProjections = new Matrix4x4[2];
+
+private RenderTextureDescriptor m_AOPassDescriptor;
+private RenderTextureDescriptor m_BlurPassesDescriptor;
+private RenderTextureDescriptor m_FinalDescriptor;
+
+private RenderTargetIdentifier m_SSAOTexture1Target = new(s_SSAOTexture1ID, 0, CubemapFace.Unknown, -1);
+private RenderTargetIdentifier m_SSAOTexture2Target = new(s_SSAOTexture2ID, 0, CubemapFace.Unknown, -1);
+private RenderTargetIdentifier m_SSAOTexture3Target = new(s_SSAOTexture3ID, 0, CubemapFace.Unknown, -1);
+private RenderTargetIdentifier m_SSAOTextureFinalTarget = new(s_SSAOTextureFinalID, 0, CubemapFace.Unknown, -1);
+
+// Properties
+//m_Renderer is UniversalRenderer renderer && renderer.renderingMode == RenderingMode.Deferred;
+private bool isRendererDeferred => false;
+
+internal URPSSAORenderPass()
+{
+	...
+}
 
 public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
 {
@@ -598,7 +618,7 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 
 然后填充框架.这里是先设置**Keyword**和**SourceSize**.
 **AfterOpaque**决定是由哪种方式采样表现AO效果.所以需要设置一个关键字**k_ScreenSpaceOcclusion**在shader中进行开关. 关键字重置在后面的**OnCameraCleanup**中完成.
-因为**SetSourceSize**是**interal**, 所以我这里直接拷贝出来了. 主要作用就是 传递画布尺寸(考虑动态画布缩放)到Shader中.
+
 
 ```C#
 
@@ -612,35 +632,21 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 		{
 			//ShaderKeywordStrings.ScreenSpaceOcclusion 拷贝出来
 			CoreUtils.SetKeyword(cmd, k_ScreenSpaceOcclusion, true);
-		}
-		//PostProcessUtils.SetSourceSize是internal,所以拷贝出来了
-		SetSourceSize(cmd, m_AOPassDescriptor);
-		
+		}	
 	}
 
 	...
 }
 
-private void SetSourceSize(CommandBuffer cmd, RenderTextureDescriptor desc)
-{
-	float width = desc.width;
-	float height = desc.height;
-	if (desc.useDynamicScale)
-	{
-		width *= ScalableBufferManager.widthScaleFactor;
-		height *= ScalableBufferManager.heightScaleFactor;
-	}
 
-	cmd.SetGlobalVector(s_SourceSize, new Vector4(width, height, 1.0f / width, 1.0f / height));
-}
 
 ```
 
-再后面就是渲染AO了. 在此之前 先写 **Enum ShaderPasses** 和 两个Render的公共方法.
+再后面就是渲染AO了. 在此之前 先写 **Enum ShaderPasses** 和 三个Render的公共方法.
 **Enum ShaderPasses**, 需要和shader pass index 对应.
+因为**SetSourceSize**是**interal**, 所以我这里直接拷贝出来了. 主要作用就是 传递画布尺寸(考虑动态画布缩放)到Shader中.
 **Render**, 设置RT, 全屏绘制某个pass. 因为是全部覆盖的后处理绘制, 所以不关心(**DontCare**)输入的颜色 和 depth, 只需要**Store**输出的颜色就好了.
 **RenderAndSetBaseMap**, 同上, 并且多传入一个BaseMap.
-
 
 ```C#
 
@@ -665,9 +671,18 @@ public class URPSSAORenderPass : ScriptableRenderPass
 		...
 	}
 
-	private static void SetSourceSize(CommandBuffer cmd, RenderTextureDescriptor desc)
+	//PostProcessUtils.SetSourceSize是internal,所以拷贝出来了
+	private void SetSourceSize(CommandBuffer cmd, RenderTextureDescriptor desc)
 	{
-		...
+		float width = desc.width;
+		float height = desc.height;
+		if (desc.useDynamicScale)
+		{
+			width *= ScalableBufferManager.widthScaleFactor;
+			height *= ScalableBufferManager.heightScaleFactor;
+		}
+
+		cmd.SetGlobalVector(s_SourceSize, new Vector4(width, height, 1.0f / width, 1.0f / height));
 	}
 
 	private void Render(CommandBuffer cmd, RenderTargetIdentifier target, ShaderPasses pass)
@@ -692,12 +707,146 @@ public class URPSSAORenderPass : ScriptableRenderPass
 
 ```
 
+然后渲染.
+设置分辨率(可能是半分辨率), 渲染AO, 然后横着模糊.
+重新设置全分辨率尺寸, 竖着模糊. 稍微处理一下输出FinalRT.
+设置FinalRT和AO参数.
+因为**AfterOpaque**时, 是类似于贴上去的. 所以还需要设置RT进行全屏带blend的绘制.
 
+```C#
 
+public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+{
+	...
 
+	CommandBuffer cmd = CommandBufferPool.Get();
+	using (new ProfilingScope(cmd, profilingSampler))
+	{
+		if (!m_CurrentSettings.AfterOpaque)
+		{
+			...
+		}
 
+		SetSourceSize(cmd, m_AOPassDescriptor);
+		// Execute the SSAO
+		Render(cmd, m_SSAOTexture1Target, ShaderPasses.AO);
 
+		// Execute the Blur Passes
+		RenderAndSetBaseMap(cmd, m_SSAOTexture1Target, m_SSAOTexture2Target, ShaderPasses.BlurHorizontal);
 
+		SetSourceSize(cmd, m_BlurPassesDescriptor);
+		RenderAndSetBaseMap(cmd, m_SSAOTexture2Target, m_SSAOTexture3Target, ShaderPasses.BlurVertical);
+		RenderAndSetBaseMap(cmd, m_SSAOTexture3Target, m_SSAOTextureFinalTarget, ShaderPasses.BlurFinal);
 
+		// Set the global SSAO texture and AO Params
+		cmd.SetGlobalTexture(k_SSAOTextureName, m_SSAOTextureFinalTarget);
+		cmd.SetGlobalVector(k_SSAOAmbientOcclusionParamName, new Vector4(0f, 0f, 0f, m_CurrentSettings.DirectLightingStrength));
 
-//defferred 设置
+		// If true, SSAO pass is inserted after opaque pass and is expected to modulate lighting result now.
+		if (m_CurrentSettings.AfterOpaque)
+		{
+			// This implicitly also bind depth attachment. Explicitly binding m_Renderer.cameraDepthTarget does not work.
+			cmd.SetRenderTarget(
+				m_Renderer.cameraColorTarget,
+				RenderBufferLoadAction.Load,
+				RenderBufferStoreAction.Store
+			);
+			cmd.DrawMesh(RenderingUtils.fullscreenMesh, Matrix4x4.identity, m_Material, 0, (int)ShaderPasses.AfterOpaque);
+		}
+
+	}
+
+	...
+}
+
+```
+
+#### **2.2.5 OnCameraCleanup**
+
+整个camera渲染完成, 重置参数, 清理临时RT.
+
+```C#
+
+public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+{
+	...
+}
+
+public override void OnCameraCleanup(CommandBuffer cmd)
+{
+	if (cmd == null)
+	{
+		throw new ArgumentNullException("cmd");
+	}
+
+	if (!m_CurrentSettings.AfterOpaque)
+	{
+		CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.ScreenSpaceOcclusion, false);
+	}
+
+	cmd.ReleaseTemporaryRT(s_SSAOTexture1ID);
+	cmd.ReleaseTemporaryRT(s_SSAOTexture2ID);
+	cmd.ReleaseTemporaryRT(s_SSAOTexture3ID);
+	cmd.ReleaseTemporaryRT(s_SSAOTextureFinalID);
+}
+
+//PostProcessUtils.SetSourceSize是internal,所以拷贝出来了
+private void SetSourceSize(CommandBuffer cmd, RenderTextureDescriptor desc)
+{
+	...
+}
+
+```
+
+#### **2.2.6 Deferred设置**
+
+因为我们获取不到Deferred, 所以需要自己添加bool, 手动进行开关设置.
+
+打开**URPSSAORenderFeature.cs**, 修改 **class URPSSAOSettings**
+
+```C#
+
+[Serializable]
+public class URPSSAOSettings
+{
+	...
+
+	// Parameters
+	[SerializeField] public bool IsDeferred = false;
+	[SerializeField] public bool Downsample = false;
+	...
+}
+
+[DisallowMultipleRendererFeature]
+[Tooltip(
+	"The Ambient Occlusion effect darkens creases, holes, intersections and surfaces that are close to each other.")]
+public class URPSSAORenderFeature : ScriptableRendererFeature
+{
+	...
+}
+
+```
+
+返回**URPSSAORenderPass.cs**, 修改**isRendererDeferred**
+```C#
+
+public class URPSSAORenderPass : ScriptableRenderPass
+{
+	...
+	private RenderTargetIdentifier m_SSAOTextureFinalTarget = new(s_SSAOTextureFinalID, 0, CubemapFace.Unknown, -1);
+
+	// Properties
+	//m_Renderer is UniversalRenderer renderer && renderer.renderingMode == RenderingMode.Deferred;
+	private bool isRendererDeferred => m_CurrentSettings.IsDeferred;
+
+	internal URPSSAORenderPass()
+	{
+		...
+	}
+
+	...
+}
+
+```
+
+//TODO:Shader
