@@ -183,11 +183,11 @@ public class URPSSAORenderFeature : ScriptableRendererFeature
 
 ```
 
-### **2.2 URPSSAORenderFeature**
+### **2.3 URPSSAORenderPass**
 
 然后就再看**RenderPass**.
 
-#### **2.2.1 构造函数**
+#### **2.3.1 构造函数**
 
 这里先看构造函数
 因为我这里是抄写的,比较符合我自己的代码习惯,而且还是一步一步慢慢填充的,所以跟原来的代码不一样.但是大体上的思想基本一致.
@@ -209,7 +209,8 @@ public class URPSSAORenderPass : ScriptableRenderPass
 	private URPSSAOSettings m_CurrentSettings;
 
 	// Properties
-	//m_Renderer is UniversalRenderer renderer && renderer.renderingMode == RenderingMode.Deferred;
+	// 是internal 虽然也可以用反射
+	// m_Renderer is UniversalRenderer renderer && renderer.renderingMode == RenderingMode.Deferred;
 	private bool isRendererDeferred => false; 
 
 	internal URPSSAORenderPass()
@@ -226,7 +227,7 @@ public class URPSSAORenderPass : ScriptableRenderPass
 
 ```
 
-#### **2.2.2 Setup**
+#### **2.3.2 Setup**
 
 然后再看看每帧执行的**Setup**.
 把**Feature**的变量传递进去,记录保存.
@@ -299,7 +300,7 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 
 ```
 
-#### **2.2.3 Property**
+#### **2.3.3 Property**
 
 为了后面对材质球属性设置省事,我们可以提前粘贴需要的全部属性. Ctrl+C+V一下,啪很快啊.
  
@@ -337,7 +338,7 @@ internal URPSSAORenderPass()
 
 ```
 
-#### **2.2.4 OnCameraSetup**
+#### **2.3.4 OnCameraSetup**
 
 我们这里按照渲染逻辑顺序依次说明.不过这里只写override的方法,比如**Configure**,**FrameCleanup**都没有重写就跳过顺序说明了.
 当成功加入到渲染队列之后,就是先执行**OnCameraSetup**.
@@ -591,7 +592,7 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 
 ```
 
-#### **2.2.5 Execute**
+#### **2.3.5 Execute**
 
 之后就是执行渲染了. 先写一个基础的框架.
 
@@ -761,7 +762,7 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 
 ```
 
-#### **2.2.5 OnCameraCleanup**
+#### **2.3.5 OnCameraCleanup**
 
 整个camera渲染完成, 重置参数, 清理临时RT.
 
@@ -798,9 +799,9 @@ private void SetSourceSize(CommandBuffer cmd, RenderTextureDescriptor desc)
 
 ```
 
-#### **2.2.6 Deferred设置**
+#### **2.3.6 Deferred设置**
 
-因为我们获取不到Deferred, 所以需要自己添加bool, 手动进行开关设置.
+因为我们获取不到Deferred, 所以需要自己添加bool, 通过Editor反射来设置.
 
 打开**URPSSAORenderFeature.cs**, 修改 **class URPSSAOSettings**
 
@@ -827,7 +828,7 @@ public class URPSSAORenderFeature : ScriptableRendererFeature
 
 ```
 
-返回**URPSSAORenderPass.cs**, 修改**isRendererDeferred**
+最后返回**URPSSAORenderPass.cs**, 修改**isRendererDeferred**
 ```C#
 
 public class URPSSAORenderPass : ScriptableRenderPass
@@ -849,4 +850,14 @@ public class URPSSAORenderPass : ScriptableRenderPass
 
 ```
 
+### **2.4 InspectorGUI**
+
+
+
+
+
+
+
+
+//TODO:反射设置延迟
 //TODO:Shader
