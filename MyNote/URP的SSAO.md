@@ -192,7 +192,7 @@ public class URPSSAORenderFeature : ScriptableRendererFeature
 这里先看构造函数
 因为我这里是抄写的,比较符合我自己的代码习惯,而且还是一步一步慢慢填充的,所以跟原来的代码不一样.但是大体上的思想基本一致.
 比如说**ProfilingSampler.Get(URPProfileId.SSAO)**外部获取不了,我这里用**k_tag**来自己创建.
-再比如**isRendererDeferred**判断是否为延迟渲染.因为 **renderer.renderingMode** 是internal, 所以没有办法判断, 只能先写成false. 之后再在settings里面加个bool用于代替.
+再比如**isRendererDeferred**判断是否为延迟渲染. 因为 **renderer.renderingMode** 是internal, 所以没有办法判断, 只能先写成false. 之后再在settings里面加个bool用于代替.
 
 ```C#
 using System;
@@ -209,7 +209,8 @@ public class URPSSAORenderPass : ScriptableRenderPass
 	private URPSSAOSettings m_CurrentSettings;
 
 	// Properties
-	// 是internal 虽然也可以用反射
+
+	// 因为是internal 
 	// m_Renderer is UniversalRenderer renderer && renderer.renderingMode == RenderingMode.Deferred;
 	private bool isRendererDeferred => false; 
 
@@ -545,6 +546,8 @@ private RenderTargetIdentifier m_SSAOTexture3Target = new(s_SSAOTexture3ID, 0, C
 private RenderTargetIdentifier m_SSAOTextureFinalTarget = new(s_SSAOTextureFinalID, 0, CubemapFace.Unknown, -1);
 
 // Properties
+
+// 因为是internal 
 //m_Renderer is UniversalRenderer renderer && renderer.renderingMode == RenderingMode.Deferred;
 private bool isRendererDeferred => false;
 
@@ -801,7 +804,10 @@ private void SetSourceSize(CommandBuffer cmd, RenderTextureDescriptor desc)
 
 #### **2.3.6 Deferred设置**
 
-因为我们获取不到Deferred, 所以需要自己添加bool, 通过Editor反射来设置.
+因为我们获取不到Deferred, 所以需要自己添加bool, 通过反射来设置.
+虽然也可以用**AssemblyDefinition Reference** 和 **[InternalsVisibleTo]** 来实现, 但是没有搞明白搞成功 , 就先算了.
+
+至于效率问题, 因为运行的时候基本不会修改渲染模式. 所以基本只用获取一次就够了. 
 
 打开**URPSSAORenderFeature.cs**, 修改 **class URPSSAOSettings**
 
@@ -813,7 +819,7 @@ public class URPSSAOSettings
 	...
 
 	// Parameters
-	[SerializeField] public bool IsDeferred = false;
+	[NonSerialized] public bool? IsDeferred = null;
 	[SerializeField] public bool Downsample = false;
 	...
 }
@@ -828,6 +834,42 @@ public class URPSSAORenderFeature : ScriptableRendererFeature
 
 ```
 
+然后修改**class URPSSAORenderFeature**, 在里面添加反射获取.
+
+```C#
+
+...
+public class URPSSAORenderFeature : ScriptableRendererFeature
+{
+	...
+	
+	public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
+	{
+		if (!GetMaterial())
+		{
+			...
+		}
+
+		if (m_Settings.IsDeferred == null)
+		{
+			var ur = renderer as UniversalRenderer;
+			var fieldInfo =
+				ur.GetType().GetField("m_RenderingMode", BindingFlags.NonPublic | BindingFlags.Instance);
+
+			var rendererMode = (RenderingMode) fieldInfo.GetValue(ur);
+
+			m_Settings.IsDeferred = rendererMode == RenderingMode.Deferred;
+		}
+
+		bool shouldAdd = m_SSAOPass.Setup(m_Settings, renderer, m_Material);
+		...
+	}
+
+	...
+}
+
+```
+
 最后返回**URPSSAORenderPass.cs**, 修改**isRendererDeferred**
 ```C#
 
@@ -837,8 +879,10 @@ public class URPSSAORenderPass : ScriptableRenderPass
 	private RenderTargetIdentifier m_SSAOTextureFinalTarget = new(s_SSAOTextureFinalID, 0, CubemapFace.Unknown, -1);
 
 	// Properties
-	//m_Renderer is UniversalRenderer renderer && renderer.renderingMode == RenderingMode.Deferred;
-	private bool isRendererDeferred => m_CurrentSettings.IsDeferred;
+
+	// 因为是internal 
+	// m_Renderer is UniversalRenderer renderer && renderer.renderingMode == RenderingMode.Deferred;
+	private bool IsRendererDeferred => m_CurrentSettings.IsDeferred != null && m_CurrentSettings.IsDeferred.Value;
 
 	internal URPSSAORenderPass()
 	{
@@ -852,12 +896,161 @@ public class URPSSAORenderPass : ScriptableRenderPass
 
 ### **2.4 InspectorGUI**
 
+然后编写Editor InspectorGUI.
+为什么要写? 好看(dogee). 还有是因为Deferred Mode下, 模式应该自动是Depth&Normal, 不让美术编辑.
+
+修改前后.
+
+![URPSSAO_7](Images/URPSSAO_7.jpg)
+
+![URPSSAO_8](Images/URPSSAO_8.jpg)
+
+
+
+```C#
+
+using MyGraphics.URPSSAO.Scripts;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Rendering.Universal;
+
+namespace MyGraphics.GroundTruthAmbientOcclusion.Editor
+{
+	[CustomEditor(typeof(URPSSAORenderFeature))]
+	public class URPSSAOEditor : UnityEditor.Editor
+	{
+		#region Serialized Properties
+
+		private SerializedProperty m_Downsample;
+		private SerializedProperty m_AfterOpaque;
+		private SerializedProperty m_Source;
+		private SerializedProperty m_NormalQuality;
+		private SerializedProperty m_Intensity;
+		private SerializedProperty m_DirectLightingStrength;
+		private SerializedProperty m_Radius;
+		private SerializedProperty m_SampleCount;
+
+		#endregion
+
+		private bool m_IsInitialized = false;
+
+		// Structs
+		private struct Styles
+		{
+			public static GUIContent Downsample = EditorGUIUtility.TrTextContent("Downsample",
+				"With this option enabled, Unity downsamples the SSAO effect texture to improve performance. Each dimension of the texture is reduced by a factor of 2.");
+
+			public static GUIContent AfterOpaque = EditorGUIUtility.TrTextContent("After Opaque",
+				"With this option enabled, Unity calculates and apply SSAO after the opaque pass to improve performance on mobile platforms with tiled-based GPU architectures. This is not physically correct.");
+
+			public static GUIContent Source = EditorGUIUtility.TrTextContent("Source",
+				"The source of the normal vector values.\nDepth Normals: the feature uses the values generated in the Depth Normal prepass.\nDepth: the feature reconstructs the normal values using the depth buffer.\nIn the Deferred rendering path, the feature uses the G-buffer normals texture.");
+
+			public static GUIContent NormalQuality = new GUIContent("Normal Quality",
+				"The number of depth texture samples that Unity takes when computing the normals. Low:1 sample, Medium: 5 samples, High: 9 samples.");
+
+			public static GUIContent Intensity =
+				EditorGUIUtility.TrTextContent("Intensity", "The degree of darkness that Ambient Occlusion adds.");
+
+			public static GUIContent DirectLightingStrength = EditorGUIUtility.TrTextContent("Direct Lighting Strength",
+				"Controls how much the ambient occlusion affects direct lighting.");
+
+			public static GUIContent Radius = EditorGUIUtility.TrTextContent("Radius",
+				"The radius around a given point, where Unity calculates and applies the effect.");
+
+			public static GUIContent SampleCount = EditorGUIUtility.TrTextContent("Sample Count",
+				"The number of samples that Unity takes when calculating the obscurance value. Higher values have high performance impact.");
+		}
+
+		private void Init()
+		{
+			SerializedProperty settings = serializedObject.FindProperty("m_Settings");
+			m_Source = settings.FindPropertyRelative("Source");
+			m_Downsample = settings.FindPropertyRelative("Downsample");
+			m_AfterOpaque = settings.FindPropertyRelative("AfterOpaque");
+			m_NormalQuality = settings.FindPropertyRelative("NormalSamples");
+			m_Intensity = settings.FindPropertyRelative("Intensity");
+			m_DirectLightingStrength = settings.FindPropertyRelative("DirectLightingStrength");
+			m_Radius = settings.FindPropertyRelative("Radius");
+			m_SampleCount = settings.FindPropertyRelative("SampleCount");
+			m_IsInitialized = true;
+		}
+	
+		public override void OnInspectorGUI()
+		{
+			if (!m_IsInitialized)
+			{
+				Init();
+			}
+			
+			bool isDeferredRenderingMode = RendererIsDeferred();
+
+			EditorGUILayout.PropertyField(m_Downsample, Styles.Downsample);
+
+			EditorGUILayout.PropertyField(m_AfterOpaque, Styles.AfterOpaque);
+
+			GUI.enabled = !isDeferredRenderingMode;
+			EditorGUILayout.PropertyField(m_Source, Styles.Source);
+
+			// We only enable this field when depth source is selected
+			GUI.enabled = !isDeferredRenderingMode &&
+			              m_Source.enumValueIndex == (int) URPSSAOSettings.DepthSource.Depth;
+			EditorGUI.indentLevel++;
+			EditorGUILayout.PropertyField(m_NormalQuality, Styles.NormalQuality);
+			EditorGUI.indentLevel--;
+			GUI.enabled = true;
+
+			EditorGUILayout.PropertyField(m_Intensity, Styles.Intensity);
+			EditorGUILayout.PropertyField(m_Radius, Styles.Radius);
+			m_DirectLightingStrength.floatValue = EditorGUILayout.Slider(Styles.DirectLightingStrength,
+				m_DirectLightingStrength.floatValue, 0f, 1f);
+			m_SampleCount.intValue = EditorGUILayout.IntSlider(Styles.SampleCount, m_SampleCount.intValue, 4, 20);
+
+			m_Intensity.floatValue = Mathf.Clamp(m_Intensity.floatValue, 0f, m_Intensity.floatValue);
+			m_Radius.floatValue = Mathf.Clamp(m_Radius.floatValue, 0f, m_Radius.floatValue);
+		}
+
+		private bool RendererIsDeferred()
+		{
+			//原来的写法是internal  而且是错误的  因为他是根据当前挂载管线data来判断的  其实可以直接去读取feature所在的管线data
+			//但是这个也有问题  首先只能是Editor下 并且需要 是展开状态  但是编辑的时候必须是展开状态所以没事
+			
+			/*
+			ScreenSpaceAmbientOcclusion ssaoFeature = (ScreenSpaceAmbientOcclusion)this.target;
+			UniversalRenderPipelineAsset pipelineAsset = (UniversalRenderPipelineAsset)GraphicsSettings.renderPipelineAsset;
+
+			if (ssaoFeature == null || pipelineAsset == null)
+				return false;
+
+			// We have to find the renderer related to the SSAO feature, then test if it is in deferred mode.
+			var rendererDataList = pipelineAsset.m_RendererDataList;
+			for (int rendererIndex = 0; rendererIndex < rendererDataList.Length; ++rendererIndex)
+			{
+				ScriptableRendererData rendererData = (ScriptableRendererData)rendererDataList[rendererIndex];
+				if (rendererData == null)
+					continue;
+
+				var rendererFeatures = rendererData.rendererFeatures;
+				foreach (var feature in rendererFeatures)
+				{
+					if (feature is ScreenSpaceAmbientOcclusion && (ScreenSpaceAmbientOcclusion)feature == ssaoFeature)
+						return rendererData is UniversalRendererData && ((UniversalRendererData)rendererData).renderingMode == RenderingMode.Deferred;
+				}
+			}
+			*/
+			
+			URPSSAORenderFeature ssaoFeature = (URPSSAORenderFeature) this.target;
+			UniversalRendererData rendererData =
+				AssetDatabase.LoadAssetAtPath<UniversalRendererData>(AssetDatabase.GetAssetPath(ssaoFeature));
+			return rendererData.renderingMode == RenderingMode.Deferred;
+		}
+	}
+}
+
+```
 
 
 
 
 
-
-
-//TODO:反射设置延迟
 //TODO:Shader
