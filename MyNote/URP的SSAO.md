@@ -40,7 +40,8 @@ URP的SSAO
 -----------------
 
 ## **1.原理**
-TODO:
+//TODO:
+GAMES 202 百人计划  知乎
 
 -----------------
 
@@ -649,7 +650,7 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 再后面就是渲染AO了. 在此之前 先写 **Enum ShaderPasses** 和 三个Render的公共方法.
 **Enum ShaderPasses**, 需要和shader pass index 对应.
 因为**SetSourceSize**是**interal**, 所以我这里直接拷贝出来了. 主要作用就是 传递画布尺寸(考虑动态画布缩放)到Shader中.
-**Render**, 设置RT, 全屏绘制某个pass. 因为是全部覆盖的后处理绘制, 所以不关心(**DontCare**)输入的颜色 和 depth, 只需要**Store**输出的颜色就好了.
+**Render**, 设置RT, 全屏绘制某个pass. 因为是全部覆盖的后处理绘制, 所以不关心(**DontCare**)输入的颜色 和 depth, 只需要**Store**输出的颜色就好了. 原来是全屏的四边形, 我这里改成用大三角形, 同时Shader中也要对应处理.
 **RenderAndSetBaseMap**, 同上, 并且多传入一个BaseMap.
 
 ```C#
@@ -699,7 +700,10 @@ public class URPSSAORenderPass : ScriptableRenderPass
 			RenderBufferLoadAction.DontCare,
 			RenderBufferStoreAction.DontCare
 		);
-		cmd.DrawMesh(RenderingUtils.fullscreenMesh, Matrix4x4.identity, m_Material, 0, (int)pass);
+
+		//原来的是绘制四个全屏顶点, 这里优化用大三角形  Shader中也要对应修改
+		//cmd.DrawMesh(RenderingUtils.fullscreenMesh, Matrix4x4.identity, m_Material, 0, (int) pass);
+		CoreUtils.DrawFullScreen(cmd, m_Material, null, (int) pass);
 	}
 
 	private void RenderAndSetBaseMap(CommandBuffer cmd, RenderTargetIdentifier baseMap, RenderTargetIdentifier target, ShaderPasses pass)
@@ -806,7 +810,6 @@ private void SetSourceSize(CommandBuffer cmd, RenderTextureDescriptor desc)
 
 因为我们获取不到Deferred, 所以需要自己添加bool, 通过反射来设置.
 虽然也可以用**AssemblyDefinition Reference** 和 **[InternalsVisibleTo]** 来实现, 但是没有搞明白搞成功 , 就先算了.
-
 至于效率问题, 因为运行的时候基本不会修改渲染模式. 所以基本只用获取一次就够了. 
 
 打开**URPSSAORenderFeature.cs**, 修改 **class URPSSAOSettings**
@@ -824,9 +827,7 @@ public class URPSSAOSettings
 	...
 }
 
-[DisallowMultipleRendererFeature]
-[Tooltip(
-	"The Ambient Occlusion effect darkens creases, holes, intersections and surfaces that are close to each other.")]
+...
 public class URPSSAORenderFeature : ScriptableRendererFeature
 {
 	...
@@ -871,6 +872,7 @@ public class URPSSAORenderFeature : ScriptableRendererFeature
 ```
 
 最后返回**URPSSAORenderPass.cs**, 修改**isRendererDeferred**
+
 ```C#
 
 public class URPSSAORenderPass : ScriptableRenderPass
@@ -897,7 +899,7 @@ public class URPSSAORenderPass : ScriptableRenderPass
 ### **2.4 InspectorGUI**
 
 然后编写Editor InspectorGUI.
-为什么要写? 好看(dogee). 还有是因为Deferred Mode下, 模式应该自动是Depth&Normal, 不让美术编辑.
+为什么要写? 好看(doge). 还有是因为Deferred Mode下, 模式应该自动是Depth&Normal, 不让美术编辑.
 
 修改前后.
 
@@ -905,7 +907,7 @@ public class URPSSAORenderPass : ScriptableRenderPass
 
 ![URPSSAO_8](Images/URPSSAO_8.jpg)
 
-
+这里**RendererIsDeferred()**的写法跟原URP不一样, 因为原来的写法存在问题. 他拿的的是当前管线, 然后是否存在当前**RenderFeature**, 决定能不能编辑. 但是其实可以直接获取这个**RenderFeature**所属的**RendererData**, 得到**renderingMode**是否是延迟就好了.
 
 ```C#
 
@@ -914,143 +916,356 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 
-namespace MyGraphics.GroundTruthAmbientOcclusion.Editor
+[CustomEditor(typeof(URPSSAORenderFeature))]
+public class URPSSAOEditor : UnityEditor.Editor
 {
-	[CustomEditor(typeof(URPSSAORenderFeature))]
-	public class URPSSAOEditor : UnityEditor.Editor
+	#region Serialized Properties
+
+	private SerializedProperty m_Downsample;
+	private SerializedProperty m_AfterOpaque;
+	private SerializedProperty m_Source;
+	private SerializedProperty m_NormalQuality;
+	private SerializedProperty m_Intensity;
+	private SerializedProperty m_DirectLightingStrength;
+	private SerializedProperty m_Radius;
+	private SerializedProperty m_SampleCount;
+
+	#endregion
+
+	private bool m_IsInitialized = false;
+
+	// Structs
+	private struct Styles
 	{
-		#region Serialized Properties
+		public static GUIContent Downsample = EditorGUIUtility.TrTextContent("Downsample",
+			"With this option enabled, Unity downsamples the SSAO effect texture to improve performance. Each dimension of the texture is reduced by a factor of 2.");
 
-		private SerializedProperty m_Downsample;
-		private SerializedProperty m_AfterOpaque;
-		private SerializedProperty m_Source;
-		private SerializedProperty m_NormalQuality;
-		private SerializedProperty m_Intensity;
-		private SerializedProperty m_DirectLightingStrength;
-		private SerializedProperty m_Radius;
-		private SerializedProperty m_SampleCount;
+		public static GUIContent AfterOpaque = EditorGUIUtility.TrTextContent("After Opaque",
+			"With this option enabled, Unity calculates and apply SSAO after the opaque pass to improve performance on mobile platforms with tiled-based GPU architectures. This is not physically correct.");
 
-		#endregion
+		public static GUIContent Source = EditorGUIUtility.TrTextContent("Source",
+			"The source of the normal vector values.\nDepth Normals: the feature uses the values generated in the Depth Normal prepass.\nDepth: the feature reconstructs the normal values using the depth buffer.\nIn the Deferred rendering path, the feature uses the G-buffer normals texture.");
 
-		private bool m_IsInitialized = false;
+		public static GUIContent NormalQuality = new GUIContent("Normal Quality",
+			"The number of depth texture samples that Unity takes when computing the normals. Low:1 sample, Medium: 5 samples, High: 9 samples.");
 
-		// Structs
-		private struct Styles
+		public static GUIContent Intensity =
+			EditorGUIUtility.TrTextContent("Intensity", "The degree of darkness that Ambient Occlusion adds.");
+
+		public static GUIContent DirectLightingStrength = EditorGUIUtility.TrTextContent("Direct Lighting Strength",
+			"Controls how much the ambient occlusion affects direct lighting.");
+
+		public static GUIContent Radius = EditorGUIUtility.TrTextContent("Radius",
+			"The radius around a given point, where Unity calculates and applies the effect.");
+
+		public static GUIContent SampleCount = EditorGUIUtility.TrTextContent("Sample Count",
+			"The number of samples that Unity takes when calculating the obscurance value. Higher values have high performance impact.");
+	}
+
+	private void Init()
+	{
+		SerializedProperty settings = serializedObject.FindProperty("m_Settings");
+		m_Source = settings.FindPropertyRelative("Source");
+		m_Downsample = settings.FindPropertyRelative("Downsample");
+		m_AfterOpaque = settings.FindPropertyRelative("AfterOpaque");
+		m_NormalQuality = settings.FindPropertyRelative("NormalSamples");
+		m_Intensity = settings.FindPropertyRelative("Intensity");
+		m_DirectLightingStrength = settings.FindPropertyRelative("DirectLightingStrength");
+		m_Radius = settings.FindPropertyRelative("Radius");
+		m_SampleCount = settings.FindPropertyRelative("SampleCount");
+		m_IsInitialized = true;
+	}
+
+	public override void OnInspectorGUI()
+	{
+		if (!m_IsInitialized)
 		{
-			public static GUIContent Downsample = EditorGUIUtility.TrTextContent("Downsample",
-				"With this option enabled, Unity downsamples the SSAO effect texture to improve performance. Each dimension of the texture is reduced by a factor of 2.");
-
-			public static GUIContent AfterOpaque = EditorGUIUtility.TrTextContent("After Opaque",
-				"With this option enabled, Unity calculates and apply SSAO after the opaque pass to improve performance on mobile platforms with tiled-based GPU architectures. This is not physically correct.");
-
-			public static GUIContent Source = EditorGUIUtility.TrTextContent("Source",
-				"The source of the normal vector values.\nDepth Normals: the feature uses the values generated in the Depth Normal prepass.\nDepth: the feature reconstructs the normal values using the depth buffer.\nIn the Deferred rendering path, the feature uses the G-buffer normals texture.");
-
-			public static GUIContent NormalQuality = new GUIContent("Normal Quality",
-				"The number of depth texture samples that Unity takes when computing the normals. Low:1 sample, Medium: 5 samples, High: 9 samples.");
-
-			public static GUIContent Intensity =
-				EditorGUIUtility.TrTextContent("Intensity", "The degree of darkness that Ambient Occlusion adds.");
-
-			public static GUIContent DirectLightingStrength = EditorGUIUtility.TrTextContent("Direct Lighting Strength",
-				"Controls how much the ambient occlusion affects direct lighting.");
-
-			public static GUIContent Radius = EditorGUIUtility.TrTextContent("Radius",
-				"The radius around a given point, where Unity calculates and applies the effect.");
-
-			public static GUIContent SampleCount = EditorGUIUtility.TrTextContent("Sample Count",
-				"The number of samples that Unity takes when calculating the obscurance value. Higher values have high performance impact.");
+			Init();
 		}
+		
+		bool isDeferredRenderingMode = RendererIsDeferred();
 
-		private void Init()
+		EditorGUILayout.PropertyField(m_Downsample, Styles.Downsample);
+
+		EditorGUILayout.PropertyField(m_AfterOpaque, Styles.AfterOpaque);
+
+		GUI.enabled = !isDeferredRenderingMode;
+		EditorGUILayout.PropertyField(m_Source, Styles.Source);
+
+		// We only enable this field when depth source is selected
+		GUI.enabled = !isDeferredRenderingMode &&
+						m_Source.enumValueIndex == (int) URPSSAOSettings.DepthSource.Depth;
+		EditorGUI.indentLevel++;
+		EditorGUILayout.PropertyField(m_NormalQuality, Styles.NormalQuality);
+		EditorGUI.indentLevel--;
+		GUI.enabled = true;
+
+		EditorGUILayout.PropertyField(m_Intensity, Styles.Intensity);
+		EditorGUILayout.PropertyField(m_Radius, Styles.Radius);
+		m_DirectLightingStrength.floatValue = EditorGUILayout.Slider(Styles.DirectLightingStrength,
+			m_DirectLightingStrength.floatValue, 0f, 1f);
+		m_SampleCount.intValue = EditorGUILayout.IntSlider(Styles.SampleCount, m_SampleCount.intValue, 4, 20);
+
+		m_Intensity.floatValue = Mathf.Clamp(m_Intensity.floatValue, 0f, m_Intensity.floatValue);
+		m_Radius.floatValue = Mathf.Clamp(m_Radius.floatValue, 0f, m_Radius.floatValue);
+	}
+
+	private bool RendererIsDeferred()
+	{
+		//原来的写法是internal  而且是错误的  因为他是根据当前挂载管线data来判断的  其实可以直接去读取feature所在的管线data
+		//但是这个也有问题  首先只能是Editor下 并且需要 是展开状态  但是编辑的时候必须是展开状态所以没事
+		
+		/*
+		ScreenSpaceAmbientOcclusion ssaoFeature = (ScreenSpaceAmbientOcclusion)this.target;
+		UniversalRenderPipelineAsset pipelineAsset = (UniversalRenderPipelineAsset)GraphicsSettings.renderPipelineAsset;
+
+		if (ssaoFeature == null || pipelineAsset == null)
+			return false;
+
+		// We have to find the renderer related to the SSAO feature, then test if it is in deferred mode.
+		var rendererDataList = pipelineAsset.m_RendererDataList;
+		for (int rendererIndex = 0; rendererIndex < rendererDataList.Length; ++rendererIndex)
 		{
-			SerializedProperty settings = serializedObject.FindProperty("m_Settings");
-			m_Source = settings.FindPropertyRelative("Source");
-			m_Downsample = settings.FindPropertyRelative("Downsample");
-			m_AfterOpaque = settings.FindPropertyRelative("AfterOpaque");
-			m_NormalQuality = settings.FindPropertyRelative("NormalSamples");
-			m_Intensity = settings.FindPropertyRelative("Intensity");
-			m_DirectLightingStrength = settings.FindPropertyRelative("DirectLightingStrength");
-			m_Radius = settings.FindPropertyRelative("Radius");
-			m_SampleCount = settings.FindPropertyRelative("SampleCount");
-			m_IsInitialized = true;
-		}
-	
-		public override void OnInspectorGUI()
-		{
-			if (!m_IsInitialized)
+			ScriptableRendererData rendererData = (ScriptableRendererData)rendererDataList[rendererIndex];
+			if (rendererData == null)
+				continue;
+
+			var rendererFeatures = rendererData.rendererFeatures;
+			foreach (var feature in rendererFeatures)
 			{
-				Init();
+				if (feature is ScreenSpaceAmbientOcclusion && (ScreenSpaceAmbientOcclusion)feature == ssaoFeature)
+					return rendererData is UniversalRendererData && ((UniversalRendererData)rendererData).renderingMode == RenderingMode.Deferred;
 			}
-			
-			bool isDeferredRenderingMode = RendererIsDeferred();
-
-			EditorGUILayout.PropertyField(m_Downsample, Styles.Downsample);
-
-			EditorGUILayout.PropertyField(m_AfterOpaque, Styles.AfterOpaque);
-
-			GUI.enabled = !isDeferredRenderingMode;
-			EditorGUILayout.PropertyField(m_Source, Styles.Source);
-
-			// We only enable this field when depth source is selected
-			GUI.enabled = !isDeferredRenderingMode &&
-			              m_Source.enumValueIndex == (int) URPSSAOSettings.DepthSource.Depth;
-			EditorGUI.indentLevel++;
-			EditorGUILayout.PropertyField(m_NormalQuality, Styles.NormalQuality);
-			EditorGUI.indentLevel--;
-			GUI.enabled = true;
-
-			EditorGUILayout.PropertyField(m_Intensity, Styles.Intensity);
-			EditorGUILayout.PropertyField(m_Radius, Styles.Radius);
-			m_DirectLightingStrength.floatValue = EditorGUILayout.Slider(Styles.DirectLightingStrength,
-				m_DirectLightingStrength.floatValue, 0f, 1f);
-			m_SampleCount.intValue = EditorGUILayout.IntSlider(Styles.SampleCount, m_SampleCount.intValue, 4, 20);
-
-			m_Intensity.floatValue = Mathf.Clamp(m_Intensity.floatValue, 0f, m_Intensity.floatValue);
-			m_Radius.floatValue = Mathf.Clamp(m_Radius.floatValue, 0f, m_Radius.floatValue);
 		}
-
-		private bool RendererIsDeferred()
-		{
-			//原来的写法是internal  而且是错误的  因为他是根据当前挂载管线data来判断的  其实可以直接去读取feature所在的管线data
-			//但是这个也有问题  首先只能是Editor下 并且需要 是展开状态  但是编辑的时候必须是展开状态所以没事
-			
-			/*
-			ScreenSpaceAmbientOcclusion ssaoFeature = (ScreenSpaceAmbientOcclusion)this.target;
-			UniversalRenderPipelineAsset pipelineAsset = (UniversalRenderPipelineAsset)GraphicsSettings.renderPipelineAsset;
-
-			if (ssaoFeature == null || pipelineAsset == null)
-				return false;
-
-			// We have to find the renderer related to the SSAO feature, then test if it is in deferred mode.
-			var rendererDataList = pipelineAsset.m_RendererDataList;
-			for (int rendererIndex = 0; rendererIndex < rendererDataList.Length; ++rendererIndex)
-			{
-				ScriptableRendererData rendererData = (ScriptableRendererData)rendererDataList[rendererIndex];
-				if (rendererData == null)
-					continue;
-
-				var rendererFeatures = rendererData.rendererFeatures;
-				foreach (var feature in rendererFeatures)
-				{
-					if (feature is ScreenSpaceAmbientOcclusion && (ScreenSpaceAmbientOcclusion)feature == ssaoFeature)
-						return rendererData is UniversalRendererData && ((UniversalRendererData)rendererData).renderingMode == RenderingMode.Deferred;
-				}
-			}
-			*/
-			
-			URPSSAORenderFeature ssaoFeature = (URPSSAORenderFeature) this.target;
-			UniversalRendererData rendererData =
-				AssetDatabase.LoadAssetAtPath<UniversalRendererData>(AssetDatabase.GetAssetPath(ssaoFeature));
-			return rendererData.renderingMode == RenderingMode.Deferred;
-		}
+		*/
+		
+		URPSSAORenderFeature ssaoFeature = (URPSSAORenderFeature) this.target;
+		UniversalRendererData rendererData =
+			AssetDatabase.LoadAssetAtPath<UniversalRendererData>(AssetDatabase.GetAssetPath(ssaoFeature));
+		return rendererData.renderingMode == RenderingMode.Deferred;
 	}
 }
 
 ```
 
+-----------------
+
+## **3.拆解Shader**
+
+&emsp;&emsp; 终于到Shader了.
+
+### **3.1 Shader框架**
+
+创建一个Shader **ScreenSpaceAmbientOcclusion.shader**. 因为用的是**Shader.Find()**, 所以Shader的name要和之前的**RenderFeature**的**k_ShaderName**对应.
+
+我们是URP, 所以要指定**RenderPipeline**为**UniversalPipeline**, 虽然也可以不写.
+
+为了确保绘制不会被剔除遮挡, 添加**Cull Off ZWrite Off ZTest Always**. 比如三角顺序错误, 深度比较失败等 都可能会引起绘制失败. 所以用设置确保无误.
+
+```C++
+
+Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
+{
+	SubShader
+	{
+		Tags
+		{
+			"RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline"
+		}
+		Cull Off ZWrite Off ZTest Always
+		
+		//TODO:Pass
+	}
+}
+
+```
+
+让代码美观, 我们把代码写在hlsl里面, shader中就写配置.
+创建一个hlsl **URPSSAOLib.hlsl**, 需要和Shader在同一个文件夹下.
+
+```C++
+
+#ifndef __URP_SSAO_LIB_INCLUDE__
+#define __URP_SSAO_LIB_INCLUDE__
+
+#endif
+
+```
+
+### **3.2 参数准备**
+
+先把参数全部复制过去, 这样写的时候就有代码智能提示, 也减少了来回切看参数的问题.
+
+include **DeclareDepthTexture** 和 **DeclareNormalsTexture**, 用于获取深度和法线.
+
+后面是我们传入的参数, 随机UV数组, 固定值等...
+
+```C++
+
+#ifndef UNIVERSAL_SSAO_INCLUDED
+#define UNIVERSAL_SSAO_INCLUDED
+
+// Includes
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/ShaderVariablesFunctions.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareNormalsTexture.hlsl"
+
+// Textures & Samplers
+TEXTURE2D_X(_BaseMap);
+TEXTURE2D_X(_ScreenSpaceOcclusionTexture);
+
+SAMPLER(sampler_BaseMap);
+SAMPLER(sampler_ScreenSpaceOcclusionTexture);
+
+// Params
+half4 _SSAOParams;
+half4 _CameraViewTopLeftCorner[2];
+half4x4 _CameraViewProjections[2]; // This is different from UNITY_MATRIX_VP (platform-agnostic projection matrix is used). Handle both non-XR and XR modes.
+
+float4 _SourceSize;
+float4 _ProjectionParams2;
+float4 _CameraViewXExtent[2];
+float4 _CameraViewYExtent[2];
+float4 _CameraViewZExtent[2];
+
+// Hardcoded random UV values that improves performance.
+// The values were taken from this function:
+// r = frac(43758.5453 * sin( dot(float2(12.9898, 78.233), uv)) ));
+// Indices  0 to 19 are for u = 0.0
+// Indices 20 to 39 are for u = 1.0
+static half SSAORandomUV[40] =
+{
+    0.00000000,  // 00
+    0.33984375,  // 01
+    0.75390625,  // 02
+    0.56640625,  // 03
+    0.98437500,  // 04
+    0.07421875,  // 05
+    0.23828125,  // 06
+    0.64062500,  // 07
+    0.35937500,  // 08
+    0.50781250,  // 09
+    0.38281250,  // 10
+    0.98437500,  // 11
+    0.17578125,  // 12
+    0.53906250,  // 13
+    0.28515625,  // 14
+    0.23137260,  // 15
+    0.45882360,  // 16
+    0.54117650,  // 17
+    0.12941180,  // 18
+    0.64313730,  // 19
+
+    0.92968750,  // 20
+    0.76171875,  // 21
+    0.13333330,  // 22
+    0.01562500,  // 23
+    0.00000000,  // 24
+    0.10546875,  // 25
+    0.64062500,  // 26
+    0.74609375,  // 27
+    0.67968750,  // 28
+    0.35156250,  // 29
+    0.49218750,  // 30
+    0.12500000,  // 31
+    0.26562500,  // 32
+    0.62500000,  // 33
+    0.44531250,  // 34
+    0.17647060,  // 35
+    0.44705890,  // 36
+    0.93333340,  // 37
+    0.87058830,  // 38
+    0.56862750,  // 39
+};
+
+// SSAO Settings
+#define INTENSITY _SSAOParams.x
+#define RADIUS _SSAOParams.y
+#define DOWNSAMPLE _SSAOParams.z
+
+// GLES2: In many cases, dynamic looping is not supported.
+#if defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
+    #define SAMPLE_COUNT 3
+#else
+    #define SAMPLE_COUNT int(_SSAOParams.w)
+#endif
+
+// Function defines
+#define SCREEN_PARAMS        GetScaledScreenParams()
+#define SAMPLE_BASEMAP(uv)   SAMPLE_TEXTURE2D_X(_BaseMap, sampler_BaseMap, UnityStereoTransformScreenSpaceTex(uv));
+
+// Constants
+// kContrast determines the contrast of occlusion. This allows users to control over/under
+// occlusion. At the moment, this is not exposed to the editor because it's rarely useful.
+// The range is between 0 and 1.
+static const half kContrast = half(0.5);
+
+// The constant below controls the geometry-awareness of the bilateral
+// filter. The higher value, the more sensitive it is.
+static const half kGeometryCoeff = half(0.8);
+
+// The constants below are used in the AO estimator. Beta is mainly used for suppressing
+// self-shadowing noise, and Epsilon is used to prevent calculation underflow. See the paper
+// (Morgan 2011 https://casual-effects.com/research/McGuire2011AlchemyAO/index.html)
+// for further details of these constants.
+static const half kBeta = half(0.002);
+static const half kEpsilon = half(0.0001);
+
+#if defined(USING_STEREO_MATRICES)
+    #define unity_eyeIndex unity_StereoEyeIndex
+#else
+    #define unity_eyeIndex 0
+#endif
 
 
+#endif //UNIVERSAL_SSAO_INCLUDED
 
 
-//TODO:Shader
+```
+
+
+### **3.3 顶点阶段**
+
+然后继续修改**URPSSAOLib.hlsl**.
+因为都是全屏的后处理. 所以顶点阶段都可以用大三角绘制 ,可以提高效率(根据平台而定, 一些没有反应 https://zhuanlan.zhihu.com/p/128023876).
+uv加了一个很小的epsilon, 避免重建法线的时候出现问题.
+
+```C++
+
+#if defined(USING_STEREO_MATRICES)
+    #define unity_eyeIndex unity_StereoEyeIndex
+#else
+    #define unity_eyeIndex 0
+#endif
+
+struct Attributes
+{
+    uint vertexID :SV_VertexID;
+    UNITY_VERTEX_INPUT_INSTANCE_ID
+};
+
+struct Varyings
+{
+    float4 positionCS : SV_POSITION;
+    float2 uv : TEXCOORD0;
+    UNITY_VERTEX_OUTPUT_STEREO
+};
+
+Varyings VertDefault(Attributes input)
+{
+    Varyings output;
+    UNITY_SETUP_INSTANCE_ID(input);
+    UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+
+    output.positionCS = GetFullScreenTriangleVertexPosition(input.vertexID);
+    output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
+
+    // 添加一个很极小的 epsilon 避免重建法线的时候出现问题
+    output.uv += 1.0e-6;
+
+    return output;
+}
+
+```
