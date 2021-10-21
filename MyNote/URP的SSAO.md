@@ -1269,3 +1269,133 @@ Varyings VertDefault(Attributes input)
 }
 
 ```
+
+### **3.4 SSAO_Occlusion**
+
+先写第一个Pass **SSAO_Occlusion**. 
+
+#### **3.4.1 Pass**
+
+在**ScreenSpaceAmbientOcclusion.shader**中先添加一个Pass.
+
+**_GBUFFER_NORMALS_OCT**, 用于Normal解压缩, 做用是高精度Normal.
+**_SOURCE_DEPTH**, **_SOURCE_DEPTH_NORMALS**, 决定输入的图.
+**_RECONSTRUCT_NORMAL_LOW** , **_RECONSTRUCT_NORMAL_MEDIUM** , **_RECONSTRUCT_NORMAL_HIGH** , 如果是纯Depth 这个关键字决定用什么质量.
+**_ORTHOGRAPHIC**, 摄像机是透视还是正交相机. 相机类型决定深度的反算(透视相机的深度是非线性变化).
+
+![URPSSAO_9](Images/URPSSAO_9.jpg)
+
+```C++
+
+Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
+{
+	SubShader
+	{
+		Tags
+		{
+			"RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline"
+		}
+		Cull Off ZWrite Off ZTest Always
+
+		// 0 - Occlusion estimation with CameraDepthTexture
+		Pass
+		{
+			Name "SSAO_Occlusion"
+
+			HLSLPROGRAM
+			#pragma vertex VertDefault
+			#pragma fragment SSAOFrag
+			#pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
+			#pragma multi_compile_local _SOURCE_DEPTH _SOURCE_DEPTH_NORMALS
+			#pragma multi_compile_local _RECONSTRUCT_NORMAL_LOW _RECONSTRUCT_NORMAL_MEDIUM _RECONSTRUCT_NORMAL_HIGH
+			#pragma multi_compile_local _ _ORTHOGRAPHIC
+			#include "URPSSAOLib.hlsl"
+			ENDHLSL
+		}
+	}
+}
+
+```
+
+#### **3.4.2 Depth**
+
+已经有uv了,要获取viewPos,就需要先获取depth.
+返回**URPSSAOLib.hlsl**, 添加方法**float SampleAndGetLinearEyeDepth(float2 uv)**.
+正交相机,深度是线性插值.透视相机,是非线性,所以要区分计算.
+这里可以直接调用封装好的API来完成.
+
+```C++
+
+...
+
+struct Varyings
+{
+	...
+};
+
+float SampleAndGetLinearEyeDepth(float2 uv)
+{
+    float rawDepth = SampleSceneDepth(uv.xy);
+    #if defined(_ORTHOGRAPHIC)
+    return LinearDepthToEyeDepth(rawDepth);
+    #else
+    return LinearEyeDepth(rawDepth, _ZBufferParams);
+    #endif
+}
+
+Varyings VertDefault(Attributes input)
+{
+	...
+}
+
+```
+
+#### **3.4.3 ViewPos**
+
+根据上面的原理还需要计算ViewPos.
+大体的写法是:
+ViewPos=(左上角起点+x方向*uv.x+y*uv.y)*(depth)
+但是还是要区分相机类型.
+添加方法**half3 ReconstructViewPos(float2 uv, float depth)**
+
+```C++
+
+
+float SampleAndGetLinearEyeDepth(float2 uv)
+{
+	....
+}
+
+// This returns a vector in world unit (not a position), from camera to the given point described by uv screen coordinate and depth (in absolute world unit).
+half3 ReconstructViewPos(float2 uv, float depth)
+{
+    // Screen is y-inverted.
+    uv.y = 1.0 - uv.y;
+
+    // view pos in world space
+    #if defined(_ORTHOGRAPHIC)
+    float zScale = depth * _ProjectionParams.w; // divide by far plane
+    float3 viewPos = _CameraViewTopLeftCorner[unity_eyeIndex].xyz
+                        + _CameraViewXExtent[unity_eyeIndex].xyz * uv.x
+                        + _CameraViewYExtent[unity_eyeIndex].xyz * uv.y
+                        + _CameraViewZExtent[unity_eyeIndex].xyz * zScale;
+    #else
+    float zScale = depth * _ProjectionParams2.x; // divide by near plane
+    float3 viewPos = _CameraViewTopLeftCorner[unity_eyeIndex].xyz
+        + _CameraViewXExtent[unity_eyeIndex].xyz * uv.x
+        + _CameraViewYExtent[unity_eyeIndex].xyz * uv.y;
+    viewPos *= zScale;
+    #endif
+
+    return half3(viewPos);
+}
+
+```
+
+#### **3.4.4 Normal**
+
+还需要再获取Normal.
+如果是延迟渲染利用UV和Gbuffer可以直接获取.
+否则就要利用空间坐标去生成计算.
+
+先写利用GBuffer的Normal吧.
