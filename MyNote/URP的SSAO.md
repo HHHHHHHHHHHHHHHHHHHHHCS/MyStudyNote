@@ -1319,7 +1319,7 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 
 #### **3.4.2 Depth**
 
-已经有uv了,要获取viewPos,就需要先获取depth.
+已经有uv了,要获取ViewPos,就需要先获取depth.
 返回**URPSSAOLib.hlsl**, 添加方法**float SampleAndGetLinearEyeDepth(float2 uv)**.
 正交相机,深度是线性插值.透视相机,是非线性,所以要区分计算.
 这里可以直接调用封装好的API来完成.
@@ -1352,11 +1352,13 @@ Varyings VertDefault(Attributes input)
 
 #### **3.4.3 ViewPos**
 
-根据上面的原理还需要计算ViewPos.
+根据上面的原理还需要计算ViewPos. 
+这里ViewPos是世界坐标系下, **摄像机位置** 到 **屏幕UV坐标和深度所描述的点** 的向量.
 大体的写法是:
-ViewPos=(左上角起点+x方向*uv.x+y*uv.y)*(depth)
-但是还是要区分相机类型.
-添加方法**half3 ReconstructViewPos(float2 uv, float depth)**
+ViewPos=(左上角起点+x方向*uv.x+y方向*uv.y)*(depth)
+但是还是要区分相机类型, 还要To Screen 的时候注意Y反转.
+
+添加方法**half3 ReconstructViewPos(float2 uv, float depth)**.
 
 ```C++
 
@@ -1396,6 +1398,190 @@ half3 ReconstructViewPos(float2 uv, float depth)
 
 还需要再获取Normal.
 如果是延迟渲染利用UV和Gbuffer可以直接获取.
-否则就要利用空间坐标去生成计算.
+否则就要利用空间坐标去生成重建.
 
-先写利用GBuffer的Normal吧.
+先写利用GBuffer的Normal吧.需要宏**_SOURCE_DEPTH_NORMALS**.
+添加方法**void SampleDepthNormalView(float2 uv, out float depth, out half3 normal, out half3 vpos)**
+
+```C++
+
+half3 ReconstructViewPos(float2 uv, float depth)
+{
+	...
+}
+
+void SampleDepthNormalView(float2 uv, out float depth, out half3 normal, out half3 vpos)
+{
+    #if defined(_SOURCE_DEPTH_NORMALS)
+    normal = half3(SampleSceneNormals(uv));
+    #endif
+}
+
+```
+
+如果没有法线图, 就利用空间坐标重建.
+添加方法**half3 ReconstructNormal(float2 uv, float depth, float3 vpos)** , 代码下面再补充.
+并且获取depth和viewPos, 然后调用**SampleDepthNormalView**.
+注释的两个超链接可以打开看一下, 讲的挺详细的.
+
+```C++
+
+half3 ReconstructViewPos(float2 uv, float depth)
+{
+	...
+}
+
+
+// Try reconstructing normal accurately from depth buffer.
+// Low:    DDX/DDY on the current pixel
+// Medium: 3 taps on each direction | x | * | y |
+// High:   5 taps on each direction: | z | x | * | y | w |
+// https://atyuwen.github.io/posts/normal-reconstruction/
+// https://wickedengine.net/2019/09/22/improved-normal-reconstruction-from-depth/
+half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
+{
+	//TODO:
+}
+
+void SampleDepthNormalView(float2 uv, out float depth, out half3 normal, out half3 vpos)
+{
+    depth = SampleAndGetLinearEyeDepth(uv);
+    vpos = ReconstructViewPos(uv, depth);
+
+    #if defined(_SOURCE_DEPTH_NORMALS)
+    normal = half3(SampleSceneNormals(uv));
+    #else
+    normal = ReconstructNormal(uv, depth, vpos);
+    #endif
+}
+
+```
+
+补充完善**ReconstructNormal**方法.
+
+分三个质量 **Low**, **Medium**, **High**, 大体效果如下图.
+
+![URPSSAO_10](Images/URPSSAO_10.png)
+
+先写**_RECONSTRUCT_NORMAL_LOW**, 可以直接用cross(ddx, ddy), 进行重建.
+
+```C++
+
+half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
+{
+    #if defined(_RECONSTRUCT_NORMAL_LOW)
+        return half3(normalize(cross(ddy(vpos), ddx(vpos))));
+    #else
+        //TODO:
+    #endif
+}
+
+```
+
+再写 **Medium**.
+选择上下方向中深度较大的一个方向, 左右方向中深度较大的方向, 分别生成VerViewPos和HorViewPos. 然后cross(VerViewPos - ViewPos, HorViewPos - ViewPos) 就是法线了. 具体效果如下图.
+
+![URPSSAO_11](Images/URPSSAO_11.jpg)
+
+```C++
+
+half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
+{
+    #if defined(_RECONSTRUCT_NORMAL_LOW)
+        ...
+    #else
+        float2 delta = float2(_SourceSize.zw * 2.0);
+
+        // Sample the neighbour fragments
+        float2 lUV = float2(-delta.x, 0.0);
+        float2 rUV = float2(delta.x, 0.0);
+        float2 uUV = float2(0.0, delta.y);
+        float2 dUV = float2(0.0, -delta.y);
+
+        float3 l1 = float3(uv + lUV, 0.0);
+        l1.z = SampleAndGetLinearEyeDepth(l1.xy); // Left1
+        float3 r1 = float3(uv + rUV, 0.0);
+        r1.z = SampleAndGetLinearEyeDepth(r1.xy); // Right1
+        float3 u1 = float3(uv + uUV, 0.0);
+        u1.z = SampleAndGetLinearEyeDepth(u1.xy); // Up1
+        float3 d1 = float3(uv + dUV, 0.0);
+        d1.z = SampleAndGetLinearEyeDepth(d1.xy); // Down1
+
+        // Determine the closest horizontal and vertical pixels...
+        // horizontal: left = 0.0 right = 1.0
+        // vertical  : down = 0.0    up = 1.0
+        #if defined(_RECONSTRUCT_NORMAL_MEDIUM)
+            const uint closest_horizontal = l1.z > r1.z ? 0 : 1;
+            const uint closest_vertical   = d1.z > u1.z ? 0 : 1;
+        #else
+            //TODO:
+        #endif
+
+
+        // Calculate the triangle, in a counter-clockwize order, to
+        // use based on the closest horizontal and vertical depths.
+        // h == 0.0 && v == 0.0: p1 = left,  p2 = down
+        // h == 1.0 && v == 0.0: p1 = down,  p2 = right
+        // h == 1.0 && v == 1.0: p1 = right, p2 = up
+        // h == 0.0 && v == 1.0: p1 = up,    p2 = left
+        // Calculate the view space positions for the three points...
+        float3 P1;
+        float3 P2;
+        if (closest_vertical == 0)
+        {
+            P1 = closest_horizontal == 0 ? l1 : d1;
+            P2 = closest_horizontal == 0 ? d1 : r1;
+        }
+        else
+        {
+            P1 = closest_horizontal == 0 ? u1 : r1;
+            P2 = closest_horizontal == 0 ? l1 : u1;
+        }
+
+        // Use the cross product to calculate the normal...
+        return half3(normalize(cross(ReconstructViewPos(P2.xy, P2.z) - vpos, ReconstructViewPos(P1.xy, P1.z) - vpos)));
+    #endif
+}
+
+```
+
+再写 **High**. 它需要在 **Medium** 中继续往下写.
+修改查找方向的公式为 离中心点深度最平稳的左右方向和上下方向.
+abs((l1-l2)+(l1-p)) < abs((r1-r2)+(r1-p))
+//TODO:画图
+
+```C++
+
+half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
+{
+    #if defined(_RECONSTRUCT_NORMAL_LOW)
+        ...
+    #else
+        ...
+
+        // Determine the closest horizontal and vertical pixels...
+        // horizontal: left = 0.0 right = 1.0
+        // vertical  : down = 0.0    up = 1.0
+        #if defined(_RECONSTRUCT_NORMAL_MEDIUM)
+            const uint closest_horizontal = l1.z > r1.z ? 0 : 1;
+            const uint closest_vertical   = d1.z > u1.z ? 0 : 1;
+        #else
+            float3 l2 = float3(uv + lUV * 2.0, 0.0);
+            l2.z = SampleAndGetLinearEyeDepth(l2.xy); // Left2
+            float3 r2 = float3(uv + rUV * 2.0, 0.0);
+            r2.z = SampleAndGetLinearEyeDepth(r2.xy); // Right2
+            float3 u2 = float3(uv + uUV * 2.0, 0.0);
+            u2.z = SampleAndGetLinearEyeDepth(u2.xy); // Up2
+            float3 d2 = float3(uv + dUV * 2.0, 0.0);
+            d2.z = SampleAndGetLinearEyeDepth(d2.xy); // Down2
+
+            const uint closest_horizontal = abs((2.0 * l1.z - l2.z) - depth) < abs((2.0 * r1.z - r2.z) - depth) ? 0 : 1;
+            const uint closest_vertical = abs((2.0 * d1.z - d2.z) - depth) < abs((2.0 * u1.z - u2.z) - depth) ? 0 : 1;
+        #endif
+
+
+        ...
+    #endif
+}
+
+```
