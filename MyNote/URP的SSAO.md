@@ -193,7 +193,7 @@ public class URPSSAORenderFeature : ScriptableRendererFeature
 这里先看构造函数
 因为我这里是抄写的,比较符合我自己的代码习惯,而且还是一步一步慢慢填充的,所以跟原来的代码不一样.但是大体上的思想基本一致.
 比如说**ProfilingSampler.Get(URPProfileId.SSAO)**外部获取不了,我这里用**k_tag**来自己创建.
-再比如**isRendererDeferred**判断是否为延迟渲染. 因为 **renderer.renderingMode** 是internal, 所以没有办法判断, 只能先写成false. 之后再在settings里面加个bool用于代替.
+再比如**isRendererDeferred**判断是否为延迟渲染. 因为 **renderer.renderingMode** 是internal, 所以没有办法判断, 只能先写成false, 之后再想办法解决.
 
 ```C#
 using System;
@@ -234,7 +234,12 @@ public class URPSSAORenderPass : ScriptableRenderPass
 然后再看看每帧执行的**Setup**.
 把**Feature**的变量传递进去,记录保存.
 根据变量决定是否要开启SSAO, 渲染队列, 和需要的场景信息.
+ConfigureInput告诉管线, 我这个pass需要什么图, 让引擎帮忙启用对应的pass, 得到对应的图.
 (URP2021**ConfigureInput**终于支持**Motion Vector**)
+
+比如说:前项渲染且勾选了**DepthNormals**, 则会利用物体的**DepthNormal Pass** 去绘制生成Normal图.
+
+![URPSSAO_13](Images/URPSSAO_13.jpg)
 
 ```C#
 ...
@@ -1398,9 +1403,12 @@ half3 ReconstructViewPos(float2 uv, float depth)
 
 还需要再获取Normal.
 如果是延迟渲染利用UV和Gbuffer可以直接获取.
+如果是前项渲染且勾选了**DepthNormals**, 则会利用物体的**DepthNormal Pass** 去绘制生成Normal图, 传入Shader.
 否则就要利用空间坐标去生成重建.
 
-先写利用GBuffer的Normal吧.需要宏**_SOURCE_DEPTH_NORMALS**.
+![URPSSAO_13](Images/URPSSAO_13.jpg)
+
+先写利用Normal图获取Normal吧.需要宏**_SOURCE_DEPTH_NORMALS**.
 添加方法**void SampleDepthNormalView(float2 uv, out float depth, out half3 normal, out half3 vpos)**
 
 ```C++
@@ -1545,10 +1553,14 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 
 ```
 
-再写 **High**. 它需要在 **Medium** 中继续往下写.
-修改查找方向的公式为 离中心点深度最平稳的左右方向和上下方向.
-abs((l1-l2)+(l1-p)) < abs((r1-r2)+(r1-p))
-//TODO:画图
+再写 **High**. 它需要在 **Medium** 中继续改写.
+修改查找方向的公式为 离中心点深度最平缓的左右方向和上下方向.
+如下图:
+左边=abs((l1-l2)+(l1-p0)) , 右边=abs((r1-r2)+(r1-p0))
+因为左边<右边, 所以认为左边平缓,采用左边重建, 上下同理.
+
+![URPSSAO_12](Images/URPSSAO_12.jpg)
+
 
 ```C++
 
