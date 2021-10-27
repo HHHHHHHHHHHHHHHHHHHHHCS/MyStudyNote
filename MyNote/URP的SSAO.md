@@ -1491,6 +1491,12 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 
 ![URPSSAO_11](Images/URPSSAO_11.jpg)
 
+注意, URP版本**delta**是 *2.0, 我这里改成 *1.0. 因为发现效果会好一点, 不知道为什么他这里写 *2.0. 下面图一是 *2.0, 图二是 *2.0, 看龙珠那边的瑕疵.
+
+![URPSSAO_14](Images/URPSSAO_14.jpg)
+![URPSSAO_15](Images/URPSSAO_15.jpg)
+
+
 ```C++
 
 half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
@@ -1498,7 +1504,8 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
     #if defined(_RECONSTRUCT_NORMAL_LOW)
         ...
     #else
-        float2 delta = float2(_SourceSize.zw * 2.0);
+        //原来是*2.0  我这里改成*1.0
+        float2 delta = float2(_SourceSize.zw * 1.0);
 
         // Sample the neighbour fragments
         float2 lUV = float2(-delta.x, 0.0);
@@ -1561,7 +1568,6 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 
 ![URPSSAO_12](Images/URPSSAO_12.jpg)
 
-
 ```C++
 
 half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
@@ -1597,3 +1603,14 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 }
 
 ```
+
+然后可以对比一下Normal的差别.
+这里注意 **Deferred** 的 **Normal** 已经是 **[-1, 1]** 的了, 还有这边的 **delta**是 *1.0 的.
+龙身体原来就是有凸起的瑕疵.
+
+顺序分别是 **Normal**, **Low**, **Medium**, **High**.
+
+![URPSSAO_16](Images/URPSSAO_16.jpg)
+![URPSSAO_17](Images/URPSSAO_17.jpg)
+![URPSSAO_18](Images/URPSSAO_18.jpg)
+![URPSSAO_19](Images/URPSSAO_19.jpg)
