@@ -1425,6 +1425,11 @@ void SampleDepthNormalView(float2 uv, out float depth, out half3 normal, out hal
     #endif
 }
 
+Varyings VertDefault(Attributes input)
+{
+	...
+}
+
 ```
 
 如果没有法线图, 就利用空间坐标重建.
@@ -1614,3 +1619,39 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 ![URPSSAO_17](Images/URPSSAO_17.jpg)
 ![URPSSAO_18](Images/URPSSAO_18.jpg)
 ![URPSSAO_19](Images/URPSSAO_19.jpg)
+
+#### **3.4.5 SSAOFrag**
+
+创建Fragment **half4 SSAOFrag(Varyings input)**.
+把之前写的获取Depth, Normal, View Position先加进去.
+
+```C++
+
+...
+
+Varyings VertDefault(Attributes input)
+{
+	...
+}
+
+// Distance-based AO estimator based on Morgan 2011
+// "Alchemy screen-space ambient obscurance algorithm"
+// http://graphics.cs.williams.edu/papers/AlchemyHPG11/
+half4 SSAOFrag(Varyings input) : SV_Target
+{
+    UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+    float2 uv = input.uv;
+
+    // Parameters used in coordinate conversion
+    half3x3 camTransform = (half3x3)_CameraViewProjections[unity_eyeIndex]; // camera viewProjection matrix
+
+    // Get the depth, normal and view position for this fragment
+    float depth_o;
+    half3 norm_o;
+    half3 vpos_o;
+    SampleDepthNormalView(uv, depth_o, norm_o, vpos_o);
+
+	//TODO:
+}
+
+```
