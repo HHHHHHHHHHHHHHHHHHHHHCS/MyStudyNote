@@ -1620,9 +1620,68 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 ![URPSSAO_18](Images/URPSSAO_18.jpg)
 ![URPSSAO_19](Images/URPSSAO_19.jpg)
 
-#### **3.4.5 SSAOFrag**
 
-创建Fragment **half4 SSAOFrag(Varyings input)**.
+#### **3.4.5 SampleRandomDirection**
+
+有了当前点的信息, 然后再在当前点的沿法线半球进行多次随机采样获取多个点, 再和当前点比较生成AO.
+
+那么就要先写一个获取随机方向的办法.
+添加方法**half3 PickSamplePoint(float2 uv, int sampleIndex)**和相关的方法. 
+这里利用出之前的随机数组和随机函数生成是一个整球的随机方向.
+
+**InterleavedGradientNoise**方法在SRP内置的**Random.hlsl**.
+
+![URPSSAO_20](Images/URPSSAO_20.jpg)
+
+```C++
+
+void SampleDepthNormalView(float2 uv, out float depth, out half3 normal, out half3 vpos)
+{
+	...
+}
+
+
+// Trigonometric function utility
+half2 CosSin(half theta)
+{
+    half sn, cs;
+    sincos(theta, sn, cs);
+    return half2(cs, sn);
+}
+
+// Pseudo random number generator with 2D coordinates
+half GetRandomUVForSSAO(float u, int sampleIndex)
+{
+    return SSAORandomUV[u * 20 + sampleIndex];
+}
+
+float2 GetScreenSpacePosition(float2 uv)
+{
+    return float2(uv * SCREEN_PARAMS.xy * DOWNSAMPLE);
+}
+
+// Sample point picker
+half3 PickSamplePoint(float2 uv, int sampleIndex)
+{
+    const float2 positionSS = GetScreenSpacePosition(uv);
+    const half gn = half(InterleavedGradientNoise(positionSS, sampleIndex));
+
+    const half u = frac(GetRandomUVForSSAO(half(0.0), sampleIndex) + gn) * half(2.0) - half(1.0);
+    const half theta = (GetRandomUVForSSAO(half(1.0), sampleIndex) + gn) * half(TWO_PI);
+
+    return half3(CosSin(theta) * sqrt(half(1.0) - u * u), u);
+}
+
+Varyings VertDefault(Attributes input)
+{
+	...
+}
+
+```
+
+#### **3.4.6 SSAOFrag**
+
+接着就可以写Fragment Shader, 创建方法 **half4 SSAOFrag(Varyings input)**.
 把之前写的获取Depth, Normal, View Position先加进去.
 
 ```C++
@@ -1652,6 +1711,86 @@ half4 SSAOFrag(Varyings input) : SV_Target
     SampleDepthNormalView(uv, depth_o, norm_o, vpos_o);
 
 	//TODO:
+}
+
+```
+
+然后就要For循环获得随机采样点.
+先获取随机方向, 根据循环索引确定长度, 从而确定点的位置. 
+因为要沿着法线正方向, 所以利用**faceforward**方法确保如果在反面也翻转到正面.
+最后随机采样点的位置=当前像素点位置+随机偏移方向.
+
+```C++
+
+...
+
+half4 SSAOFrag(Varyings input) : SV_Target
+{
+	...
+    SampleDepthNormalView(uv, depth_o, norm_o, vpos_o);
+
+    // This was added to avoid a NVIDIA driver issue.
+    const half rcpSampleCount = half(rcp(SAMPLE_COUNT));
+    half ao = 0.0;
+    for (int s = 0; s < SAMPLE_COUNT; s++)
+    {
+        // Sample point
+        half3 v_s1 = PickSamplePoint(uv, s);
+
+        // Make it distributed between [0, _Radius]
+        v_s1 *= sqrt((half(s) + half(1.0)) * rcpSampleCount) * RADIUS;
+
+        //-n sign(dot(i, ng)).   确保跟normal一个方向
+        v_s1 = faceforward(v_s1, -norm_o, v_s1);
+
+        half3 vpos_s1 = vpos_o + v_s1;
+
+		//TODO:
+    }
+}
+
+```
+
+有了这个随机点之后, 利用它在所在Project Space的UV位置, 配合深度图获取这个位置最靠前的点信息. 然后进行比较. 
+
+所以就要先把这个View Space的点转换到Project Space 获得UV, 再采样深度图, 获得depth. 在之前写的**ReconstructViewPos(uv, depth)**方法, 获得靠前的点信息.
+
+因为**透视相机**的点在屏幕空间的UV坐标是会根据深度变化从而进行等比变化, 而正交相机则不会, 所以还要区分开来写.
+
+```C++
+
+...
+
+half4 SSAOFrag(Varyings input) : SV_Target
+{
+	...
+
+    // This was added to avoid a NVIDIA driver issue.
+    const half rcpSampleCount = half(rcp(SAMPLE_COUNT));
+    half ao = 0.0;
+    for (int s = 0; s < SAMPLE_COUNT; s++)
+    {
+		...
+
+        half3 vpos_s1 = vpos_o + v_s1;
+
+        half3 spos_s1 = mul(camTransform, vpos_s1);
+
+        #if defined(_ORTHOGRAPHIC)
+            float2 uv_s1_01 = clamp((spos_s1.xy + float(1.0)) * float(0.5), float(0.0), float(1.0));
+        #else
+            float zdist = -dot(UNITY_MATRIX_V[2].xyz, vpos_s1);
+            float2 uv_s1_01 = clamp((spos_s1.xy * rcp(zdist) + float(1.0)) * float(0.5), float(0.0), float(1.0));
+        #endif
+
+        // Depth at the sample point
+        float depth_s1 = SampleAndGetLinearEyeDepth(uv_s1_01);
+
+        // Relative position of the sample point
+        half3 vpos_s2 = ReconstructViewPos(uv_s1_01, depth_s1);
+
+		//TODO:
+    }
 }
 
 ```
