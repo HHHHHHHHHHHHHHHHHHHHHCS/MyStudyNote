@@ -41,7 +41,7 @@ URP的SSAO
 
 ## **1.原理**
 //TODO:
-GAMES 202 百人计划  知乎
+GAMES 202 百人计划  知乎 OPENGL
 
 -----------------
 
@@ -1720,6 +1720,8 @@ half4 SSAOFrag(Varyings input) : SV_Target
 因为要沿着法线正方向, 所以利用**faceforward**方法确保如果在反面也翻转到正面.
 最后随机采样点的位置=当前像素点位置+随机偏移方向.
 
+//MyTODO:faceforward 取巧
+
 ```C++
 
 ...
@@ -1753,9 +1755,10 @@ half4 SSAOFrag(Varyings input) : SV_Target
 
 有了这个随机点之后, 利用它在所在Project Space的UV位置, 配合深度图获取这个位置最靠前的点信息. 然后进行比较. 
 
-所以就要先把这个View Space的点转换到Project Space 获得UV, 再采样深度图, 获得depth. 在之前写的**ReconstructViewPos(uv, depth)**方法, 获得靠前的点信息.
+所以就要先把这个View Space的点转换到Project Space 获得UV, 再采样深度图, 获得depth. 在用之前写的**ReconstructViewPos(uv, depth)**方法, 获得靠前的点信息.
 
-因为**透视相机**的点在屏幕空间的UV坐标是会根据深度变化从而进行等比变化, 而正交相机则不会, 所以还要区分开来写.
+在获取点所在屏幕UV位置的时候有点不一样. 这里camTransform(VP Martix)是3x3的, 而且如果就算是4x4计算到的结果还要除以w. 所以这里为了减少计算量, 就用了另外一种方法等比变化.
+因为**透视相机**的点在屏幕空间的UV坐标是会根据深度变化从而进行等比变化, 但是正交相机则不会, 所以还要区分开来写.
 
 ```C++
 
@@ -1764,10 +1767,6 @@ half4 SSAOFrag(Varyings input) : SV_Target
 half4 SSAOFrag(Varyings input) : SV_Target
 {
 	...
-
-    // This was added to avoid a NVIDIA driver issue.
-    const half rcpSampleCount = half(rcp(SAMPLE_COUNT));
-    half ao = 0.0;
     for (int s = 0; s < SAMPLE_COUNT; s++)
     {
 		...
@@ -1794,3 +1793,72 @@ half4 SSAOFrag(Varyings input) : SV_Target
 }
 
 ```
+
+有了正确的随机采样点的View Space信息. 就可以和原点进行比较, 得到AO值.
+设 矢量D=随机点-原点.
+D和法线夹角越小, AO强度越大. 如果在背面(dot产生负数), 则不产生AO. 
+原点离我们摄像机越远, AO也会衰减. 
+如果D的长度越长, 既两点距离越远, AO也会变弱.
+
+```C++
+
+...
+
+half4 SSAOFrag(Varyings input) : SV_Target
+{
+	...
+    for (int s = 0; s < SAMPLE_COUNT; s++)
+    {
+		...
+
+        // Relative position of the sample point
+        half3 vpos_s2 = ReconstructViewPos(uv_s1_01, depth_s1);
+
+        half3 v_s2 = vpos_s2 - vpos_o;
+        // Estimate the obscurance value
+        half dotVal = dot(v_s2, norm_o);
+        #if defined(_ORTHOGRAPHIC)
+            dotVal -= half(2.0 * kBeta * depth_o);
+        #else
+            dotVal -= half(kBeta * depth_o);
+        #endif
+
+        half a1 = max(dotVal, half(0.0));
+        half a2 = dot(v_s2, v_s2) + kEpsilon;
+        ao += a1 * rcp(a2);
+    }
+
+	//TODO:
+}
+
+```
+
+然后这里得到的AO值是累积的, 需要平均正常化.
+正常的是: ao = (ao累加值/数量)*强度
+这里为了效果可能是添加了一点魔法吧233333. 具体我也不知道.
+可以输出看看AO效果.
+
+```C++
+
+...
+
+half4 SSAOFrag(Varyings input) : SV_Target
+{
+	...
+    for (int s = 0; s < SAMPLE_COUNT; s++)
+    {
+		...
+    }
+
+    // Intensity normalization
+    ao *= RADIUS;
+
+    // Apply contrast
+    ao = PositivePow(ao * INTENSITY * rcpSampleCount, kContrast);
+
+    return ao;
+}
+
+```
+
+最后把ao和normal pack一下输出.
