@@ -1861,4 +1861,111 @@ half4 SSAOFrag(Varyings input) : SV_Target
 
 ```
 
-最后把ao和normal pack一下输出.
+![URPSSAO_21](Images/URPSSAO_21.jpg)
+
+#### **3.4.7 PackAONormal**
+
+最后因为后面的Pass还需要用到Normal, 所以需要把ao和normal 进行pack一下, 然后进行输出.
+r:ao    gba:normal*0.5+0.5
+添加三个新方法, 并且修改**half4 SSAOFrag(Varyings input)**的输出.
+**half4 PackAONormal(half ao, half3 n)** , pack ao和normal
+**half3 GetPackedNormal(half4 p)** , unpack normal
+**half GetPackedAO(half4 p)** , 获取ao
+
+```C++
+
+...
+
+struct Varyings
+{
+	...
+};
+
+half4 PackAONormal(half ao, half3 n)
+{
+    return half4(ao, n * half(0.5) + half(0.5));
+}
+
+half3 GetPackedNormal(half4 p)
+{
+    return p.gba * half(2.0) - half(1.0);
+}
+
+half GetPackedAO(half4 p)
+{
+    return p.r;
+}
+
+float SampleAndGetLinearEyeDepth(float2 uv)
+{
+	...
+}
+
+...
+
+half4 SSAOFrag(Varyings input) : SV_Target
+{
+	...
+
+    // Apply contrast
+    ao = PositivePow(ao * INTENSITY * rcpSampleCount, kContrast);
+    return PackAONormal(ao, norm_o);
+}
+```
+
+### **3.5 SSAO_HorizontalBlur**
+
+看上面的AO图, 可以知道这时候得到的AO结果非常的粗糙,充满颗粒感,不平滑. 所以需要blur进行处理一下. 这里的模糊用高效高斯模糊, 即分别用横(Horizontal)方向和竖(Vertical)方向进行处理.
+
+#### **3.5.1 Pass**
+
+返回**ScreenSpaceAmbientOcclusion.shader**中再添加一个Pass **SSAO_HorizontalBlur**.
+**BLUR_SAMPLE_CENTER_NORMAL** , 用于重建normal,后面细讲.
+之后的变体, 上面都讲过.
+
+```C++
+
+Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
+{
+	SubShader
+	{
+		...
+
+		// 0 - Occlusion estimation with CameraDepthTexture
+		Pass
+		{
+			...
+		}
+
+		// 1 - Horizontal Blur
+		Pass
+		{
+			Name "SSAO_HorizontalBlur"
+
+			HLSLPROGRAM
+			#pragma vertex VertDefault
+			#pragma fragment HorizontalBlur
+			#define BLUR_SAMPLE_CENTER_NORMAL
+			#pragma multi_compile_local _ _ORTHOGRAPHIC
+			#pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
+			#pragma multi_compile_local _SOURCE_DEPTH _SOURCE_DEPTH_NORMALS
+			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SSAO.hlsl"
+			ENDHLSL
+		}
+	}
+}
+
+```
+
+#### **3.5.2 Blur**
+
+在写Frag之前, 先写相关方法.
+在**URPSSAOLib.hlsl**中添加一个模糊方法**half4 Blur(float2 uv, float2 delta)**.
+
+那些魔法数字, 具体参考这篇 [基于线性采样的高效高斯模糊实现（译）](https://zhuanlan.zhihu.com/p/58182228), 核就那样, 这里就不多说了.
+
+但是这里有点无法理解! Unity为什么要利用宏**BLUR_SAMPLE_CENTER_NORMAL** 对当前点重建Normal, 上面不都重建好并且储存了!? 不过还是照抄吧. 并且我们的Normal图都是提前准备好的, 关系不大.
+
+```C++
+
+```
