@@ -1863,6 +1863,7 @@ half4 SSAOFrag(Varyings input) : SV_Target
 
 ![URPSSAO_21](Images/URPSSAO_21.jpg)
 
+
 #### **3.4.7 PackAONormal**
 
 最后因为后面的Pass还需要用到Normal, 所以需要把ao和normal 进行pack一下, 然后进行输出.
@@ -1949,7 +1950,7 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 			#pragma multi_compile_local _ _ORTHOGRAPHIC
 			#pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 			#pragma multi_compile_local _SOURCE_DEPTH _SOURCE_DEPTH_NORMALS
-			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SSAO.hlsl"
+			#include "URPSSAOLib.hlsl"
 			ENDHLSL
 		}
 	}
@@ -1962,10 +1963,236 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 在写Frag之前, 先写相关方法.
 在**URPSSAOLib.hlsl**中添加一个模糊方法**half4 Blur(float2 uv, float2 delta)**.
 
-那些魔法数字, 具体参考这篇 [基于线性采样的高效高斯模糊实现（译）](https://zhuanlan.zhihu.com/p/58182228), 核就那样, 这里就不多说了.
+那些魔法数字, 具体参考这篇 [基于线性采样的高效高斯模糊实现（译）](https://zhuanlan.zhihu.com/p/58182228), 理解偏移和权重, 作用是提高效率, 这里就不多说了.
 
-但是这里有点无法理解! Unity为什么要利用宏**BLUR_SAMPLE_CENTER_NORMAL** 对当前点重建Normal, 上面不都重建好并且储存了!? 不过还是照抄吧. 并且我们的Normal图都是提前准备好的, 关系不大.
+**SAMPLE_BASEMAP**是之前定义的宏,对_BaseMap进行采样.
+
+但是这里有点无法理解! Unity为什么要利用宏**BLUR_SAMPLE_CENTER_NORMAL** 开启对当前点重建Normal, 上面不都重建好并且储存了!? 不过关系不大 还是照抄吧, 因为我们的Normal图是提前准备好的.(怀疑不是一个人写的既视感)
+所以还要添加方法**half3 SampleNormal(float2 uv)**, 大体和**SampleDepthNormalView**方法相似.
 
 ```C++
 
+...
+
+half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
+{
+	...
+}
+
+// For when we don't need to output the depth or view position
+// Used in the blur passes
+half3 SampleNormal(float2 uv)
+{
+    #if defined(_SOURCE_DEPTH_NORMALS)
+        return half3(SampleSceneNormals(uv));
+    #else
+        float depth = SampleAndGetLinearEyeDepth(uv);
+        half3 vpos = ReconstructViewPos(uv, depth);
+        return ReconstructNormal(uv, depth, vpos);
+    #endif
+}
+
+void SampleDepthNormalView(float2 uv, out float depth, out half3 normal, out half3 vpos)
+{
+	...
+}
+
+...
+
+// Geometry-aware separable bilateral filter
+half4 Blur(float2 uv, float2 delta) 
+{
+    half4 p0 =  (half4) SAMPLE_BASEMAP(uv                 );
+    half4 p1a = (half4) SAMPLE_BASEMAP(uv - delta * 1.3846153846);
+    half4 p1b = (half4) SAMPLE_BASEMAP(uv + delta * 1.3846153846);
+    half4 p2a = (half4) SAMPLE_BASEMAP(uv - delta * 3.2307692308);
+    half4 p2b = (half4) SAMPLE_BASEMAP(uv + delta * 3.2307692308);
+
+    #if defined(BLUR_SAMPLE_CENTER_NORMAL)
+        #if defined(_SOURCE_DEPTH_NORMALS)
+            half3 n0 = half3(SampleSceneNormals(uv));
+        #else
+            half3 n0 = SampleNormal(uv);
+        #endif
+    #else
+        half3 n0 = GetPackedNormal(p0);
+    #endif
+
+    //TODO:
+}
+
 ```
+
+本来是AO*权重就好了. 不过URP这里加了一个法线的比较. 如果周围点的法线和当前点的法线偏离过大, 则AO再适当减弱.
+
+![URPSSAO_22](Images/URPSSAO_22.jpg)
+
+添加方法**half CompareNormal(half3 d1, half3 d2)**, 用于比较当前点的法线和周围法线 从而得到AO的适当衰减, **kGeometryCoeff** 之前定义为 0.8.
+
+然后把ao * 权重 * 法线比较衰减, 就好了.
+
+
+```C++
+
+...
+
+half GetPackedAO(half4 p)
+	...
+}
+
+half CompareNormal(half3 d1, half3 d2)
+{
+    return smoothstep(kGeometryCoeff, half(1.0), dot(d1, d2));
+}
+
+float SampleAndGetLinearEyeDepth(float2 uv)
+{
+	...
+}
+
+...
+
+// Geometry-aware separable bilateral filter
+half4 Blur(float2 uv, float2 delta) 
+{
+    ...
+
+    #if defined(BLUR_SAMPLE_CENTER_NORMAL)
+		...
+    #endif
+
+
+    half w0  =                                           half(0.2270270270);
+    half w1a = CompareNormal(n0, GetPackedNormal(p1a)) * half(0.3162162162);
+    half w1b = CompareNormal(n0, GetPackedNormal(p1b)) * half(0.3162162162);
+    half w2a = CompareNormal(n0, GetPackedNormal(p2a)) * half(0.0702702703);
+    half w2b = CompareNormal(n0, GetPackedNormal(p2b)) * half(0.0702702703);
+
+    half s = half(0.0);
+    s += GetPackedAO(p0)  * w0;
+    s += GetPackedAO(p1a) * w1a;
+    s += GetPackedAO(p1b) * w1b;
+    s += GetPackedAO(p2a) * w2a;
+    s += GetPackedAO(p2b) * w2b;
+    s *= rcp(w0 + w1a + w1b + w2a + w2b);
+
+    return PackAONormal(s, n0);
+}
+
+```
+
+#### **3.5.3 HorizontalBlur**
+
+然后写FragPass. 添加Pass **half4 HorizontalBlur(Varyings input)**
+只用把当前uv和delta传进**Blur**方法就好了.
+
+```C++
+
+...
+
+half4 SSAOFrag(Varyings input) : SV_Target
+{
+	...
+}
+
+half4 HorizontalBlur(Varyings input) : SV_Target
+{
+    UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+
+    const float2 uv = input.uv;
+    const float2 delta = float2(_SourceSize.z, 0.0);
+    return Blur(uv, delta);
+}
+
+```
+
+
+### **3.6 SSAO_VerticalBlur**
+
+有了横向模糊, 还要继续纵向模糊一下.
+
+#### **3.5.1 Pass**
+
+返回**ScreenSpaceAmbientOcclusion.shader**中再添加一个Pass **SSAO_VerticalBlur**.
+
+```C++
+
+Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
+{
+	SubShader
+	{
+		...
+
+		// 0 - Occlusion estimation with CameraDepthTexture
+		Pass
+		{
+			...
+		}
+
+		// 1 - Horizontal Blur
+		Pass
+		{
+			...
+		}
+
+		// 2 - Vertical Blur
+		Pass
+		{
+			Name "SSAO_VerticalBlur"
+
+			HLSLPROGRAM
+				#pragma vertex VertDefault
+				#pragma fragment VerticalBlur
+				#include "URPSSAOLib.hlsl"
+			ENDHLSL
+		}
+	}
+}
+
+```
+
+#### **3.5.2 VerticalBlur**
+
+因为**Blur**方法在横向模糊的时候已经写好了. 这里只用再写Fragment Shader就好了, 方向是竖着的.
+因为存在**DOWNSAMPLE**, 所以还是要注意一下delta的值.
++ 比如Screen RT是1920*1080. 
++ Pass1RT 启用**DOWNSAMPLE**为960x540. 
++ Pass2 RT恢复为1920*1080 . 因为引用Pass1RT, 所以delta为1/(960x540) . 
++ Pass3 RT也为1920*1080. 引用Pass2, delta为1/(1920x1080). 这显然是错的, 因为这个时候rt已经Resize过了, 颜色Bilinear重新生成过. 我们需要采样Resize前的颜色点. 所以delta 应该是 1/(960|540). 
+
+```C++
+
+half4 HorizontalBlur(Varyings input) : SV_Target
+{
+    UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+
+    const float2 uv = input.uv;
+    const float2 delta = float2(_SourceSize.z, 0.0);
+    return Blur(uv, delta);
+}
+
+half4 VerticalBlur(Varyings input) : SV_Target
+{
+    UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+
+    const float2 uv = input.uv;
+    const float2 delta = float2(0.0, _SourceSize.w * rcp(DOWNSAMPLE));
+    return Blur(uv, delta);
+}
+
+```
+
+可以看看Blur之后的效果. 下面分别是: 没有Blur, HorizontalBlur, VerticalBlur. 显然效果好了很多.
+
+![URPSSAO_23](Images/URPSSAO_23.jpg)
+![URPSSAO_24](Images/URPSSAO_24.jpg)
+![URPSSAO_25](Images/URPSSAO_25.jpg)
+
+
+### **3.7 SSAO_FinalBlur**
+
+URP还有最后一次对角Blur, 然后OneMinus输出.
+
+#### **3.5.1 Pass**
+
+返回**ScreenSpaceAmbientOcclusion.shader**中再添加一个Pass **SSAO_VerticalBlur**.
