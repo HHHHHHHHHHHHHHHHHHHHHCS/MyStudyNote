@@ -1119,10 +1119,9 @@ include **DeclareDepthTexture** 和 **DeclareNormalsTexture**, 用于获取深�
 
 // Textures & Samplers
 TEXTURE2D_X(_BaseMap);
-TEXTURE2D_X(_ScreenSpaceOcclusionTexture);
 
 SAMPLER(sampler_BaseMap);
-SAMPLER(sampler_ScreenSpaceOcclusionTexture);
+
 
 // Params
 half4 _SSAOParams;
@@ -2111,7 +2110,7 @@ half4 HorizontalBlur(Varyings input) : SV_Target
 
 有了横向模糊, 还要继续纵向模糊一下.
 
-#### **3.5.1 Pass**
+#### **3.6.1 Pass**
 
 返回**ScreenSpaceAmbientOcclusion.shader**中再添加一个Pass **SSAO_VerticalBlur**.
 
@@ -2151,9 +2150,10 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 
 ```
 
-#### **3.5.2 VerticalBlur**
+#### **3.6.2 VerticalBlur**
 
-因为**Blur**方法在横向模糊的时候已经写好了. 这里只用再写Fragment Shader就好了, 方向是竖着的.
+因为**Blur**方法在横向模糊的时候已经写好了. 这里只用再写Fragment Shader就好了, 方向是竖着的. 添加方法**half4 VerticalBlur(Varyings input)**.
+
 因为存在**DOWNSAMPLE**, 所以还是要注意一下delta的值.
 + 比如Screen RT是1920*1080. 
 + Pass1RT 启用**DOWNSAMPLE**为960x540. 
@@ -2162,13 +2162,11 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 
 ```C++
 
+...
+
 half4 HorizontalBlur(Varyings input) : SV_Target
 {
-    UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-
-    const float2 uv = input.uv;
-    const float2 delta = float2(_SourceSize.z, 0.0);
-    return Blur(uv, delta);
+	...
 }
 
 half4 VerticalBlur(Varyings input) : SV_Target
@@ -2191,8 +2189,137 @@ half4 VerticalBlur(Varyings input) : SV_Target
 
 ### **3.7 SSAO_FinalBlur**
 
-URP还有最后一次对角Blur, 然后OneMinus输出.
+虽然上面Blur后的效果已经很不错了. 但是URP还有最后一次对角Blur, 进一步提高效果, 最后OneMinus输出.
 
-#### **3.5.1 Pass**
+#### **3.7.1 Pass**
 
-返回**ScreenSpaceAmbientOcclusion.shader**中再添加一个Pass **SSAO_VerticalBlur**.
+返回**ScreenSpaceAmbientOcclusion.shader**中再添加一个Pass **SSAO_FinalBlur**.
+
+Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
+{
+	SubShader
+	{
+
+		...
+
+		// 2 - Vertical Blur
+		Pass
+		{
+			...
+		}
+
+		// 3 - Final Blur
+		Pass
+		{
+			Name "SSAO_FinalBlur"
+
+			HLSLPROGRAM
+			#pragma vertex VertDefault
+			#pragma fragment FinalBlur
+			#include "URPSSAOLib.hlsl"
+			ENDHLSL
+		}
+	}
+}
+
+#### **3.7.2 BlurSmall**
+
+因为这个是对角Blur, 和之前的Blur方法有点不一样. 所以在**URPSSAO.hlsl**中创建一个新的方法**half BlurSmall(float2 uv, float2 delta)**. 原理和Blur一样.
+
+```C++
+
+// Geometry-aware separable bilateral filter
+half4 Blur(float2 uv, float2 delta)
+{
+	...
+}
+
+// Geometry-aware bilateral filter (single pass/small kernel)
+half BlurSmall(float2 uv, float2 delta)
+{
+    half4 p0 = (half4)SAMPLE_BASEMAP(uv);
+    half4 p1 = (half4)SAMPLE_BASEMAP(uv + float2(-delta.x, -delta.y));
+    half4 p2 = (half4)SAMPLE_BASEMAP(uv + float2( delta.x, -delta.y));
+    half4 p3 = (half4)SAMPLE_BASEMAP(uv + float2(-delta.x, delta.y));
+    half4 p4 = (half4)SAMPLE_BASEMAP(uv + float2( delta.x, delta.y));
+
+    half3 n0 = GetPackedNormal(p0);
+
+    half w0 = half(1.0);
+    half w1 = CompareNormal(n0, GetPackedNormal(p1));
+    half w2 = CompareNormal(n0, GetPackedNormal(p2));
+    half w3 = CompareNormal(n0, GetPackedNormal(p3));
+    half w4 = CompareNormal(n0, GetPackedNormal(p4));
+
+    half s = half(0.0);
+    s += GetPackedAO(p0) * w0;
+    s += GetPackedAO(p1) * w1;
+    s += GetPackedAO(p2) * w2;
+    s += GetPackedAO(p3) * w3;
+    s += GetPackedAO(p4) * w4;
+
+    return s * rcp(w0 + w1 + w2 + w3 + w4);
+}
+
+Varyings VertDefault(Attributes input)
+{
+	...
+}
+
+```
+
+#### **3.7.3 FinalBlur**
+
+然后写Fragment Shader. 添加方法**half4 FinalBlur(Varyings input)**.
+这里ao是白色, 所以需要1-ao, 从而得到最终的ao.
+
+```C++
+
+...
+
+half4 VerticalBlur(Varyings input) : SV_Target
+{
+	...
+}
+
+half4 FinalBlur(Varyings input) : SV_Target
+{
+    UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+
+    const float2 uv = input.uv;
+    const float2 delta = _SourceSize.zw;
+    return 1.0h - BlurSmall(uv, delta);
+}
+
+```
+
+可以对比一下横竖模糊和加上对角模糊. 放大之后可以看出差异, 更柔和了.
+
+![URPSSAO_26](Images/URPSSAO_26.jpg)
+![URPSSAO_27](Images/URPSSAO_27.jpg)
+
+然后得到的AO图大概是这样的. 其实就是把上面反色了一下. 因为图只有一个R通道, 所以一些设置下看起来是红色的.
+
+![URPSSAO_28](Images/URPSSAO_28.jpg)
+
+
+-----------------
+
+## **4.应用**
+
+&emsp;&emsp; 那么怎么表现在物体上面呢. 前面讲了两种方法. 一种物体着色的时候采样变暗, 还有一种开启Setting的**After Opaque** 类似于后处理绘制上去.
+
+### **4.1 Ambiennt Occlusion**
+
+AO的处理URP已经给我们封装好了hlsl, 路径是: "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl". 
+
+这里ao分两种:间接ao(indirectionOcclusion),直接ao(directionOcclusion).
+
+![URPSSAO_29](Images/URPSSAO_29.jpg)
+![URPSSAO_30](Images/URPSSAO_30.jpg)
+
+具体使用还要分Forward Render和Deferred Render.
+
+#### **4.2 Forward Render**
+
+![URPSSAO_31](Images/URPSSAO_31.jpg)
