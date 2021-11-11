@@ -29,7 +29,7 @@ URP的SSAO
 
 ![URPSSAO_5](Images/URPSSAO_5.png)
 
-差不多5ms.这效果配上这耗时真的一言难尽...... 但是不妨碍拿来学习.
+差不多5ms.这效果配上这耗时真的一言难尽...... 但是不妨碍拿来学习. 同时这里是前向渲染, Normal要存在重建, 所以极大的增加了耗时.
 
 这里的版本是2021的. 2021对延迟渲染和XR做了支持,并且可以修改渲染的时机为BeforeOpaque/AfterOpaque(就是在物体shader中采样,还是贴到屏幕上).
 
@@ -1915,12 +1915,12 @@ half4 SSAOFrag(Varyings input) : SV_Target
 
 ### **3.5 SSAO_HorizontalBlur**
 
-看上面的AO图, 可以知道这时候得到的AO结果非常的粗糙,充满颗粒感,不平滑. 所以需要blur进行处理一下. 这里的模糊用高效高斯模糊, 即分别用横(Horizontal)方向和竖(Vertical)方向进行处理.
+看上面的AO图, 可以知道这时候得到的AO结果非常的粗糙,充满颗粒感,不平滑. 所以需要blur进行处理一下. 这里的模糊用高效高斯模糊, 即分别用横(Horizontal)方向和竖(Vertical)方向还有对角方向进行处理.
 
 #### **3.5.1 Pass**
 
 返回**ScreenSpaceAmbientOcclusion.shader**中再添加一个Pass **SSAO_HorizontalBlur**.
-**BLUR_SAMPLE_CENTER_NORMAL** , 用于重建normal,后面细讲.
+**BLUR_SAMPLE_CENTER_NORMAL** , 用于重建normal, 但是AO图的yzw已经保存了Normal. 所以我这里屏蔽了, 后面还会详细讲.
 之后的变体, 上面都讲过.
 
 ```C++
@@ -1945,7 +1945,7 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 			HLSLPROGRAM
 			#pragma vertex VertDefault
 			#pragma fragment HorizontalBlur
-			#define BLUR_SAMPLE_CENTER_NORMAL
+			// #define BLUR_SAMPLE_CENTER_NORMAL
 			#pragma multi_compile_local _ _ORTHOGRAPHIC
 			#pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 			#pragma multi_compile_local _SOURCE_DEPTH _SOURCE_DEPTH_NORMALS
@@ -1966,8 +1966,9 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 
 **SAMPLE_BASEMAP**是之前定义的宏,对_BaseMap进行采样.
 
-但是这里有点无法理解! Unity为什么要利用宏**BLUR_SAMPLE_CENTER_NORMAL** 开启对当前点重建Normal, 上面不都重建好并且储存了!? 不过关系不大 还是照抄吧, 因为我们的Normal图是提前准备好的.(怀疑不是一个人写的既视感)
-所以还要添加方法**half3 SampleNormal(float2 uv)**, 大体和**SampleDepthNormalView**方法相似.
+但是这里有点无法理解! Unity为什么要利用宏**BLUR_SAMPLE_CENTER_NORMAL** 开启对当前点重建Normal, 上面不都重建好并且储存了!? 虽然我在Pass中已经把宏注释了.
+
+不过为了还原, 还是要添加方法**half3 SampleNormal(float2 uv)**, 大体和**SampleDepthNormalView**方法相似.
 
 ```C++
 
@@ -2311,15 +2312,99 @@ half4 FinalBlur(Varyings input) : SV_Target
 
 ### **4.1 Ambiennt Occlusion**
 
-AO的处理URP已经给我们封装好了hlsl, 路径是: "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl". 
+AO的获取, URP已经给我们封装好了hlsl, 路径是: "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl". 图片和属性是在URPSSAORenderPass.cs中通过SetGlobal设置的.
 
-这里ao分两种:间接ao(indirectionOcclusion),直接ao(directionOcclusion).
+这里ao分两种:
++ 间接ao(indirectionOcclusion), 压暗环境光的颜色.
++ 直接ao(directionOcclusion), 压暗light的颜色.
 
 ![URPSSAO_29](Images/URPSSAO_29.jpg)
 ![URPSSAO_30](Images/URPSSAO_30.jpg)
 
 具体使用还要分Forward Render和Deferred Render.
 
-#### **4.2 Forward Render**
+### **4.2 Forward Render**
+
+前项渲染, directionOcclusion影响MainLight.Color和AdditionLight.Color.
 
 ![URPSSAO_31](Images/URPSSAO_31.jpg)
+
+比如indirectionOcclusion影响全局光照(GlobalIllumination).
+
+![URPSSAO_32](Images/URPSSAO_32.jpg)
+
+### **4.3 Deferred Render**
+
+延迟渲染也差不多. indirectionOcclusion直接压暗LightColor. 
+
+![URPSSAO_33](Images/URPSSAO_33.jpg)
+
+directionOcclusion->occlusion=>alpha. Color Blend 改变 dst color.
+
+![URPSSAO_34](Images/URPSSAO_34.jpg)
+
+### **4.4 AfterOpaque**
+
+还有一种是AfterOpaque, 类似于直接贴上一张AO图. 跟延迟渲染差不多, 在Color Blend阶段改变dst color.
+
+返回**ScreenSpaceAmbientOcclusion.shader**, 添加一个Pass **SSAO_AfterOpaque**. 用封装好的hlsl就好了. 注意Blend模式.
+
+```C++
+
+Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
+{
+	SubShader
+	{
+		...
+
+		// 3 - Final Blur
+		Pass
+		{
+			...
+		}
+
+		// 4 - After Opaque
+		Pass
+		{
+			Name "SSAO_AfterOpaque"
+
+			ZTest NotEqual
+			ZWrite Off
+			Cull Off
+			Blend One SrcAlpha, Zero One
+			BlendOp Add, Add
+
+			HLSLPROGRAM
+			#pragma vertex VertDefault
+			#pragma fragment FragAfterOpaque
+			#define _SCREEN_SPACE_OCCLUSION
+
+			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+			#include "URPSSAOLib.hlsl"
+
+			half4 FragAfterOpaque(Varyings input) : SV_Target
+			{
+				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+
+				AmbientOcclusionFactor aoFactor = GetScreenSpaceAmbientOcclusion(input.uv);
+				half occlusion = aoFactor.indirectAmbientOcclusion;
+				return half4(0.0, 0.0, 0.0, occlusion);
+			}
+			ENDHLSL
+		}
+	}
+}
+
+```
+
+
+-----------------
+
+## **4.其它**
+
+1. 不知道为什么Normal重建步长用的是2.0. 我这里改成了1.0.
+2. AO图的时候yzw已经保存了Normal, 但是HorizontalBlur的时候可能会又重建Normal. 感觉没有必要. 我已经注释了.
+3. 当downsample的时候, Occsion Pass RT是 1/2, Horizontal Blur 立马恢复为 1/1. 其实可以在Final Blur的时候恢复为 1/1.
+4. Window->Analysis->Rendering Debugger可以直接Debug AO效果, 还有一堆效果.
+
+![URPSSAO_35](Images/URPSSAO_35.jpg)
