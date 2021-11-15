@@ -21,15 +21,18 @@ URP的SSAO
 
 ![URPSSAO_2](Images/URPSSAO_2.png)
 
-再看下耗时.虽然用render doc来检测耗时不是很科学和准确,但是手里也没有别的工具了.
+再看下耗时, 电脑比较辣鸡, 见谅.
 
-![URPSSAO_3](Images/URPSSAO_3.png)
+![URPSSAO_3](Images/URPSSAO_3.jpg)
 
-![URPSSAO_4](Images/URPSSAO_4.png)
+![URPSSAO_4](Images/URPSSAO_4.jpg)
 
-![URPSSAO_5](Images/URPSSAO_5.png)
+![URPSSAO_5](Images/URPSSAO_5.jpg)
 
-差不多5ms.这效果配上这耗时真的一言难尽...... 但是不妨碍拿来学习. 同时这里是前向渲染, Normal要存在重建, 所以极大的增加了耗时.
+图一是前项渲染差不多2ms. 因为Normal要存在重建, 所以增加了耗时.
+图二是延迟渲染差不多1.5ms. 相对而言快了很多.
+图三是延迟渲染且去掉了随机采样点0.5ms, 差不多快了1秒.
+说明耗时主要是Normal重建和随机采样点.
 
 这里的版本是2021的. 2021对延迟渲染和XR做了支持,并且可以修改渲染的时机为BeforeOpaque/AfterOpaque(就是在物体shader中采样,还是贴到屏幕上).
 
@@ -2408,3 +2411,5 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 4. Window->Analysis->Rendering Debugger可以直接Debug AO效果, 还有一堆效果.
 
 ![URPSSAO_35](Images/URPSSAO_35.jpg)
+
+5. 随机
