@@ -1,7 +1,7 @@
 URP的SSAO
 =================
 
-(Github正常排版: [URP的SSAO]())
+(Github正常排版: [URP的SSAO](https://github.com/HHHHHHHHHHHHHHHHHHHHHCS/MyStudyNote/blob/main/MyNote/URP%E7%9A%84SSAO.md))
 
 -----------------
 
@@ -42,12 +42,26 @@ URP的SSAO
 -----------------
 
 ## **1.原理**
-//TODO:GAMES 202 百人计划  知乎 OPENGL
 &emsp;&emsp; 先说大体的原理, 然后具体的实现各有不同.
 
-这里拿LearOpenGL的SSAO来说.
+先说说AO(Ambient Occlusion,环境光遮罩). 物体之间的遮挡, 从而让光线的接受变少, 产生明暗或层次分明的变化.
 
-![URPSSAO_36](Images/URPSSAO_36.png)
+![URPSSAO_36](Images/URPSSAO_36.jpg)
+
+下面看Games202-P8的图可以明显感受到, 在只有环境光的情况下, 有AO显然有了立体感和层次感.
+
+![URPSSAO_37](Images/URPSSAO_37.jpg)
+
+再来说说SSAO. 这里使用 LearOpenGL 和 百人计划--SSAO算法 的图来说明. 
+1. 先利用深度图和屏幕UV坐标反算出当前点世界坐标.
+2. 再使用沿着法线正方向半球内的随机点进行采样, 获得新的坐标点. 
+3. 两个点进行比较, 然后加权处理获得AO.
+4. AO为了效果好,Blur一下.
+5. 最后和场景颜色RT进行混合叠加.
+
+![URPSSAO_38](Images/URPSSAO_38.png)
+
+![URPSSAO_39](Images/URPSSAO_39.jpg)
 
 
 
@@ -772,7 +786,7 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 				RenderBufferLoadAction.Load,
 				RenderBufferStoreAction.Store
 			);
-			cmd.DrawMesh(RenderingUtils.fullscreenMesh, Matrix4x4.identity, m_Material, 0, (int)ShaderPasses.AfterOpaque);
+			CoreUtils.DrawFullScreen(cmd, m_Material, null, (int) ShaderPasses.AfterOpaque);
 		}
 
 	}
@@ -1630,10 +1644,10 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 
 #### **3.4.5 SampleRandomDirection**
 
-有了当前点的信息, 然后再在当前点的沿法线半球进行多次随机采样获取多个点, 再和当前点比较生成AO.
+有了当前点的信息, 然后再在当前点的沿法线半球进行多次随机采样获取多个点, 转换到Project Space,再和当前点比较生成AO.
 
 那么就要先写一个获取随机方向的办法.
-添加方法**half3 PickSamplePoint(float2 uv, int sampleIndex)**和相关的方法. 
+添加方法**half3 PickSamplePoint(float2 uv, int sampleIndex)**和相关的随机方法. 
 这里利用出之前的随机数组和随机函数生成是一个整球的随机方向.
 
 **InterleavedGradientNoise**方法在SRP内置的**Random.hlsl**.
@@ -1758,11 +1772,10 @@ half4 SSAOFrag(Varyings input) : SV_Target
 
 ```
 
-有了这个随机点之后, 利用它在所在Project Space的UV位置, 配合深度图获取这个位置最靠前的点信息. 然后进行比较. 
+有了这个随机点之后, 转换到它到Screen Space得到屏幕UV位置, 配合深度图获取这个位置最靠前的点信息. 然后进行比较. 
 
-所以就要先把这个View Space的点转换到Project Space 获得UV, 再采样深度图, 获得depth. 在用之前写的**ReconstructViewPos(uv, depth)**方法, 获得靠前的点信息.
+所以就要先把这个World Space的点转换到Project Space获得UV, 再采样深度图, 获得depth. 再使用之前写的**ReconstructViewPos(uv, depth)**方法, 获得靠前的点World Space信息.
 
-在获取点所在屏幕UV位置的时候有点不一样. 这里camTransform(VP Martix)是3x3的, 而且如果就算是4x4计算到的结果还要除以w. 所以这里为了减少计算量, 就用了另外一种方法等比变化.
 因为**透视相机**的点在屏幕空间的UV坐标是会根据深度变化从而进行等比变化, 但是正交相机则不会, 所以还要区分开来写.
 
 ```C++
@@ -1803,7 +1816,7 @@ half4 SSAOFrag(Varyings input) : SV_Target
 设 矢量D=随机点-原点.
 D和法线夹角越小, AO强度越大. 如果在背面(dot产生负数), 则不产生AO. 
 原点离我们摄像机越远, AO也会衰减. 
-如果D的长度越长, 既两点距离越远, AO也会变弱.
+如果D的长度越长, 既两点距离越远, AO贡献越小.
 
 ```C++
 
@@ -2355,7 +2368,7 @@ directionOcclusion->occlusion=>alpha. Color Blend 改变 dst color.
 
 返回**ScreenSpaceAmbientOcclusion.shader**, 添加一个Pass **SSAO_AfterOpaque**. 用封装好的hlsl就好了. 注意Blend模式.
 
-当物体多且屏占比大重叠率高, 相对使用**AfterOpaque**比较好.具体场景还是自己测试一下比较好.
+当物体多且屏占比大重叠率高, 使用**AfterOpaque**比物体着色采样要好. 但是手机平台有剔除技术(如IOS的HSV), 具体场景还是自己测试一下比较好.
 
 ```C++
 
@@ -2412,12 +2425,12 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 ## **4.其它**
 
 1. 不知道为什么Normal重建步长用的是2.0. 我这里改成了1.0.
-2. AO图的时候yzw已经保存了Normal, 但是HorizontalBlur的时候可能会又重建Normal. 感觉没有必要. 我已经注释了.
+2. AO图的时候yzw已经保存了Normal, 但是HorizontalBlur的时候可能会又重建Normal. 感觉没有必要. 我已经注释掉了.
 3. 当downsample的时候, Occsion Pass RT是 1/2, Horizontal Blur 立马恢复为 1/1. 其实可以在Final Blur的时候恢复为 1/1.
 4. Window->Analysis->Rendering Debugger可以直接Debug AO效果, 还有一堆效果.
 
 ![URPSSAO_35](Images/URPSSAO_35.jpg)
 
+5. 随机采样改成贴图
 
-
-5. 随机
+//TODO:理清楚  space   然后整体重新读一遍
