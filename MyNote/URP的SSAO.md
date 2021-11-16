@@ -31,7 +31,7 @@ URP的SSAO
 
 图一是前项渲染差不多2ms. 因为Normal要存在重建, 所以增加了耗时.
 图二是延迟渲染差不多1.5ms. 相对而言快了0.5ms.
-图三是延迟渲染且开启downsample, 耗时0.8ms. 快了一半0.7ms.
+图三是延迟渲染且开启downsample, 耗时0.8ms. 快了0.7ms, 差不多有一半了.
 
 这里的版本是2021的. 2021对延迟渲染和XR做了支持,并且可以修改渲染的时机为BeforeOpaque/AfterOpaque(就是在物体shader中采样,还是贴到屏幕上).
 
@@ -42,8 +42,14 @@ URP的SSAO
 -----------------
 
 ## **1.原理**
-//TODO:
-GAMES 202 百人计划  知乎 OPENGL
+//TODO:GAMES 202 百人计划  知乎 OPENGL
+&emsp;&emsp; 先说大体的原理, 然后具体的实现各有不同.
+
+这里拿LearOpenGL的SSAO来说.
+
+![URPSSAO_36](Images/URPSSAO_36.png)
+
+
 
 -----------------
 
@@ -1721,8 +1727,6 @@ half4 SSAOFrag(Varyings input) : SV_Target
 因为要沿着法线正方向, 所以利用**faceforward**方法确保如果在反面也翻转到正面.
 最后随机采样点的位置=当前像素点位置+随机偏移方向.
 
-//MyTODO:faceforward 取巧
-
 ```C++
 
 ...
@@ -1743,7 +1747,7 @@ half4 SSAOFrag(Varyings input) : SV_Target
         // Make it distributed between [0, _Radius]
         v_s1 *= sqrt((half(s) + half(1.0)) * rcpSampleCount) * RADIUS;
 
-        //-n sign(dot(i, ng)).   确保跟normal一个方向
+        //-n*sign(dot(i, ng)).   确保跟normal一个方向
         v_s1 = faceforward(v_s1, -norm_o, v_s1);
 
         half3 vpos_s1 = vpos_o + v_s1;
@@ -2351,8 +2355,7 @@ directionOcclusion->occlusion=>alpha. Color Blend 改变 dst color.
 
 返回**ScreenSpaceAmbientOcclusion.shader**, 添加一个Pass **SSAO_AfterOpaque**. 用封装好的hlsl就好了. 注意Blend模式.
 
-用哪种模式?TODO:
-
+当物体多且屏占比大重叠率高, 相对使用**AfterOpaque**比较好.具体场景还是自己测试一下比较好.
 
 ```C++
 
@@ -2403,6 +2406,7 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 ```
 
 
+
 -----------------
 
 ## **4.其它**
@@ -2413,5 +2417,7 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 4. Window->Analysis->Rendering Debugger可以直接Debug AO效果, 还有一堆效果.
 
 ![URPSSAO_35](Images/URPSSAO_35.jpg)
+
+
 
 5. 随机
