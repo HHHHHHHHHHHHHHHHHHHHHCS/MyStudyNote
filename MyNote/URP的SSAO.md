@@ -30,9 +30,8 @@ URP的SSAO
 ![URPSSAO_5](Images/URPSSAO_5.jpg)
 
 图一是前项渲染差不多2ms. 因为Normal要存在重建, 所以增加了耗时.
-图二是延迟渲染差不多1.5ms. 相对而言快了很多.
-图三是延迟渲染且去掉了随机采样点0.5ms, 差不多快了1秒.
-说明耗时主要是Normal重建和随机采样点.
+图二是延迟渲染差不多1.5ms. 相对而言快了0.5ms.
+图三是延迟渲染且开启downsample, 耗时0.8ms. 快了一半0.7ms.
 
 这里的版本是2021的. 2021对延迟渲染和XR做了支持,并且可以修改渲染的时机为BeforeOpaque/AfterOpaque(就是在物体shader中采样,还是贴到屏幕上).
 
@@ -618,7 +617,7 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 		return;
 	}
 
-	CommandBuffer cmd = CommandBufferPool.Get();
+	CommandBuffer cmd = CommandBufferPool.Get(k_tag);
 	using (new ProfilingScope(cmd, m_ProfilingSampler))
 	{
 		//TODO:
@@ -2351,6 +2350,9 @@ directionOcclusion->occlusion=>alpha. Color Blend 改变 dst color.
 还有一种是AfterOpaque, 类似于直接贴上一张AO图. 跟延迟渲染差不多, 在Color Blend阶段改变dst color.
 
 返回**ScreenSpaceAmbientOcclusion.shader**, 添加一个Pass **SSAO_AfterOpaque**. 用封装好的hlsl就好了. 注意Blend模式.
+
+用哪种模式?TODO:
+
 
 ```C++
 
