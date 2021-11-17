@@ -24,9 +24,7 @@ URP的SSAO
 再看下耗时, 电脑比较辣鸡, 见谅.
 
 ![URPSSAO_3](Images/URPSSAO_3.jpg)
-
 ![URPSSAO_4](Images/URPSSAO_4.jpg)
-
 ![URPSSAO_5](Images/URPSSAO_5.jpg)
 
 图一是前项渲染差不多2ms. 因为Normal要存在重建, 所以增加了耗时.
@@ -44,7 +42,7 @@ URP的SSAO
 ## **1.原理**
 &emsp;&emsp; 先说大体的原理, 然后具体的实现各有不同.
 
-先说说AO(Ambient Occlusion,环境光遮罩). 物体之间的遮挡, 从而让光线的接受变少, 产生明暗或层次分明的变化.
+先说说AO(Ambient Occlusion,环境光遮罩). 物体几何之间的遮挡, 从而让光线的接受变少, 让物体变暗, 产生明暗或层次分明的感觉.
 
 ![URPSSAO_36](Images/URPSSAO_36.jpg)
 
@@ -52,24 +50,44 @@ URP的SSAO
 
 ![URPSSAO_37](Images/URPSSAO_37.jpg)
 
-再来说说SSAO. 这里使用 LearOpenGL 和 百人计划--SSAO算法 的图来说明. 
+再来说说SSAO. 这里使用 LearOpenGL 和 百人计划--SSAO算法 的图来说明.
 1. 先利用深度图和屏幕UV坐标反算出当前点世界坐标.
 2. 再使用沿着法线正方向半球内的随机点进行采样, 获得新的坐标点. 
 3. 两个点进行比较, 然后加权处理获得AO.
-4. AO为了效果好,Blur一下.
+4. AO这时候充满噪点, 需要高斯Blur一下.
 5. 最后和场景颜色RT进行混合叠加.
 
 ![URPSSAO_38](Images/URPSSAO_38.png)
-
 ![URPSSAO_39](Images/URPSSAO_39.jpg)
 
+然后再说随机点采样. 在以前, 同时获得颜色和法线比较困难, 所以用的是整球(如2007年Crysis中SSAO). 因为是整球, 那么基本一个平面的一半会被遮住, 所以那时候如果遮挡的点大于一半的时候才考虑计算AO.
+后面硬件发展, 可以利用法线改成半球采样, 对比整球去掉了灰蒙蒙的感觉, 效果好很多.
+
+还有之前还有SSAO Ray-tracing计算遮蔽, 现在则是使用随机采样点, 这能明显提高效率.
+
+当然也存在判断失误的情况. 比如下图这个点. 在视野上是被遮住了, 但是光照并不是被遮挡. 不过这里还是统一都判定为发生光照遮挡, 不然计算太复杂了.
+
+![URPSSAO_40](Images/URPSSAO_40.jpg)
+
+还有比如说两个之间间隔很大, 理论上也不会产生AO.
+图一是No SSAO. 图二是 SSAO. 图三是HBAO. 可以看到SSAO还是把那块区域标记成AO. 反而HBAO考虑到了距离因素轻微的变暗, 效果真实准确很多.
+
+![URPSSAO_41](Images/URPSSAO_41.jpg)
+![URPSSAO_42](Images/URPSSAO_42.jpg)
+![URPSSAO_43](Images/URPSSAO_43.jpg)
+
+微软在DX11把SSAO升级成了HDAO(High Definition Ambient Occlusion). HDAO和HBAO的原理基本上是差不多的. 详情参考
++ https://zhuanlan.zhihu.com/p/150431414  
++ https://zhuanlan.zhihu.com/p/359679184  
++ https://zhuanlan.zhihu.com/p/103683536 
++ https://developer.nvidia.com/sites/default/files/akamai/gameworks/downloads/papers/vxao/atatarinov_alpanteleev_advanced_ao.pdf
 
 
 -----------------
 
 ## **2.拆解C#**
 
-&emsp;&emsp; 我的习惯是先拆解C#,再学习shader. 我这里是自己复制改动了一些,方便自己区分.可以对照源码看.
+&emsp;&emsp; 说了这么多, 现在才进入正题. 我的习惯是先拆解C#,再学习shader. 我这里是为了学习使用抄写, 当然可以对照源码直接看.
 
 ### **2.1 URPSSAOSettings**
 
