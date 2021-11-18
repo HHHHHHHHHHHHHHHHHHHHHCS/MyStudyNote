@@ -1957,8 +1957,7 @@ half4 SSAOFrag(Varyings input) : SV_Target
 #### **3.5.1 Pass**
 
 返回**ScreenSpaceAmbientOcclusion.shader**中再添加一个Pass **SSAO_HorizontalBlur**.
-**BLUR_SAMPLE_CENTER_NORMAL** , 用于重建normal, 但是AO图的yzw已经保存了Normal. 所以我这里屏蔽了, 后面还会详细讲.
-之后的变体, 上面都讲过.
+**BLUR_SAMPLE_CENTER_NORMAL** , 用于重建normal, 虽然AO图的yzw已经保存了Normal. 但是如果在Downsample的时候, AO图是1/2分辨率的, 保存的Normal不是很准确. Horizontalor Blur的时候是1/1, 需要更准确的Normal, 所以再次重建.
 
 ```C++
 
@@ -1982,7 +1981,7 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 			HLSLPROGRAM
 			#pragma vertex VertDefault
 			#pragma fragment HorizontalBlur
-			// #define BLUR_SAMPLE_CENTER_NORMAL
+			#define BLUR_SAMPLE_CENTER_NORMAL
 			#pragma multi_compile_local _ _ORTHOGRAPHIC
 			#pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 			#pragma multi_compile_local _SOURCE_DEPTH _SOURCE_DEPTH_NORMALS
@@ -2003,9 +2002,9 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 
 **SAMPLE_BASEMAP**是之前定义的宏,对_BaseMap进行采样.
 
-但是这里有点无法理解! Unity为什么要利用宏**BLUR_SAMPLE_CENTER_NORMAL** 开启对当前点重建Normal, 上面不都重建好并且储存了!? 虽然我在Pass中已经把宏注释了.
+**BLUR_SAMPLE_CENTER_NORMAL**重建Normal用, 原因上面讲过了.
 
-不过为了还原, 还是要添加方法**half3 SampleNormal(float2 uv)**, 大体和**SampleDepthNormalView**方法相似.
+添加方法**half3 SampleNormal(float2 uv)**, 大体和**SampleDepthNormalView**方法相似.
 
 ```C++
 
@@ -2442,13 +2441,20 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 
 ## **4.其它**
 
-1. 不知道为什么Normal重建步长用的是2.0. 我这里改成了1.0.
-2. AO图的时候yzw已经保存了Normal, 但是HorizontalBlur的时候可能会又重建Normal. 感觉没有必要. 我已经注释掉了.
-3. 当downsample的时候, Occsion Pass RT是 1/2, Horizontal Blur 立马恢复为 1/1. 其实可以在Final Blur的时候恢复为 1/1.
-4. Window->Analysis->Rendering Debugger可以直接Debug AO效果, 还有一堆效果.
+0. 延迟渲染必定有Normal图. 前向渲染的时候可以其实也建议准备好Normal图. 
+    + 比如说用Opaque Pass的时候, 用MRT再保存一份Normal图. 
+    + 可以避免Normal在Fragment Shdare中重建.
+    + 首先这样可以避免再走一次Normal Pass去渲染.
+    + 一些别的效果也需要Normal.
+1. 不知道为什么Normal重建步长用的是2.0. 
+    + 我这里改成了1.0.
+2. 当downsample的时候, Occsion Pass RT是 1/2, Horizontal Blur 立马恢复为 1/1. 是为了效果更好.
+    + 可以在Final Blur的时候恢复为 1/1, 中间的Horizontal Blur和Vertical Blur继续保持1/2. 电脑耗时快了0.1~0.2ms. 效果比较难区分, 尤其是手机上.
+    + 前三张图都为1/2, 这样就可以只用创建两张图进行复用了. 
+3. Window->Analysis->Rendering Debugger可以直接Debug AO效果, 还有一堆效果.
 
 ![URPSSAO_35](Images/URPSSAO_35.jpg)
 
-5. 随机采样改成贴图
+4. 随机采样改成贴图
 
-//TODO:理清楚  space   然后整体重新读一遍
+//TODO:理清楚  camera 和 view space   然后整体重新读一遍
