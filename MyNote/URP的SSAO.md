@@ -87,11 +87,11 @@ URP的SSAO
 
 ## **2.拆解C#**
 
-&emsp;&emsp; 说了这么多, 现在才进入正题. 我的习惯是先拆解C#,再学习shader. 我这里是为了学习使用抄写, 当然可以对照源码直接看.
+&emsp;&emsp; 说了这么多, 现在才进入正题. 我的习惯是先拆解C#, 再学习shader. 然后这里为了学习, 是使用抄写, 当然也可以对照源码直接看.
 
 ### **2.1 URPSSAOSettings**
 
-先拆解设置属性,看看都有啥. 看上面属性面板很简单, 看了一眼代码果然很简单呢. 所以这里创建C# **URPSSAORenderFeature.cs**. 直接复制Settings Class.
+先拆解Settings属性, 看看都有啥!? 看上面属性面板很简单, 看了一眼代码果然很简单呢. 所以这里创建C# **URPSSAORenderFeature.cs**. 直接复制粘贴Settings Class.
 
 ```C#
 [Serializable]
@@ -131,12 +131,12 @@ public class URPSSAORenderFeature: MonoBehaviour
 
 ### **2.2 URPSSAORenderFeature**
 
-然后再看**RendererFeature**. 这个里面基本就是创建个渲染Pass,是否添加到渲染队列,创建材质和存个设置. 
-**[DisallowMultipleRendererFeature]**这个标签作用是禁止多次添加用的,在2020是**internal**加上去会报错,2021是**public**.
-**Dispose**在切换**RendererData**的时候会触发,销毁创建的材质.
+然后再看**RendererFeature**. 这个里面基本就是创建个渲染Pass, 是否该添加到渲染队列, 创建材质和保存Settings. 
+**[DisallowMultipleRendererFeature]**这个标签作用是禁止多次添加用的, 在2020是**internal**加上去会报错, 2021终于是**public**.
+**Dispose**在切换**RendererData**的时候会触发, 销毁创建的材质.
 **URPSSAORenderPass**在后面补充.
 修改完善**class URPSSAORenderFeature**.
-**k_ShaderName**要和Shader中的name对应, 并且打包的时候注意别剔除了(可以添加材质球强制让其入包, 或者用**Shader Variant Collect**), 不然会找不到.
+**k_ShaderName**要和Shader中的name对应, 并且打包的时候注意别剔除了(可以添加材质球强制让其入包, 或者用**Shader Variant Collect**), 不然会报错找不到.
 
 ```C#
 using System;
@@ -226,14 +226,14 @@ public class URPSSAORenderFeature : ScriptableRendererFeature
 
 ### **2.3 URPSSAORenderPass**
 
-然后就再看**RenderPass**.
+然后再看**RenderPass**.
 
 #### **2.3.1 构造函数**
 
-这里先看构造函数
-因为我这里是抄写的,比较符合我自己的代码习惯,而且还是一步一步慢慢填充的,所以跟原来的代码不一样.但是大体上的思想基本一致.
-比如说**ProfilingSampler.Get(URPProfileId.SSAO)**外部获取不了,我这里用**k_tag**来自己创建.
-再比如**isRendererDeferred**判断是否为延迟渲染. 因为 **renderer.renderingMode** 是internal, 所以没有办法判断, 只能先写成false, 之后再想办法解决.
+这里先看构造函数.
+因为这里我是抄写的, 比较符合我自己的代码习惯. 而且还是一步一步慢慢填充的, 所以会修改一些, 但是大体上的思想基本一致.
+比如说**ProfilingSampler.Get(URPProfileId.SSAO)**在外部获取不了, 我这里用**k_tag**来自己创建.
+再比如**isRendererDeferred**判断是否为延迟渲染. 因为 **renderer.renderingMode** 是**internal**, 所以没有办法判断, 只能先写成false, 之后再想办法解决.
 
 ```C#
 using System;
@@ -349,37 +349,42 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 
 #### **2.3.3 Property**
 
-为了后面对材质球属性设置省事,我们可以提前粘贴需要的全部属性. Ctrl+C+V一下,啪很快啊.
+为了后面对材质球属性设置省事,我们可以提前粘贴需要的全部属性. Ctrl+C+V一下, 啪很快啊.
  
 ```C#
-private const string k_tag = "URPSSAO";
-
-#region Property
-
-public static readonly int s_SourceSize = Shader.PropertyToID("_SourceSize");
-
-
-private static readonly int s_BaseMapID = Shader.PropertyToID("_BaseMap");
-private static readonly int s_SSAOParamsID = Shader.PropertyToID("_SSAOParams");
-private static readonly int s_SSAOTexture1ID = Shader.PropertyToID("_SSAO_OcclusionTexture1");
-private static readonly int s_SSAOTexture2ID = Shader.PropertyToID("_SSAO_OcclusionTexture2");
-private static readonly int s_SSAOTexture3ID = Shader.PropertyToID("_SSAO_OcclusionTexture3");
-private static readonly int s_SSAOTextureFinalID = Shader.PropertyToID("_SSAO_OcclusionTexture");
-private static readonly int s_CameraViewXExtentID = Shader.PropertyToID("_CameraViewXExtent");
-private static readonly int s_CameraViewYExtentID = Shader.PropertyToID("_CameraViewYExtent");
-private static readonly int s_CameraViewZExtentID = Shader.PropertyToID("_CameraViewZExtent");
-private static readonly int s_ProjectionParams2ID = Shader.PropertyToID("_ProjectionParams2");
-private static readonly int s_CameraViewProjectionsID = Shader.PropertyToID("_CameraViewProjections");
-private static readonly int s_CameraViewTopLeftCornerID = Shader.PropertyToID("_CameraViewTopLeftCorner");
-
-#endregion
-
-// Private Variables
-private Material m_Material;
 ...
-
-internal URPSSAORenderPass()
+public class URPSSAORenderPass : ScriptableRenderPass
 {
+	private const string k_tag = "URPSSAO";
+
+	#region Property
+
+	public static readonly int s_SourceSize = Shader.PropertyToID("_SourceSize");
+
+
+	private static readonly int s_BaseMapID = Shader.PropertyToID("_BaseMap");
+	private static readonly int s_SSAOParamsID = Shader.PropertyToID("_SSAOParams");
+	private static readonly int s_SSAOTexture1ID = Shader.PropertyToID("_SSAO_OcclusionTexture1");
+	private static readonly int s_SSAOTexture2ID = Shader.PropertyToID("_SSAO_OcclusionTexture2");
+	private static readonly int s_SSAOTexture3ID = Shader.PropertyToID("_SSAO_OcclusionTexture3");
+	private static readonly int s_SSAOTextureFinalID = Shader.PropertyToID("_SSAO_OcclusionTexture");
+	private static readonly int s_CameraViewXExtentID = Shader.PropertyToID("_CameraViewXExtent");
+	private static readonly int s_CameraViewYExtentID = Shader.PropertyToID("_CameraViewYExtent");
+	private static readonly int s_CameraViewZExtentID = Shader.PropertyToID("_CameraViewZExtent");
+	private static readonly int s_ProjectionParams2ID = Shader.PropertyToID("_ProjectionParams2");
+	private static readonly int s_CameraViewProjectionsID = Shader.PropertyToID("_CameraViewProjections");
+	private static readonly int s_CameraViewTopLeftCornerID = Shader.PropertyToID("_CameraViewTopLeftCorner");
+
+	#endregion
+
+	// Private Variables
+	private Material m_Material;
+
+	internal URPSSAORenderPass()
+	{
+		...
+	}
+
 	...
 }
 
@@ -387,11 +392,12 @@ internal URPSSAORenderPass()
 
 #### **2.3.4 OnCameraSetup**
 
-我们这里按照渲染逻辑顺序依次说明.不过这里只写override的方法,比如**Configure**,**FrameCleanup**都没有重写就跳过顺序说明了.
-当成功加入到渲染队列之后,就是先执行**OnCameraSetup**.
+我们这里按照渲染逻辑顺序依次说明. 不过这里只写**override**的方法, 比如**Configure**,**FrameCleanup**都没有重写就跳过顺序说明了.
+当成功加入到渲染队列之后, 就是先执行**OnCameraSetup**. 
 **OnCameraSetup**这里主要是对材质球的属性设置.
 
-先写ssaoParams的设置.
+先写SSAO Params的设置.
+
 ```C#
 
 internal bool Setup(URPSSAOSettings featureSettings, ScriptableRenderer renderer,
@@ -415,13 +421,15 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 	m_Material.SetVector(s_SSAOParamsID, ssaoParams);
 
 }
+
 ```
 
 然后就是摄像机属性的设置. 
-2021新加了XR的支持.**renderingData.cameraData.xr**因为是**internal**,我这里改成**renderingData.cameraData.xrRendering**. 因为我也没有VR已经不开发VR了(不会还有人在开发VR,不会吧不会吧), 根本不关心这个API hhh.
-XR主要是多了一个eye,让其成为**VectorArray**.但是总体没有什么大变化.
-这里主要的计算就是把**proj空间**下的**最远的极值点**(最远左上点,最远右上点,最远右下点,最远中心点), 转换到**world空间**坐标. 然后记录左上,XY方向,中心方向.
+2021新加了XR的支持. **renderingData.cameraData.xr**因为是**internal**, 我这里改成**renderingData.cameraData.xrRendering**. 因为我也没有VR也已经不开发VR了(VR, 三年又三年, 换个名字叫元宇宙), 根本不关心这个API hhh.
+XR主要是多了一个eye, 让其成为**VectorArray**就好了. 总体没有什么大变化.
 
+这里主要的计算就是把**proj空间**下的**最远的点**(最远左上点, 最远右上点, 最远右下点, 最远中心点), 转换到**world空间**坐标. 再减去Camera Position. 然后记录左上, XY方向, 中心点. 即记录世界坐标系下相对于摄像机最远点和方向.
+首先是为了减少计算. 而且也可以防止大世界精度过大, 导致数据不准确.
 
 ```C#
 
@@ -478,7 +486,9 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 	m_Material.SetVectorArray(s_CameraViewXExtentID, m_CameraXExtent);
 	m_Material.SetVectorArray(s_CameraViewYExtentID, m_CameraYExtent);
 	m_Material.SetVectorArray(s_CameraViewZExtentID, m_CameraZExtent);
+
 }
+
 ```
 
 再后面就是一些**keyword**设置.
@@ -512,8 +522,8 @@ private const string k_SourceDepthNormalsKeyword = "_SOURCE_DEPTH_NORMALS";
 
 public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
 {
-	m_Material.SetVectorArray(s_CameraViewZExtentID, m_CameraZExtent);
 	...
+	m_Material.SetVectorArray(s_CameraViewZExtentID, m_CameraZExtent);
 
 	// Update keywords
 	CoreUtils.SetKeyword(m_Material, k_OrthographicCameraKeyword, renderingData.cameraData.camera.orthographic);
@@ -561,9 +571,9 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 
 ```
 
-最后的最后就是 **descriptors**创建和设置, **RenderTargetIdentifier**的初始化, RT的创建, 和画布的输入.
-因为AO的结果图是一个0-1的黑白图,所以单通道的**R8**就可以了.不过可能存在一些设备不支持,就用**ARGB32**.
-为了效果好,这里RT的用**FilterMode**用**Bilinear**.
+最后的最后就是**descriptors**创建和设置, **RenderTargetIdentifier**的初始化, RT的创建, 和画布的输入.
+因为AO的结果图是一个0~1的黑白图,所以单通道的**R8**就可以了.不过可能存在一些设备不支持,就用**ARGB32**.
+可能存在**DownSample**, 为了效果好, 这里RT的用**FilterMode**用**Bilinear**.
 最后的画布输入,如果是**AfterOpaque**, 就画在Color RT上类似于贴上去, 否则就创建一个RT, 物体着色的时候进行采样, 让其变暗.
 **RenderTargetIdentifier** , 是和**ID**进行绑定的. 在后面渲染的时候用到, 作用是避免每次传递的时候都进行创建, 所以在这里先初始化.
 
@@ -688,14 +698,12 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 	...
 }
 
-
-
 ```
 
 再后面就是渲染AO了. 在此之前 先写 **Enum ShaderPasses** 和 三个Render的公共方法.
 **Enum ShaderPasses**, 需要和shader pass index 对应.
-因为**SetSourceSize**是**interal**, 所以我这里直接拷贝出来了. 主要作用就是 传递画布尺寸(考虑动态画布缩放)到Shader中.
-**Render**, 设置RT, 全屏绘制某个pass. 因为是全部覆盖的后处理绘制, 所以不关心(**DontCare**)输入的颜色 和 depth, 只需要**Store**输出的颜色就好了. 原来是全屏的四边形, 我这里改成用大三角形, 同时Shader中也要对应处理.
+**SetSourceSize**, 因为原来的是**interal**, 所以我这里直接拷贝出来了. 主要作用就是传递画布尺寸(考虑动态画布缩放)到Shader中.
+**Render**, 设置RT, 全屏绘制某个pass. 因为是全部覆盖的后处理绘制, 所以不关心(**DontCare**)输入的颜色 和 depth, 只需要储存(**Store**)输出的颜色就好了. 原来是全屏的四边形, 我这里改成用大三角形, 同时Shader中也要对应处理.
 **RenderAndSetBaseMap**, 同上, 并且多传入一个BaseMap.
 
 ```C#
@@ -761,10 +769,10 @@ public class URPSSAORenderPass : ScriptableRenderPass
 ```
 
 然后渲染.
-设置分辨率(可能是半分辨率), 渲染AO, 然后横着模糊.
-重新设置全分辨率尺寸, 竖着模糊. 稍微处理一下输出FinalRT.
+设置分辨率(因为可能是半分辨率), 渲染AO, 然后横着模糊.
+重新设置全分辨率尺寸, 竖着模糊. 最后对角模糊输出FinalRT.
 设置FinalRT和AO参数.
-因为**AfterOpaque**时, 是类似于贴上去的. 所以还需要设置RT进行全屏带blend的绘制.
+如果是**AfterOpaque**, 需要对全屏绘制AO. 所以还需要设置RT进行全屏Blend的绘制.
 
 ```C#
 
@@ -1105,7 +1113,7 @@ public class URPSSAOEditor : UnityEditor.Editor
 
 我们是URP, 所以要指定**RenderPipeline**为**UniversalPipeline**, 虽然也可以不写.
 
-为了确保绘制不会被剔除遮挡, 添加**Cull Off ZWrite Off ZTest Always**. 比如三角顺序错误, 深度比较失败等 都可能会引起绘制失败. 所以用设置确保无误.
+为了确保绘制不会被剔除遮挡, 添加**Cull Off ZWrite Off ZTest Always**. 比如三角顺序错误, 深度比较失败等 都可能会导致不执行绘制. 所以用设置确保无误.
 
 ```C++
 
@@ -1273,7 +1281,7 @@ static const half kEpsilon = half(0.0001);
 ### **3.3 顶点阶段**
 
 然后继续修改**URPSSAOLib.hlsl**.
-因为都是全屏的后处理. 所以顶点阶段都可以用大三角绘制 ,可以提高效率(根据平台而定, 一些没有反应 https://zhuanlan.zhihu.com/p/128023876).
+因为都是全屏的后处理. 所以顶点阶段都可以用大三角绘制 ,可以提高效率(根据平台而定, 一些没有效果 https://zhuanlan.zhihu.com/p/128023876).
 uv加了一个很小的epsilon, 避免重建法线的时候出现问题.
 
 ```C++
@@ -1396,8 +1404,7 @@ Varyings VertDefault(Attributes input)
 
 #### **3.4.3 ViewPos**
 
-根据上面的原理还需要计算ViewPos. 
-这里ViewPos是世界坐标系下, **摄像机位置** 到 **屏幕UV坐标和深度所描述的点** 的向量.
+根据上面的原理还需要计算ViewPos(世界坐标下相对摄像机位置), 即是世界坐标系下, **摄像机位置** 到 **屏幕UV坐标和深度所描述的点** 的向量.
 大体的写法是:
 ViewPos=(左上角起点+x方向*uv.x+y方向*uv.y)*(depth)
 但是还是要区分相机类型, 还要To Screen 的时候注意Y反转.
@@ -1405,7 +1412,6 @@ ViewPos=(左上角起点+x方向*uv.x+y方向*uv.y)*(depth)
 添加方法**half3 ReconstructViewPos(float2 uv, float depth)**.
 
 ```C++
-
 
 float SampleAndGetLinearEyeDepth(float2 uv)
 {
@@ -1662,7 +1668,7 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 
 #### **3.4.5 SampleRandomDirection**
 
-有了当前点的信息, 然后再在当前点的沿法线半球进行多次随机采样获取多个点, 转换到Project Space,再和当前点比较生成AO.
+有了当前点的信息, 然后再在当前点的沿法线半球进行多次随机采样获取多个点, 转换到ViewPos, 再和当前点比较生成AO.
 
 那么就要先写一个获取随机方向的办法.
 添加方法**half3 PickSamplePoint(float2 uv, int sampleIndex)**和相关的随机方法. 
@@ -1757,7 +1763,7 @@ half4 SSAOFrag(Varyings input) : SV_Target
 然后就要For循环获得随机采样点.
 先获取随机方向, 根据循环索引确定长度, 从而确定点的位置. 
 因为要沿着法线正方向, 所以利用**faceforward**方法确保如果在反面也翻转到正面.
-最后随机采样点的位置=当前像素点位置+随机偏移方向.
+最后随机采样点的位置=当前像素点位置+随机偏移方向*半径.
 
 ```C++
 
