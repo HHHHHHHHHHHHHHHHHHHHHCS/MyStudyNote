@@ -1838,9 +1838,9 @@ half4 SSAOFrag(Varyings input) : SV_Target
 
 有了正确的随机采样点的View Space信息. 就可以和原点进行比较, 得到AO值.
 设 矢量D=随机点-原点.
-D和法线夹角越小, AO强度越大. 如果在背面(dot产生负数), 则不产生AO. 
-原点离我们摄像机越远, AO也会衰减. 
-如果D的长度越长, 既两点距离越远, AO贡献越小.
+D和法线夹角越大, 说明偏离越大, AO强度越小. dot产生负数, 说明在背面, 则不产生AO. 
+原点离摄像机越远, AO也会减弱. 
+如果D的长度越长, 说明两点距离越远, AO贡献也越小.
 
 ```C++
 
@@ -2004,13 +2004,13 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 在写Frag之前, 先写相关方法.
 在**URPSSAOLib.hlsl**中添加一个模糊方法**half4 Blur(float2 uv, float2 delta)**.
 
-那些魔法数字, 具体参考这篇 [基于线性采样的高效高斯模糊实现（译）](https://zhuanlan.zhihu.com/p/58182228), 理解偏移和权重, 作用是提高效率, 这里就不多说了.
+那些魔法数字, 具体参考这篇 [基于线性采样的高效高斯模糊实现（译）](https://zhuanlan.zhihu.com/p/58182228), 意义是偏移和权重, 这里就不多说了.
 
 **SAMPLE_BASEMAP**是之前定义的宏,对_BaseMap进行采样.
 
 **BLUR_SAMPLE_CENTER_NORMAL**重建Normal用, 原因上面讲过了.
 
-添加方法**half3 SampleNormal(float2 uv)**, 大体和**SampleDepthNormalView**方法相似.
+添加方法**half3 SampleNormal(float2 uv)**, 大体和**SampleDepthNormalView**方法相似, 但是只是单纯的获取Normal, 去掉了Depth和ViewPos.
 
 ```C++
 
@@ -2071,8 +2071,7 @@ half4 Blur(float2 uv, float2 delta)
 
 添加方法**half CompareNormal(half3 d1, half3 d2)**, 用于比较当前点的法线和周围法线 从而得到AO的适当衰减, **kGeometryCoeff** 之前定义为 0.8.
 
-然后把ao * 权重 * 法线比较衰减, 就好了.
-
+最后 对 ao * 模糊权重 * 法线比较衰减 所产生的AO值进行累加, 打包输出.
 
 ```C++
 
@@ -2267,7 +2266,7 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 
 #### **3.7.2 BlurSmall**
 
-因为这个是对角Blur, 和之前的Blur方法有点不一样. 所以在**URPSSAO.hlsl**中创建一个新的方法**half BlurSmall(float2 uv, float2 delta)**. 原理和Blur一样.
+因为这个是对角Blur, 和之前的Blur方法有点不一样. 所以在**URPSSAO.hlsl**中创建一个新的方法**half BlurSmall(float2 uv, float2 delta)**. 原理和**Blur**一样.
 
 ```C++
 
@@ -2350,7 +2349,7 @@ half4 FinalBlur(Varyings input) : SV_Target
 
 ## **4.应用**
 
-&emsp;&emsp; 那么怎么表现在物体上面呢. 前面讲了两种方法. 一种物体着色的时候采样变暗, 还有一种开启Setting的**After Opaque** 类似于后处理绘制上去.
+&emsp;&emsp; 那么怎么表现在物体上面呢. 前面讲了两种方法. 一种物体着色的时候采样变暗, 还有一种开启Setting的**After Opaque** 类似于后处理全屏绘制上去.
 
 ### **4.1 Ambiennt Occlusion**
 
@@ -2377,11 +2376,11 @@ AO的获取, URP已经给我们封装好了hlsl, 路径是: "Packages/com.unity.
 
 ### **4.3 Deferred Render**
 
-延迟渲染也差不多. indirectionOcclusion直接压暗LightColor. 
+延迟渲染也差不多. directionOcclusion直接压暗LightColor. 
 
 ![URPSSAO_33](Images/URPSSAO_33.jpg)
 
-directionOcclusion->occlusion=>alpha. Color Blend 改变 dst color.
+indirectionOcclusion->occlusion->alpha. Color Blend 改变 dst color.
 
 ![URPSSAO_34](Images/URPSSAO_34.jpg)
 
@@ -2391,7 +2390,7 @@ directionOcclusion->occlusion=>alpha. Color Blend 改变 dst color.
 
 返回**ScreenSpaceAmbientOcclusion.shader**, 添加一个Pass **SSAO_AfterOpaque**. 用封装好的hlsl就好了. 注意Blend模式.
 
-当物体多且屏占比大重叠率高, 使用**AfterOpaque**比物体着色采样要好. 但是手机平台有剔除技术(如IOS的HSV), 具体场景还是自己测试一下比较好.
+当物体多且屏占比大重叠率高, 使用**AfterOpaque**比物体着色采样要好. 但是手机平台有专门的剔除技术(如IOS的HSV), 具体场景还是自己测试一下比较好.
 
 ```C++
 
@@ -2450,7 +2449,8 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 0. 延迟渲染必定有Normal图. 前向渲染的时候可以其实也建议准备好Normal图. 
     + 比如说用Opaque Pass的时候, 用MRT再保存一份Normal图. 
     + 可以避免Normal在Fragment Shdare中重建.
-    + 首先这样可以避免再走一次Normal Pass去渲染.
+    + 比空间生产准确, 而且物体的法线图产生的Normal变化也会被记录.
+    + 这样也可以避免再走一次Normal Pass去渲染.
     + 一些别的效果也需要Normal.
 1. 不知道为什么Normal重建步长用的是2.0. 
     + 我这里改成了1.0.
@@ -2463,4 +2463,4 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 
 4. 随机采样改成贴图
 
-//TODO:理清楚  camera 和 view space   然后整体重新读一遍
+//TODO: 随机采样改成贴图
