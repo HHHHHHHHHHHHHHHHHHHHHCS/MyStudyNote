@@ -53,8 +53,8 @@ URP的SSAO
 再来说说SSAO. 这里使用 LearOpenGL 和 百人计划--SSAO算法 的图来说明.
 1. 先利用深度图和屏幕UV坐标反算出当前点世界坐标.
 2. 再使用沿着法线正方向半球内的随机点进行采样, 获得新的坐标点. 
-3. 两个点进行比较, 然后加权处理获得AO.
-4. AO这时候充满噪点, 需要高斯Blur一下.
+3. 两个点进行比较, 判断是否被遮挡, 然后加权处理获得AO.
+4. AO这时候充满噪点, 需要高斯模糊一下.
 5. 最后和场景颜色RT进行混合叠加.
 
 ![URPSSAO_38](Images/URPSSAO_38.png)
@@ -425,10 +425,18 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 ```
 
 然后就是摄像机属性的设置. 
-2021新加了XR的支持. **renderingData.cameraData.xr**因为是**internal**, 我这里改成**renderingData.cameraData.xrRendering**. 因为我也没有VR也已经不开发VR了(VR, 三年又三年, 换个名字叫元宇宙), 根本不关心这个API hhh.
+
+2021新加了XR的支持. **renderingData.cameraData.xr**因为是**internal**, 我这里改成**renderingData.cameraData.xrRendering**. 
+
+因为我也没有VR也已经不开发VR了(VR, 三年又三年, 换个名字叫元宇宙), 根本不关心这个API hhh.
+
 XR主要是多了一个eye, 让其成为**VectorArray**就好了. 总体没有什么大变化.
 
-这里主要的计算就是把**proj空间**下的**最远的点**(最远左上点, 最远右上点, 最远右下点, 最远中心点), 转换到**world空间**坐标. 再减去Camera Position. 然后记录左上, XY方向, 中心点. 即记录世界坐标系下相对于摄像机最远点和方向.
+
+这里主要的计算就是把**proj空间**下的**最远的点**(最远左上点, 最远右上点, 最远右下点, 最远中心点), 转换到**world空间**坐标. 
+
+再减去Camera Position. 然后记录左上, XY方向, 中心点. 即记录世界坐标系下相对于摄像机最远点和方向.
+
 首先是为了减少计算. 而且也可以防止大世界精度过大, 导致数据不准确.
 
 ```C#
@@ -492,7 +500,9 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 ```
 
 再后面就是一些**keyword**设置.
+
 添加关键字string并且设置.
+
 比如摄像机类型, Normal采样质量, 用Depth还是DepthNormal图.
 
 ```C#
@@ -572,11 +582,14 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 ```
 
 最后的最后就是**descriptors**创建和设置, **RenderTargetIdentifier**的初始化, RT的创建, 和画布的输入.
-因为AO的结果图是一个0~1的黑白图,所以单通道的**R8**就可以了.不过可能存在一些设备不支持,就用**ARGB32**.
-可能存在**DownSample**, 为了效果好, 这里RT的用**FilterMode**用**Bilinear**.
-最后的画布输入,如果是**AfterOpaque**, 就画在Color RT上类似于贴上去, 否则就创建一个RT, 物体着色的时候进行采样, 让其变暗.
-**RenderTargetIdentifier** , 是和**ID**进行绑定的. 在后面渲染的时候用到, 作用是避免每次传递的时候都进行创建, 所以在这里先初始化.
 
+因为AO的结果图是一个0~1的黑白图,所以单通道的**R8**就可以了.不过可能存在一些设备不支持,就用**ARGB32**.
+
+可能存在**DownSample**, 为了效果好, 这里RT的用**FilterMode**用**Bilinear**.
+
+最后的画布输入,如果是**AfterOpaque**, 就画在Color RT上类似于贴上去, 否则就创建一个RT, 物体着色的时候进行采样, 让其变暗.
+
+**RenderTargetIdentifier** , 是和**ID**进行绑定的. 在后面渲染的时候用到, 作用是避免每次传递的时候都进行创建, 所以在这里先初始化.
 
 ```C#
 ...
@@ -701,9 +714,15 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 ```
 
 再后面就是渲染AO了. 在此之前 先写 **Enum ShaderPasses** 和 三个Render的公共方法.
+
 **Enum ShaderPasses**, 需要和shader pass index 对应.
+
 **SetSourceSize**, 因为原来的是**interal**, 所以我这里直接拷贝出来了. 主要作用就是传递画布尺寸(考虑动态画布缩放)到Shader中.
-**Render**, 设置RT, 全屏绘制某个pass. 因为是全部覆盖的后处理绘制, 所以不关心(**DontCare**)输入的颜色 和 depth, 只需要储存(**Store**)输出的颜色就好了. 原来是全屏的四边形, 我这里改成用大三角形, 同时Shader中也要对应处理.
+
+**Render**, 设置RT, 全屏绘制某个pass. 因为是全部覆盖的后处理绘制, 所以不关心(**DontCare**)输入的颜色 和 depth, 只需要储存(**Store**)输出的颜色就好了. 
+
+原来是全屏的四边形, 我这里改成用大三角形, 同时Shader中也要对应处理.
+
 **RenderAndSetBaseMap**, 同上, 并且多传入一个BaseMap.
 
 ```C#
@@ -1189,47 +1208,47 @@ float4 _CameraViewZExtent[2];
 // Indices 20 to 39 are for u = 1.0
 static half SSAORandomUV[40] =
 {
-    0.00000000,  // 00
-    0.33984375,  // 01
-    0.75390625,  // 02
-    0.56640625,  // 03
-    0.98437500,  // 04
-    0.07421875,  // 05
-    0.23828125,  // 06
-    0.64062500,  // 07
-    0.35937500,  // 08
-    0.50781250,  // 09
-    0.38281250,  // 10
-    0.98437500,  // 11
-    0.17578125,  // 12
-    0.53906250,  // 13
-    0.28515625,  // 14
-    0.23137260,  // 15
-    0.45882360,  // 16
-    0.54117650,  // 17
-    0.12941180,  // 18
-    0.64313730,  // 19
+	0.00000000,  // 00
+	0.33984375,  // 01
+	0.75390625,  // 02
+	0.56640625,  // 03
+	0.98437500,  // 04
+	0.07421875,  // 05
+	0.23828125,  // 06
+	0.64062500,  // 07
+	0.35937500,  // 08
+	0.50781250,  // 09
+	0.38281250,  // 10
+	0.98437500,  // 11
+	0.17578125,  // 12
+	0.53906250,  // 13
+	0.28515625,  // 14
+	0.23137260,  // 15
+	0.45882360,  // 16
+	0.54117650,  // 17
+	0.12941180,  // 18
+	0.64313730,  // 19
 
-    0.92968750,  // 20
-    0.76171875,  // 21
-    0.13333330,  // 22
-    0.01562500,  // 23
-    0.00000000,  // 24
-    0.10546875,  // 25
-    0.64062500,  // 26
-    0.74609375,  // 27
-    0.67968750,  // 28
-    0.35156250,  // 29
-    0.49218750,  // 30
-    0.12500000,  // 31
-    0.26562500,  // 32
-    0.62500000,  // 33
-    0.44531250,  // 34
-    0.17647060,  // 35
-    0.44705890,  // 36
-    0.93333340,  // 37
-    0.87058830,  // 38
-    0.56862750,  // 39
+	0.92968750,  // 20
+	0.76171875,  // 21
+	0.13333330,  // 22
+	0.01562500,  // 23
+	0.00000000,  // 24
+	0.10546875,  // 25
+	0.64062500,  // 26
+	0.74609375,  // 27
+	0.67968750,  // 28
+	0.35156250,  // 29
+	0.49218750,  // 30
+	0.12500000,  // 31
+	0.26562500,  // 32
+	0.62500000,  // 33
+	0.44531250,  // 34
+	0.17647060,  // 35
+	0.44705890,  // 36
+	0.93333340,  // 37
+	0.87058830,  // 38
+	0.56862750,  // 39
 };
 
 // SSAO Settings
@@ -1239,13 +1258,13 @@ static half SSAORandomUV[40] =
 
 // GLES2: In many cases, dynamic looping is not supported.
 #if defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
-    #define SAMPLE_COUNT 3
+	#define SAMPLE_COUNT 3
 #else
-    #define SAMPLE_COUNT int(_SSAOParams.w)
+	#define SAMPLE_COUNT int(_SSAOParams.w)
 #endif
 
 // Function defines
-#define SCREEN_PARAMS        GetScaledScreenParams()
+#define SCREEN_PARAMS		GetScaledScreenParams()
 #define SAMPLE_BASEMAP(uv)   SAMPLE_TEXTURE2D_X(_BaseMap, sampler_BaseMap, UnityStereoTransformScreenSpaceTex(uv));
 
 // Constants
@@ -1266,9 +1285,9 @@ static const half kBeta = half(0.002);
 static const half kEpsilon = half(0.0001);
 
 #if defined(USING_STEREO_MATRICES)
-    #define unity_eyeIndex unity_StereoEyeIndex
+	#define unity_eyeIndex unity_StereoEyeIndex
 #else
-    #define unity_eyeIndex 0
+	#define unity_eyeIndex 0
 #endif
 
 
@@ -1287,37 +1306,37 @@ uv加了一个很小的epsilon, 避免重建法线的时候出现问题.
 ```C++
 
 #if defined(USING_STEREO_MATRICES)
-    #define unity_eyeIndex unity_StereoEyeIndex
+	#define unity_eyeIndex unity_StereoEyeIndex
 #else
-    #define unity_eyeIndex 0
+	#define unity_eyeIndex 0
 #endif
 
 struct Attributes
 {
-    uint vertexID :SV_VertexID;
-    UNITY_VERTEX_INPUT_INSTANCE_ID
+	uint vertexID :SV_VertexID;
+	UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
 struct Varyings
 {
-    float4 positionCS : SV_POSITION;
-    float2 uv : TEXCOORD0;
-    UNITY_VERTEX_OUTPUT_STEREO
+	float4 positionCS : SV_POSITION;
+	float2 uv : TEXCOORD0;
+	UNITY_VERTEX_OUTPUT_STEREO
 };
 
 Varyings VertDefault(Attributes input)
 {
-    Varyings output;
-    UNITY_SETUP_INSTANCE_ID(input);
-    UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+	Varyings output;
+	UNITY_SETUP_INSTANCE_ID(input);
+	UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
-    output.positionCS = GetFullScreenTriangleVertexPosition(input.vertexID);
-    output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
+	output.positionCS = GetFullScreenTriangleVertexPosition(input.vertexID);
+	output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
 
-    // 添加一个很极小的 epsilon 避免重建法线的时候出现问题
-    output.uv += 1.0e-6;
+	// 添加一个很极小的 epsilon 避免重建法线的时候出现问题
+	output.uv += 1.0e-6;
 
-    return output;
+	return output;
 }
 
 ```
@@ -1387,12 +1406,12 @@ struct Varyings
 
 float SampleAndGetLinearEyeDepth(float2 uv)
 {
-    float rawDepth = SampleSceneDepth(uv.xy);
-    #if defined(_ORTHOGRAPHIC)
-    return LinearDepthToEyeDepth(rawDepth);
-    #else
-    return LinearEyeDepth(rawDepth, _ZBufferParams);
-    #endif
+	float rawDepth = SampleSceneDepth(uv.xy);
+	#if defined(_ORTHOGRAPHIC)
+	return LinearDepthToEyeDepth(rawDepth);
+	#else
+	return LinearEyeDepth(rawDepth, _ZBufferParams);
+	#endif
 }
 
 Varyings VertDefault(Attributes input)
@@ -1421,25 +1440,25 @@ float SampleAndGetLinearEyeDepth(float2 uv)
 // This returns a vector in world unit (not a position), from camera to the given point described by uv screen coordinate and depth (in absolute world unit).
 half3 ReconstructViewPos(float2 uv, float depth)
 {
-    // Screen is y-inverted.
-    uv.y = 1.0 - uv.y;
+	// Screen is y-inverted.
+	uv.y = 1.0 - uv.y;
 
-    // view pos in world space
-    #if defined(_ORTHOGRAPHIC)
-    float zScale = depth * _ProjectionParams.w; // divide by far plane
-    float3 viewPos = _CameraViewTopLeftCorner[unity_eyeIndex].xyz
-                        + _CameraViewXExtent[unity_eyeIndex].xyz * uv.x
-                        + _CameraViewYExtent[unity_eyeIndex].xyz * uv.y
-                        + _CameraViewZExtent[unity_eyeIndex].xyz * zScale;
-    #else
-    float zScale = depth * _ProjectionParams2.x; // divide by near plane
-    float3 viewPos = _CameraViewTopLeftCorner[unity_eyeIndex].xyz
-        + _CameraViewXExtent[unity_eyeIndex].xyz * uv.x
-        + _CameraViewYExtent[unity_eyeIndex].xyz * uv.y;
-    viewPos *= zScale;
-    #endif
+	// view pos in world space
+	#if defined(_ORTHOGRAPHIC)
+	float zScale = depth * _ProjectionParams.w; // divide by far plane
+	float3 viewPos = _CameraViewTopLeftCorner[unity_eyeIndex].xyz
+						+ _CameraViewXExtent[unity_eyeIndex].xyz * uv.x
+						+ _CameraViewYExtent[unity_eyeIndex].xyz * uv.y
+						+ _CameraViewZExtent[unity_eyeIndex].xyz * zScale;
+	#else
+	float zScale = depth * _ProjectionParams2.x; // divide by near plane
+	float3 viewPos = _CameraViewTopLeftCorner[unity_eyeIndex].xyz
+		+ _CameraViewXExtent[unity_eyeIndex].xyz * uv.x
+		+ _CameraViewYExtent[unity_eyeIndex].xyz * uv.y;
+	viewPos *= zScale;
+	#endif
 
-    return half3(viewPos);
+	return half3(viewPos);
 }
 
 ```
@@ -1453,7 +1472,7 @@ half3 ReconstructViewPos(float2 uv, float depth)
 
 ![URPSSAO_13](Images/URPSSAO_13.jpg)
 
-先写利用Normal图获取Normal吧.需要宏**_SOURCE_DEPTH_NORMALS**.
+先写利用Normal图获取Normal吧. 需要宏 **_SOURCE_DEPTH_NORMALS**.
 添加方法**void SampleDepthNormalView(float2 uv, out float depth, out half3 normal, out half3 vpos)**
 
 ```C++
@@ -1465,9 +1484,9 @@ half3 ReconstructViewPos(float2 uv, float depth)
 
 void SampleDepthNormalView(float2 uv, out float depth, out half3 normal, out half3 vpos)
 {
-    #if defined(_SOURCE_DEPTH_NORMALS)
-    normal = half3(SampleSceneNormals(uv));
-    #endif
+	#if defined(_SOURCE_DEPTH_NORMALS)
+	normal = half3(SampleSceneNormals(uv));
+	#endif
 }
 
 Varyings VertDefault(Attributes input)
@@ -1503,14 +1522,14 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 
 void SampleDepthNormalView(float2 uv, out float depth, out half3 normal, out half3 vpos)
 {
-    depth = SampleAndGetLinearEyeDepth(uv);
-    vpos = ReconstructViewPos(uv, depth);
+	depth = SampleAndGetLinearEyeDepth(uv);
+	vpos = ReconstructViewPos(uv, depth);
 
-    #if defined(_SOURCE_DEPTH_NORMALS)
-    normal = half3(SampleSceneNormals(uv));
-    #else
-    normal = ReconstructNormal(uv, depth, vpos);
-    #endif
+	#if defined(_SOURCE_DEPTH_NORMALS)
+	normal = half3(SampleSceneNormals(uv));
+	#else
+	normal = ReconstructNormal(uv, depth, vpos);
+	#endif
 }
 
 ```
@@ -1527,11 +1546,11 @@ void SampleDepthNormalView(float2 uv, out float depth, out half3 normal, out hal
 
 half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 {
-    #if defined(_RECONSTRUCT_NORMAL_LOW)
-        return half3(normalize(cross(ddy(vpos), ddx(vpos))));
-    #else
-        //TODO:
-    #endif
+	#if defined(_RECONSTRUCT_NORMAL_LOW)
+		return half3(normalize(cross(ddy(vpos), ddx(vpos))));
+	#else
+		//TODO:
+	#endif
 }
 
 ```
@@ -1551,70 +1570,72 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 
 half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 {
-    #if defined(_RECONSTRUCT_NORMAL_LOW)
-        ...
-    #else
-        //原来是*2.0  我这里改成*1.0
-        float2 delta = float2(_SourceSize.zw * 1.0);
+	#if defined(_RECONSTRUCT_NORMAL_LOW)
+		...
+	#else
+		//原来是*2.0  我这里改成*1.0
+		float2 delta = float2(_SourceSize.zw * 1.0);
 
-        // Sample the neighbour fragments
-        float2 lUV = float2(-delta.x, 0.0);
-        float2 rUV = float2(delta.x, 0.0);
-        float2 uUV = float2(0.0, delta.y);
-        float2 dUV = float2(0.0, -delta.y);
+		// Sample the neighbour fragments
+		float2 lUV = float2(-delta.x, 0.0);
+		float2 rUV = float2(delta.x, 0.0);
+		float2 uUV = float2(0.0, delta.y);
+		float2 dUV = float2(0.0, -delta.y);
 
-        float3 l1 = float3(uv + lUV, 0.0);
-        l1.z = SampleAndGetLinearEyeDepth(l1.xy); // Left1
-        float3 r1 = float3(uv + rUV, 0.0);
-        r1.z = SampleAndGetLinearEyeDepth(r1.xy); // Right1
-        float3 u1 = float3(uv + uUV, 0.0);
-        u1.z = SampleAndGetLinearEyeDepth(u1.xy); // Up1
-        float3 d1 = float3(uv + dUV, 0.0);
-        d1.z = SampleAndGetLinearEyeDepth(d1.xy); // Down1
+		float3 l1 = float3(uv + lUV, 0.0);
+		l1.z = SampleAndGetLinearEyeDepth(l1.xy); // Left1
+		float3 r1 = float3(uv + rUV, 0.0);
+		r1.z = SampleAndGetLinearEyeDepth(r1.xy); // Right1
+		float3 u1 = float3(uv + uUV, 0.0);
+		u1.z = SampleAndGetLinearEyeDepth(u1.xy); // Up1
+		float3 d1 = float3(uv + dUV, 0.0);
+		d1.z = SampleAndGetLinearEyeDepth(d1.xy); // Down1
 
-        // Determine the closest horizontal and vertical pixels...
-        // horizontal: left = 0.0 right = 1.0
-        // vertical  : down = 0.0    up = 1.0
-        #if defined(_RECONSTRUCT_NORMAL_MEDIUM)
-            const uint closest_horizontal = l1.z > r1.z ? 0 : 1;
-            const uint closest_vertical   = d1.z > u1.z ? 0 : 1;
-        #else
-            //TODO:
-        #endif
+		// Determine the closest horizontal and vertical pixels...
+		// horizontal: left = 0.0 right = 1.0
+		// vertical  : down = 0.0	up = 1.0
+		#if defined(_RECONSTRUCT_NORMAL_MEDIUM)
+			const uint closest_horizontal = l1.z > r1.z ? 0 : 1;
+			const uint closest_vertical   = d1.z > u1.z ? 0 : 1;
+		#else
+			//TODO:
+		#endif
 
 
-        // Calculate the triangle, in a counter-clockwize order, to
-        // use based on the closest horizontal and vertical depths.
-        // h == 0.0 && v == 0.0: p1 = left,  p2 = down
-        // h == 1.0 && v == 0.0: p1 = down,  p2 = right
-        // h == 1.0 && v == 1.0: p1 = right, p2 = up
-        // h == 0.0 && v == 1.0: p1 = up,    p2 = left
-        // Calculate the view space positions for the three points...
-        float3 P1;
-        float3 P2;
-        if (closest_vertical == 0)
-        {
-            P1 = closest_horizontal == 0 ? l1 : d1;
-            P2 = closest_horizontal == 0 ? d1 : r1;
-        }
-        else
-        {
-            P1 = closest_horizontal == 0 ? u1 : r1;
-            P2 = closest_horizontal == 0 ? l1 : u1;
-        }
+		// Calculate the triangle, in a counter-clockwize order, to
+		// use based on the closest horizontal and vertical depths.
+		// h == 0.0 && v == 0.0: p1 = left,  p2 = down
+		// h == 1.0 && v == 0.0: p1 = down,  p2 = right
+		// h == 1.0 && v == 1.0: p1 = right, p2 = up
+		// h == 0.0 && v == 1.0: p1 = up,	p2 = left
+		// Calculate the view space positions for the three points...
+		float3 P1;
+		float3 P2;
+		if (closest_vertical == 0)
+		{
+			P1 = closest_horizontal == 0 ? l1 : d1;
+			P2 = closest_horizontal == 0 ? d1 : r1;
+		}
+		else
+		{
+			P1 = closest_horizontal == 0 ? u1 : r1;
+			P2 = closest_horizontal == 0 ? l1 : u1;
+		}
 
-        // Use the cross product to calculate the normal...
-        return half3(normalize(cross(ReconstructViewPos(P2.xy, P2.z) - vpos, ReconstructViewPos(P1.xy, P1.z) - vpos)));
-    #endif
+		// Use the cross product to calculate the normal...
+		return half3(normalize(cross(ReconstructViewPos(P2.xy, P2.z) - vpos, ReconstructViewPos(P1.xy, P1.z) - vpos)));
+	#endif
 }
 
 ```
 
 再写 **High**. 它需要在 **Medium** 中继续改写.
+
 修改查找方向的公式为 离中心点深度最平缓的左右方向和上下方向.
-如下图:
-左边=abs((l1-l2)+(l1-p0)) , 右边=abs((r1-r2)+(r1-p0))
-因为左边<右边, 所以认为左边平缓,采用左边重建, 上下同理.
+
+如下图: 左边=abs((l1-l2)+(l1-p0)) , 右边=abs((r1-r2)+(r1-p0)).
+
+因为左边<右边, 所以认为左边平缓, 采用左边重建, 上下同理.
 
 ![URPSSAO_12](Images/URPSSAO_12.jpg)
 
@@ -1622,34 +1643,34 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 
 half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 {
-    #if defined(_RECONSTRUCT_NORMAL_LOW)
-        ...
-    #else
-        ...
+	#if defined(_RECONSTRUCT_NORMAL_LOW)
+		...
+	#else
+		...
 
-        // Determine the closest horizontal and vertical pixels...
-        // horizontal: left = 0.0 right = 1.0
-        // vertical  : down = 0.0    up = 1.0
-        #if defined(_RECONSTRUCT_NORMAL_MEDIUM)
-            const uint closest_horizontal = l1.z > r1.z ? 0 : 1;
-            const uint closest_vertical   = d1.z > u1.z ? 0 : 1;
-        #else
-            float3 l2 = float3(uv + lUV * 2.0, 0.0);
-            l2.z = SampleAndGetLinearEyeDepth(l2.xy); // Left2
-            float3 r2 = float3(uv + rUV * 2.0, 0.0);
-            r2.z = SampleAndGetLinearEyeDepth(r2.xy); // Right2
-            float3 u2 = float3(uv + uUV * 2.0, 0.0);
-            u2.z = SampleAndGetLinearEyeDepth(u2.xy); // Up2
-            float3 d2 = float3(uv + dUV * 2.0, 0.0);
-            d2.z = SampleAndGetLinearEyeDepth(d2.xy); // Down2
+		// Determine the closest horizontal and vertical pixels...
+		// horizontal: left = 0.0 right = 1.0
+		// vertical  : down = 0.0	up = 1.0
+		#if defined(_RECONSTRUCT_NORMAL_MEDIUM)
+			const uint closest_horizontal = l1.z > r1.z ? 0 : 1;
+			const uint closest_vertical   = d1.z > u1.z ? 0 : 1;
+		#else
+			float3 l2 = float3(uv + lUV * 2.0, 0.0);
+			l2.z = SampleAndGetLinearEyeDepth(l2.xy); // Left2
+			float3 r2 = float3(uv + rUV * 2.0, 0.0);
+			r2.z = SampleAndGetLinearEyeDepth(r2.xy); // Right2
+			float3 u2 = float3(uv + uUV * 2.0, 0.0);
+			u2.z = SampleAndGetLinearEyeDepth(u2.xy); // Up2
+			float3 d2 = float3(uv + dUV * 2.0, 0.0);
+			d2.z = SampleAndGetLinearEyeDepth(d2.xy); // Down2
 
-            const uint closest_horizontal = abs((2.0 * l1.z - l2.z) - depth) < abs((2.0 * r1.z - r2.z) - depth) ? 0 : 1;
-            const uint closest_vertical = abs((2.0 * d1.z - d2.z) - depth) < abs((2.0 * u1.z - u2.z) - depth) ? 0 : 1;
-        #endif
+			const uint closest_horizontal = abs((2.0 * l1.z - l2.z) - depth) < abs((2.0 * r1.z - r2.z) - depth) ? 0 : 1;
+			const uint closest_vertical = abs((2.0 * d1.z - d2.z) - depth) < abs((2.0 * u1.z - u2.z) - depth) ? 0 : 1;
+		#endif
 
 
-        ...
-    #endif
+		...
+	#endif
 }
 
 ```
@@ -1671,7 +1692,7 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 有了当前点的信息, 然后再在当前点的沿法线半球进行多次随机采样获取多个点, 转换到ViewPos, 再和当前点比较生成AO.
 
 那么就要先写一个获取随机方向的办法.
-添加方法**half3 PickSamplePoint(float2 uv, int sampleIndex)**和相关的随机方法. 
+添加方法 **half3 PickSamplePoint(float2 uv, int sampleIndex)** 和相关的随机方法. 
 这里利用出之前的随机数组和随机函数生成是一个整球的随机方向.
 
 **InterleavedGradientNoise**方法在SRP内置的**Random.hlsl**.
@@ -1689,32 +1710,32 @@ void SampleDepthNormalView(float2 uv, out float depth, out half3 normal, out hal
 // Trigonometric function utility
 half2 CosSin(half theta)
 {
-    half sn, cs;
-    sincos(theta, sn, cs);
-    return half2(cs, sn);
+	half sn, cs;
+	sincos(theta, sn, cs);
+	return half2(cs, sn);
 }
 
 // Pseudo random number generator with 2D coordinates
 half GetRandomUVForSSAO(float u, int sampleIndex)
 {
-    return SSAORandomUV[u * 20 + sampleIndex];
+	return SSAORandomUV[u * 20 + sampleIndex];
 }
 
 float2 GetScreenSpacePosition(float2 uv)
 {
-    return float2(uv * SCREEN_PARAMS.xy * DOWNSAMPLE);
+	return float2(uv * SCREEN_PARAMS.xy * DOWNSAMPLE);
 }
 
 // Sample point picker
 half3 PickSamplePoint(float2 uv, int sampleIndex)
 {
-    const float2 positionSS = GetScreenSpacePosition(uv);
-    const half gn = half(InterleavedGradientNoise(positionSS, sampleIndex));
+	const float2 positionSS = GetScreenSpacePosition(uv);
+	const half gn = half(InterleavedGradientNoise(positionSS, sampleIndex));
 
-    const half u = frac(GetRandomUVForSSAO(half(0.0), sampleIndex) + gn) * half(2.0) - half(1.0);
-    const half theta = (GetRandomUVForSSAO(half(1.0), sampleIndex) + gn) * half(TWO_PI);
+	const half u = frac(GetRandomUVForSSAO(half(0.0), sampleIndex) + gn) * half(2.0) - half(1.0);
+	const half theta = (GetRandomUVForSSAO(half(1.0), sampleIndex) + gn) * half(TWO_PI);
 
-    return half3(CosSin(theta) * sqrt(half(1.0) - u * u), u);
+	return half3(CosSin(theta) * sqrt(half(1.0) - u * u), u);
 }
 
 Varyings VertDefault(Attributes input)
@@ -1743,17 +1764,17 @@ Varyings VertDefault(Attributes input)
 // http://graphics.cs.williams.edu/papers/AlchemyHPG11/
 half4 SSAOFrag(Varyings input) : SV_Target
 {
-    UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-    float2 uv = input.uv;
+	UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+	float2 uv = input.uv;
 
-    // Parameters used in coordinate conversion
-    half3x3 camTransform = (half3x3)_CameraViewProjections[unity_eyeIndex]; // camera viewProjection matrix
+	// Parameters used in coordinate conversion
+	half3x3 camTransform = (half3x3)_CameraViewProjections[unity_eyeIndex]; // camera viewProjection matrix
 
-    // Get the depth, normal and view position for this fragment
-    float depth_o;
-    half3 norm_o;
-    half3 vpos_o;
-    SampleDepthNormalView(uv, depth_o, norm_o, vpos_o);
+	// Get the depth, normal and view position for this fragment
+	float depth_o;
+	half3 norm_o;
+	half3 vpos_o;
+	SampleDepthNormalView(uv, depth_o, norm_o, vpos_o);
 
 	//TODO:
 }
@@ -1772,26 +1793,26 @@ half4 SSAOFrag(Varyings input) : SV_Target
 half4 SSAOFrag(Varyings input) : SV_Target
 {
 	...
-    SampleDepthNormalView(uv, depth_o, norm_o, vpos_o);
+	SampleDepthNormalView(uv, depth_o, norm_o, vpos_o);
 
-    // This was added to avoid a NVIDIA driver issue.
-    const half rcpSampleCount = half(rcp(SAMPLE_COUNT));
-    half ao = 0.0;
-    for (int s = 0; s < SAMPLE_COUNT; s++)
-    {
-        // Sample point
-        half3 v_s1 = PickSamplePoint(uv, s);
+	// This was added to avoid a NVIDIA driver issue.
+	const half rcpSampleCount = half(rcp(SAMPLE_COUNT));
+	half ao = 0.0;
+	for (int s = 0; s < SAMPLE_COUNT; s++)
+	{
+		// Sample point
+		half3 v_s1 = PickSamplePoint(uv, s);
 
-        // Make it distributed between [0, _Radius]
-        v_s1 *= sqrt((half(s) + half(1.0)) * rcpSampleCount) * RADIUS;
+		// Make it distributed between [0, _Radius]
+		v_s1 *= sqrt((half(s) + half(1.0)) * rcpSampleCount) * RADIUS;
 
-        //-n*sign(dot(i, ng)).   确保跟normal一个方向
-        v_s1 = faceforward(v_s1, -norm_o, v_s1);
+		//-n*sign(dot(i, ng)).   确保跟normal一个方向
+		v_s1 = faceforward(v_s1, -norm_o, v_s1);
 
-        half3 vpos_s1 = vpos_o + v_s1;
+		half3 vpos_s1 = vpos_o + v_s1;
 
 		//TODO:
-    }
+	}
 }
 
 ```
@@ -1809,37 +1830,41 @@ half4 SSAOFrag(Varyings input) : SV_Target
 half4 SSAOFrag(Varyings input) : SV_Target
 {
 	...
-    for (int s = 0; s < SAMPLE_COUNT; s++)
-    {
+	for (int s = 0; s < SAMPLE_COUNT; s++)
+	{
 		...
 
-        half3 vpos_s1 = vpos_o + v_s1;
+		half3 vpos_s1 = vpos_o + v_s1;
 
-        half3 spos_s1 = mul(camTransform, vpos_s1);
+		half3 spos_s1 = mul(camTransform, vpos_s1);
 
-        #if defined(_ORTHOGRAPHIC)
-            float2 uv_s1_01 = clamp((spos_s1.xy + float(1.0)) * float(0.5), float(0.0), float(1.0));
-        #else
-            float zdist = -dot(UNITY_MATRIX_V[2].xyz, vpos_s1);
-            float2 uv_s1_01 = clamp((spos_s1.xy * rcp(zdist) + float(1.0)) * float(0.5), float(0.0), float(1.0));
-        #endif
+		#if defined(_ORTHOGRAPHIC)
+			float2 uv_s1_01 = clamp((spos_s1.xy + float(1.0)) * float(0.5), float(0.0), float(1.0));
+		#else
+			float zdist = -dot(UNITY_MATRIX_V[2].xyz, vpos_s1);
+			float2 uv_s1_01 = clamp((spos_s1.xy * rcp(zdist) + float(1.0)) * float(0.5), float(0.0), float(1.0));
+		#endif
 
-        // Depth at the sample point
-        float depth_s1 = SampleAndGetLinearEyeDepth(uv_s1_01);
+		// Depth at the sample point
+		float depth_s1 = SampleAndGetLinearEyeDepth(uv_s1_01);
 
-        // Relative position of the sample point
-        half3 vpos_s2 = ReconstructViewPos(uv_s1_01, depth_s1);
+		// Relative position of the sample point
+		half3 vpos_s2 = ReconstructViewPos(uv_s1_01, depth_s1);
 
 		//TODO:
-    }
+	}
 }
 
 ```
 
 有了正确的随机采样点的View Space信息. 就可以和原点进行比较, 得到AO值.
+
 设 矢量D=随机点-原点.
-D和法线夹角越大, 说明偏离越大, AO强度越小. dot产生负数, 说明在背面, 则不产生AO. 
-原点离摄像机越远, AO也会减弱. 
+
+D和法线夹角越大, 说明偏离越大, AO强度越小. dot产生负数, 说明在背面, 则不产生AO.
+
+原点离摄像机越远, AO也会减弱.
+
 如果D的长度越长, 说明两点距离越远, AO贡献也越小.
 
 ```C++
@@ -1849,35 +1874,38 @@ D和法线夹角越大, 说明偏离越大, AO强度越小. dot产生负数, 说
 half4 SSAOFrag(Varyings input) : SV_Target
 {
 	...
-    for (int s = 0; s < SAMPLE_COUNT; s++)
-    {
+	for (int s = 0; s < SAMPLE_COUNT; s++)
+	{
 		...
 
-        // Relative position of the sample point
-        half3 vpos_s2 = ReconstructViewPos(uv_s1_01, depth_s1);
+		// Relative position of the sample point
+		half3 vpos_s2 = ReconstructViewPos(uv_s1_01, depth_s1);
 
-        half3 v_s2 = vpos_s2 - vpos_o;
-        // Estimate the obscurance value
-        half dotVal = dot(v_s2, norm_o);
-        #if defined(_ORTHOGRAPHIC)
-            dotVal -= half(2.0 * kBeta * depth_o);
-        #else
-            dotVal -= half(kBeta * depth_o);
-        #endif
+		half3 v_s2 = vpos_s2 - vpos_o;
+		// Estimate the obscurance value
+		half dotVal = dot(v_s2, norm_o);
+		#if defined(_ORTHOGRAPHIC)
+			dotVal -= half(2.0 * kBeta * depth_o);
+		#else
+			dotVal -= half(kBeta * depth_o);
+		#endif
 
-        half a1 = max(dotVal, half(0.0));
-        half a2 = dot(v_s2, v_s2) + kEpsilon;
-        ao += a1 * rcp(a2);
-    }
+		half a1 = max(dotVal, half(0.0));
+		half a2 = dot(v_s2, v_s2) + kEpsilon;
+		ao += a1 * rcp(a2);
+	}
 
 	//TODO:
 }
 
 ```
 
-然后这里得到的AO值是累积的, 需要平均正常化.
+然后这里得到的AO值是累积的, 需要平均一下.
+
 正常的是: ao = (ao累加值/数量)*强度
+
 这里为了效果可能是添加了一点魔法吧233333. 具体我也不知道.
+
 可以输出看看AO效果.
 
 ```C++
@@ -1887,18 +1915,18 @@ half4 SSAOFrag(Varyings input) : SV_Target
 half4 SSAOFrag(Varyings input) : SV_Target
 {
 	...
-    for (int s = 0; s < SAMPLE_COUNT; s++)
-    {
+	for (int s = 0; s < SAMPLE_COUNT; s++)
+	{
 		...
-    }
+	}
 
-    // Intensity normalization
-    ao *= RADIUS;
+	// Intensity normalization
+	ao *= RADIUS;
 
-    // Apply contrast
-    ao = PositivePow(ao * INTENSITY * rcpSampleCount, kContrast);
+	// Apply contrast
+	ao = PositivePow(ao * INTENSITY * rcpSampleCount, kContrast);
 
-    return ao;
+	return ao;
 }
 
 ```
@@ -1908,12 +1936,12 @@ half4 SSAOFrag(Varyings input) : SV_Target
 
 #### **3.4.7 PackAONormal**
 
-最后因为后面的Pass还需要用到Normal, 所以需要把ao和normal 进行pack一下, 然后进行输出.
-r:ao    gba:normal*0.5+0.5
-添加三个新方法, 并且修改**half4 SSAOFrag(Varyings input)**的输出.
-**half4 PackAONormal(half ao, half3 n)** , pack ao和normal
-**half3 GetPackedNormal(half4 p)** , unpack normal
-**half GetPackedAO(half4 p)** , 获取ao
+最后因为后面的Pass还需要用到Normal, 所以需要把ao和normal 进行pack一下, 然后进行输出.r:ao, gba:normal*0.5+0.5
+
+添加三个新方法, 并且修改 **half4 SSAOFrag(Varyings input)** 的输出.
+  + **half4 PackAONormal(half ao, half3 n)** , pack ao和normal
+  + **half3 GetPackedNormal(half4 p)** , unpack normal
+  + **half GetPackedAO(half4 p)** , 获取ao
 
 ```C++
 
@@ -1926,17 +1954,17 @@ struct Varyings
 
 half4 PackAONormal(half ao, half3 n)
 {
-    return half4(ao, n * half(0.5) + half(0.5));
+	return half4(ao, n * half(0.5) + half(0.5));
 }
 
 half3 GetPackedNormal(half4 p)
 {
-    return p.gba * half(2.0) - half(1.0);
+	return p.gba * half(2.0) - half(1.0);
 }
 
 half GetPackedAO(half4 p)
 {
-    return p.r;
+	return p.r;
 }
 
 float SampleAndGetLinearEyeDepth(float2 uv)
@@ -1950,9 +1978,9 @@ half4 SSAOFrag(Varyings input) : SV_Target
 {
 	...
 
-    // Apply contrast
-    ao = PositivePow(ao * INTENSITY * rcpSampleCount, kContrast);
-    return PackAONormal(ao, norm_o);
+	// Apply contrast
+	ao = PositivePow(ao * INTENSITY * rcpSampleCount, kContrast);
+	return PackAONormal(ao, norm_o);
 }
 ```
 
@@ -1963,7 +1991,9 @@ half4 SSAOFrag(Varyings input) : SV_Target
 #### **3.5.1 Pass**
 
 返回**ScreenSpaceAmbientOcclusion.shader**中再添加一个Pass **SSAO_HorizontalBlur**.
-**BLUR_SAMPLE_CENTER_NORMAL** , 用于重建normal, 虽然AO图的yzw已经保存了Normal. 但是如果在Downsample的时候, AO图是1/2分辨率的, 保存的Normal不是很准确. Horizontalor Blur的时候是1/1, 需要更准确的Normal, 所以再次重建.
+
+**BLUR_SAMPLE_CENTER_NORMAL** , 用于重建normal, 虽然AO图的yzw已经保存了Normal.
+但是如果在Downsample的时候, AO图是1/2分辨率的, 保存的Normal不是很准确. Horizontalor Blur的时候是1/1, 需要更准确的Normal, 所以再次重建.
 
 ```C++
 
@@ -2025,13 +2055,13 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 // Used in the blur passes
 half3 SampleNormal(float2 uv)
 {
-    #if defined(_SOURCE_DEPTH_NORMALS)
-        return half3(SampleSceneNormals(uv));
-    #else
-        float depth = SampleAndGetLinearEyeDepth(uv);
-        half3 vpos = ReconstructViewPos(uv, depth);
-        return ReconstructNormal(uv, depth, vpos);
-    #endif
+	#if defined(_SOURCE_DEPTH_NORMALS)
+		return half3(SampleSceneNormals(uv));
+	#else
+		float depth = SampleAndGetLinearEyeDepth(uv);
+		half3 vpos = ReconstructViewPos(uv, depth);
+		return ReconstructNormal(uv, depth, vpos);
+	#endif
 }
 
 void SampleDepthNormalView(float2 uv, out float depth, out half3 normal, out half3 vpos)
@@ -2044,23 +2074,23 @@ void SampleDepthNormalView(float2 uv, out float depth, out half3 normal, out hal
 // Geometry-aware separable bilateral filter
 half4 Blur(float2 uv, float2 delta) 
 {
-    half4 p0 =  (half4) SAMPLE_BASEMAP(uv                 );
-    half4 p1a = (half4) SAMPLE_BASEMAP(uv - delta * 1.3846153846);
-    half4 p1b = (half4) SAMPLE_BASEMAP(uv + delta * 1.3846153846);
-    half4 p2a = (half4) SAMPLE_BASEMAP(uv - delta * 3.2307692308);
-    half4 p2b = (half4) SAMPLE_BASEMAP(uv + delta * 3.2307692308);
+	half4 p0 =  (half4) SAMPLE_BASEMAP(uv				 );
+	half4 p1a = (half4) SAMPLE_BASEMAP(uv - delta * 1.3846153846);
+	half4 p1b = (half4) SAMPLE_BASEMAP(uv + delta * 1.3846153846);
+	half4 p2a = (half4) SAMPLE_BASEMAP(uv - delta * 3.2307692308);
+	half4 p2b = (half4) SAMPLE_BASEMAP(uv + delta * 3.2307692308);
 
-    #if defined(BLUR_SAMPLE_CENTER_NORMAL)
-        #if defined(_SOURCE_DEPTH_NORMALS)
-            half3 n0 = half3(SampleSceneNormals(uv));
-        #else
-            half3 n0 = SampleNormal(uv);
-        #endif
-    #else
-        half3 n0 = GetPackedNormal(p0);
-    #endif
+	#if defined(BLUR_SAMPLE_CENTER_NORMAL)
+		#if defined(_SOURCE_DEPTH_NORMALS)
+			half3 n0 = half3(SampleSceneNormals(uv));
+		#else
+			half3 n0 = SampleNormal(uv);
+		#endif
+	#else
+		half3 n0 = GetPackedNormal(p0);
+	#endif
 
-    //TODO:
+	//TODO:
 }
 
 ```
@@ -2083,7 +2113,7 @@ half GetPackedAO(half4 p)
 
 half CompareNormal(half3 d1, half3 d2)
 {
-    return smoothstep(kGeometryCoeff, half(1.0), dot(d1, d2));
+	return smoothstep(kGeometryCoeff, half(1.0), dot(d1, d2));
 }
 
 float SampleAndGetLinearEyeDepth(float2 uv)
@@ -2096,35 +2126,36 @@ float SampleAndGetLinearEyeDepth(float2 uv)
 // Geometry-aware separable bilateral filter
 half4 Blur(float2 uv, float2 delta) 
 {
-    ...
+	...
 
-    #if defined(BLUR_SAMPLE_CENTER_NORMAL)
+	#if defined(BLUR_SAMPLE_CENTER_NORMAL)
 		...
-    #endif
+	#endif
 
 
-    half w0  =                                           half(0.2270270270);
-    half w1a = CompareNormal(n0, GetPackedNormal(p1a)) * half(0.3162162162);
-    half w1b = CompareNormal(n0, GetPackedNormal(p1b)) * half(0.3162162162);
-    half w2a = CompareNormal(n0, GetPackedNormal(p2a)) * half(0.0702702703);
-    half w2b = CompareNormal(n0, GetPackedNormal(p2b)) * half(0.0702702703);
+	half w0  =										   half(0.2270270270);
+	half w1a = CompareNormal(n0, GetPackedNormal(p1a)) * half(0.3162162162);
+	half w1b = CompareNormal(n0, GetPackedNormal(p1b)) * half(0.3162162162);
+	half w2a = CompareNormal(n0, GetPackedNormal(p2a)) * half(0.0702702703);
+	half w2b = CompareNormal(n0, GetPackedNormal(p2b)) * half(0.0702702703);
 
-    half s = half(0.0);
-    s += GetPackedAO(p0)  * w0;
-    s += GetPackedAO(p1a) * w1a;
-    s += GetPackedAO(p1b) * w1b;
-    s += GetPackedAO(p2a) * w2a;
-    s += GetPackedAO(p2b) * w2b;
-    s *= rcp(w0 + w1a + w1b + w2a + w2b);
+	half s = half(0.0);
+	s += GetPackedAO(p0)  * w0;
+	s += GetPackedAO(p1a) * w1a;
+	s += GetPackedAO(p1b) * w1b;
+	s += GetPackedAO(p2a) * w2a;
+	s += GetPackedAO(p2b) * w2b;
+	s *= rcp(w0 + w1a + w1b + w2a + w2b);
 
-    return PackAONormal(s, n0);
+	return PackAONormal(s, n0);
 }
 
 ```
 
 #### **3.5.3 HorizontalBlur**
 
-然后写FragPass. 添加Pass **half4 HorizontalBlur(Varyings input)**
+然后写FragPass. 添加Pass **half4 HorizontalBlur(Varyings input)** .
+
 只用把当前uv和delta传进**Blur**方法就好了.
 
 ```C++
@@ -2138,11 +2169,11 @@ half4 SSAOFrag(Varyings input) : SV_Target
 
 half4 HorizontalBlur(Varyings input) : SV_Target
 {
-    UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+	UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
-    const float2 uv = input.uv;
-    const float2 delta = float2(_SourceSize.z, 0.0);
-    return Blur(uv, delta);
+	const float2 uv = input.uv;
+	const float2 delta = float2(_SourceSize.z, 0.0);
+	return Blur(uv, delta);
 }
 
 ```
@@ -2154,7 +2185,7 @@ half4 HorizontalBlur(Varyings input) : SV_Target
 
 #### **3.6.1 Pass**
 
-返回**ScreenSpaceAmbientOcclusion.shader**中再添加一个Pass **SSAO_VerticalBlur**.
+返回**ScreenSpaceAmbientOcclusion.shader**中再添加一个Pass **SSAO_VerticalBlur** .
 
 ```C++
 
@@ -2198,9 +2229,9 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 
 因为存在**DOWNSAMPLE**, 所以还是要注意一下delta的值.
 + 比如Screen RT是1920*1080. 
-+ Pass1RT 启用**DOWNSAMPLE**为960x540. 
-+ Pass2 RT恢复为1920*1080 . 因为引用Pass1RT, 所以delta为1/(960x540) . 
-+ Pass3 RT也为1920*1080. 引用Pass2, delta为1/(1920x1080). 这显然是错的, 因为这个时候rt已经Resize过了, 颜色Bilinear重新生成过. 我们需要采样Resize前的颜色点. 所以delta 应该是 1/(960|540). 
++ Pass1 RT 启用**DOWNSAMPLE**为960x540. 
++ Pass2 RT恢复为1920*1080 . 因为采样Pass1 RT, 所以delta为1/(960x540) . 
++ Pass3 RT也为1920*1080. 采样Pass2 RT, delta为1/(1920x1080). 这显然是错的, 因为这个时候RT已经Resize过了, 颜色Bilinear重新生成过. 我们需要采样Resize前的颜色点. 所以delta应该是 1/(960|540). 
 
 ```C++
 
@@ -2213,11 +2244,11 @@ half4 HorizontalBlur(Varyings input) : SV_Target
 
 half4 VerticalBlur(Varyings input) : SV_Target
 {
-    UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+	UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
-    const float2 uv = input.uv;
-    const float2 delta = float2(0.0, _SourceSize.w * rcp(DOWNSAMPLE));
-    return Blur(uv, delta);
+	const float2 uv = input.uv;
+	const float2 delta = float2(0.0, _SourceSize.w * rcp(DOWNSAMPLE));
+	return Blur(uv, delta);
 }
 
 ```
@@ -2236,6 +2267,8 @@ half4 VerticalBlur(Varyings input) : SV_Target
 #### **3.7.1 Pass**
 
 返回**ScreenSpaceAmbientOcclusion.shader**中再添加一个Pass **SSAO_FinalBlur**.
+
+```C++
 
 Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 {
@@ -2264,6 +2297,8 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 	}
 }
 
+```
+
 #### **3.7.2 BlurSmall**
 
 因为这个是对角Blur, 和之前的Blur方法有点不一样. 所以在**URPSSAO.hlsl**中创建一个新的方法**half BlurSmall(float2 uv, float2 delta)**. 原理和**Blur**一样.
@@ -2279,28 +2314,28 @@ half4 Blur(float2 uv, float2 delta)
 // Geometry-aware bilateral filter (single pass/small kernel)
 half BlurSmall(float2 uv, float2 delta)
 {
-    half4 p0 = (half4)SAMPLE_BASEMAP(uv);
-    half4 p1 = (half4)SAMPLE_BASEMAP(uv + float2(-delta.x, -delta.y));
-    half4 p2 = (half4)SAMPLE_BASEMAP(uv + float2( delta.x, -delta.y));
-    half4 p3 = (half4)SAMPLE_BASEMAP(uv + float2(-delta.x, delta.y));
-    half4 p4 = (half4)SAMPLE_BASEMAP(uv + float2( delta.x, delta.y));
+	half4 p0 = (half4)SAMPLE_BASEMAP(uv);
+	half4 p1 = (half4)SAMPLE_BASEMAP(uv + float2(-delta.x, -delta.y));
+	half4 p2 = (half4)SAMPLE_BASEMAP(uv + float2( delta.x, -delta.y));
+	half4 p3 = (half4)SAMPLE_BASEMAP(uv + float2(-delta.x, delta.y));
+	half4 p4 = (half4)SAMPLE_BASEMAP(uv + float2( delta.x, delta.y));
 
-    half3 n0 = GetPackedNormal(p0);
+	half3 n0 = GetPackedNormal(p0);
 
-    half w0 = half(1.0);
-    half w1 = CompareNormal(n0, GetPackedNormal(p1));
-    half w2 = CompareNormal(n0, GetPackedNormal(p2));
-    half w3 = CompareNormal(n0, GetPackedNormal(p3));
-    half w4 = CompareNormal(n0, GetPackedNormal(p4));
+	half w0 = half(1.0);
+	half w1 = CompareNormal(n0, GetPackedNormal(p1));
+	half w2 = CompareNormal(n0, GetPackedNormal(p2));
+	half w3 = CompareNormal(n0, GetPackedNormal(p3));
+	half w4 = CompareNormal(n0, GetPackedNormal(p4));
 
-    half s = half(0.0);
-    s += GetPackedAO(p0) * w0;
-    s += GetPackedAO(p1) * w1;
-    s += GetPackedAO(p2) * w2;
-    s += GetPackedAO(p3) * w3;
-    s += GetPackedAO(p4) * w4;
+	half s = half(0.0);
+	s += GetPackedAO(p0) * w0;
+	s += GetPackedAO(p1) * w1;
+	s += GetPackedAO(p2) * w2;
+	s += GetPackedAO(p3) * w3;
+	s += GetPackedAO(p4) * w4;
 
-    return s * rcp(w0 + w1 + w2 + w3 + w4);
+	return s * rcp(w0 + w1 + w2 + w3 + w4);
 }
 
 Varyings VertDefault(Attributes input)
@@ -2326,11 +2361,11 @@ half4 VerticalBlur(Varyings input) : SV_Target
 
 half4 FinalBlur(Varyings input) : SV_Target
 {
-    UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+	UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
-    const float2 uv = input.uv;
-    const float2 delta = _SourceSize.zw;
-    return 1.0h - BlurSmall(uv, delta);
+	const float2 uv = input.uv;
+	const float2 delta = _SourceSize.zw;
+	return 1.0h - BlurSmall(uv, delta);
 }
 
 ```
@@ -2447,26 +2482,27 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 ## **4.其它**
 
 0. 延迟渲染必定有Normal图. 前向渲染的时候可以其实也建议准备好Normal图. 
-    + 比如说用Opaque Pass的时候, 用MRT再保存一份Normal图. 
-    + 可以避免Normal在Fragment Shdare中重建.
-    + 比空间生产准确, 而且物体的法线图产生的Normal变化也会被记录.
-    + 这样也可以避免再走一次Normal Pass去渲染.
-    + 一些别的效果也需要Normal.
+	+ 比如说用Opaque Pass的时候, 用MRT再保存一份Normal图. 
+	+ 可以避免Normal在Fragment Shdare中重建.
+	+ 这样也可以避免再走一次Normal Pass去渲染.
+	+ 比空间计算生成准确, 而且物体的法线图产生的Normal变化也会被记录.
+	+ 一些别的效果也需要Normal.
 1. 不知道为什么Normal重建步长用的是2.0. 
-    + 我这里改成了1.0.
+	+ 我这里改成了1.0.
 2. 当downsample的时候, Occsion Pass RT是 1/2, Horizontal Blur 立马恢复为 1/1. 是为了效果更好.
-    + 可以在Final Blur的时候恢复为 1/1, 中间的Horizontal Blur和Vertical Blur继续保持1/2. 电脑耗时快了0.1~0.2ms(差不多0.6ms). 效果比较难区分, 尤其是手机上.
-    + 前三张图都为1/2, 这样就可以只用创建两张图进行复用了. 
+	+ 可以在Final Blur的时候恢复为 1/1, 中间的Horizontal Blur和Vertical Blur继续保持1/2.
+	+ 电脑耗时快了0.1~0.2ms(差不多0.6ms). 效果比较难区分, 尤其是手机上.
+	+ 前三张图都为1/2, 这样就可以只用创建两张图进行复用了. 
 3. Window->Analysis->Rendering Debugger可以直接Debug AO效果, 还有一堆效果.
 
 ![URPSSAO_35](Images/URPSSAO_35.jpg)
 
 4. 随机采样算法改用贴图
-    + 是一个负优化. 效果差, 用时还差不多.(白给, GG)
-    + 大体的想法是:
-      + 离线生成256*256的half4的贴图一个像素记录四个随机点(fixed2)
-      + 循环前采样随机图
-      + 循环的时候用双线性进行lerp
+	+ 是一个负优化. 效果差, 用时还差不多.(白给, GG)
+	+ 大体的想法是:
+	  + 离线生成256*256的half4的贴图一个像素记录四个随机点(fixed2)
+	  + 循环前采样随机图
+	  + 循环的时候用双线性进行lerp
 
 
 
