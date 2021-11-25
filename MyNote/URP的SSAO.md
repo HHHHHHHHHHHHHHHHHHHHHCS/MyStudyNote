@@ -2467,3 +2467,9 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
       + 离线生成256*256的half4的贴图一个像素记录四个随机点(fixed2)
       + 循环前采样随机图
       + 循环的时候用双线性进行lerp
+
+
+
+
+-----------------
+![URPSSAO_44](Images/URPSSAO_44.jpg)
