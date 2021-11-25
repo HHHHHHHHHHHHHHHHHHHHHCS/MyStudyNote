@@ -2455,12 +2455,15 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 1. 不知道为什么Normal重建步长用的是2.0. 
     + 我这里改成了1.0.
 2. 当downsample的时候, Occsion Pass RT是 1/2, Horizontal Blur 立马恢复为 1/1. 是为了效果更好.
-    + 可以在Final Blur的时候恢复为 1/1, 中间的Horizontal Blur和Vertical Blur继续保持1/2. 电脑耗时快了0.1~0.2ms. 效果比较难区分, 尤其是手机上.
+    + 可以在Final Blur的时候恢复为 1/1, 中间的Horizontal Blur和Vertical Blur继续保持1/2. 电脑耗时快了0.1~0.2ms(差不多0.6ms). 效果比较难区分, 尤其是手机上.
     + 前三张图都为1/2, 这样就可以只用创建两张图进行复用了. 
 3. Window->Analysis->Rendering Debugger可以直接Debug AO效果, 还有一堆效果.
 
 ![URPSSAO_35](Images/URPSSAO_35.jpg)
 
-4. 随机采样改成贴图
-
-//TODO: 随机采样改成贴图
+4. 随机采样算法改用贴图
+    + 是一个负优化. 效果差, 用时还差不多.(白给, GG)
+    + 大体的想法是:
+      + 离线生成256*256的half4的贴图一个像素记录四个随机点(fixed2)
+      + 循环前采样随机图
+      + 循环的时候用双线性进行lerp
