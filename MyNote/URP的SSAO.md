@@ -1321,7 +1321,9 @@ static const half kEpsilon = half(0.0001);
 ### **3.3 顶点阶段**
 
 然后继续修改**URPSSAOLib.hlsl**.
+
 因为都是全屏的后处理. 所以顶点阶段都可以用大三角绘制 ,可以提高效率(根据平台而定, 一些没有效果 https://zhuanlan.zhihu.com/p/128023876).
+
 uv加了一个很小的epsilon, 避免重建法线的时候出现问题.
 
 ```C++
@@ -1577,11 +1579,16 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 ```
 
 再写 **Medium**.
-选择上下方向中深度较大的一个方向, 左右方向中深度较大的方向, 分别生成VerViewPos和HorViewPos. 然后cross(VerViewPos - ViewPos, HorViewPos - ViewPos) 就是法线了. 具体效果如下图.
+
+选择上下方向中深度离摄像机较近的一个方向, 左右方向也一样, 分别生成VerViewPos和HorViewPos. 然后cross(VerViewPos - ViewPos, HorViewPos - ViewPos) 就是法线了. 
+
+具体效果如下图.
 
 ![URPSSAO_11](Images/URPSSAO_11.jpg)
 
-注意, URP版本**delta**是 *2.0, 我这里改成 *1.0. 因为发现效果会好一点, 不知道为什么他这里写 *2.0. 下面图一是 *2.0, 图二是 *2.0, 看龙珠那边的瑕疵.
+注意, URP版本**delta**是 *2.0, 我这里改成 *1.0. 因为发现效果会好一点, 不知道为什么他这里写 *2.0. 
+
+下面图一是 *2.0, 图二是 *2.0, 看龙珠那边的瑕疵.
 
 ![URPSSAO_14](Images/URPSSAO_14.jpg)
 ![URPSSAO_15](Images/URPSSAO_15.jpg)
@@ -1803,9 +1810,15 @@ half4 SSAOFrag(Varyings input) : SV_Target
 ```
 
 然后就要For循环获得随机采样点.
-先获取随机方向, 根据循环索引确定长度, 从而确定点的位置. 
+
+先获取随机方向, 再根据循环索引确定距离, 从而确定点的位置. 
+
 因为要沿着法线正方向, 所以利用**faceforward**方法确保如果在反面也翻转到正面.
-最后随机采样点的位置=当前像素点位置+随机偏移方向*半径.
+
+最后, 随机采样点的位置 = 当前像素点位置 + 随机偏移方向 * (index/count) * 半径.
+
+![URPSSAO_45](Images/URPSSAO_45.jpg)
+
 
 ```C++
 
@@ -1838,9 +1851,9 @@ half4 SSAOFrag(Varyings input) : SV_Target
 
 ```
 
-有了这个随机点之后, 转换到它到Screen Space得到屏幕UV位置, 配合深度图获取这个位置最靠前的点信息. 然后进行比较. 
+有了这个随机点之后, 转换到它到Screen Space得到在屏幕UV位置, 配合深度图获取这个位置最靠前的点信息. 然后进行比较. 
 
-所以就要先把这个World Space的点转换到Project Space获得UV, 再采样深度图, 获得depth. 再使用之前写的**ReconstructViewPos(uv, depth)**方法, 获得靠前的点World Space信息.
+所以就要先把这个World Space的点转换到Project Space获得UV, 再采样深度图, 获得depth. 再使用之前写的 **ReconstructViewPos(uv, depth)** 方法, 获得靠前的点World Space的ViewPos信息.
 
 因为**透视相机**的点在屏幕空间的UV坐标是会根据深度变化从而进行等比变化, 但是正交相机则不会, 所以还要区分开来写.
 
@@ -1878,13 +1891,13 @@ half4 SSAOFrag(Varyings input) : SV_Target
 
 ```
 
-有了正确的随机采样点的View Space信息. 就可以和原点进行比较, 得到AO值.
+有了正确的随机采样点的ViewPos信息. 就可以和初始点进行比较, 得到AO值.
 
-设 矢量D=随机点-原点.
+设 矢量D=随机点-初始点.
 
 D和法线夹角越大, 说明偏离越大, AO强度越小. dot产生负数, 说明在背面, 则不产生AO.
 
-原点离摄像机越远, AO也会减弱.
+初始点离摄像机越远, AO也会减弱.
 
 如果D的长度越长, 说明两点距离越远, AO贡献也越小.
 
@@ -2007,7 +2020,9 @@ half4 SSAOFrag(Varyings input) : SV_Target
 
 ### **3.5 SSAO_HorizontalBlur**
 
-看上面的AO图, 可以知道这时候得到的AO结果非常的粗糙,充满颗粒感,不平滑. 所以需要blur进行处理一下. 这里的模糊用高效高斯模糊, 即分别用横(Horizontal)方向和竖(Vertical)方向还有对角方向进行处理.
+看上面的AO图, 可以知道这时候得到的AO结果非常的粗糙,充满颗粒感,不平滑. 所以需要blur进行处理一下. 
+
+这里的模糊用高效高斯模糊, 即分别用横(Horizontal)方向和竖(Vertical)方向还有对角方向进行处理.
 
 #### **3.5.1 Pass**
 
