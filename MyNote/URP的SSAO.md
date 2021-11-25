@@ -28,7 +28,9 @@ URP的SSAO
 ![URPSSAO_5](Images/URPSSAO_5.jpg)
 
 图一是前项渲染差不多2ms. 因为Normal要存在重建, 所以增加了耗时.
+
 图二是延迟渲染差不多1.5ms. 相对而言快了0.5ms.
+
 图三是延迟渲染且开启downsample, 耗时0.8ms. 快了0.7ms, 差不多有一半了.
 
 这里的版本是2021的. 2021对延迟渲染和XR做了支持,并且可以修改渲染的时机为BeforeOpaque/AfterOpaque(就是在物体shader中采样,还是贴到屏幕上).
@@ -60,7 +62,10 @@ URP的SSAO
 ![URPSSAO_38](Images/URPSSAO_38.png)
 ![URPSSAO_39](Images/URPSSAO_39.jpg)
 
-然后再说随机点采样. 在以前, 同时获得颜色和法线比较困难, 所以用的是整球(如2007年Crysis中SSAO). 因为是整球, 那么基本一个平面的一半会被遮住, 所以那时候如果遮挡的点大于一半的时候才考虑计算AO.
+然后再说随机点采样. 在以前, 同时获得颜色和法线比较困难, 所以用的是整球(如2007年Crysis中SSAO). 
+
+因为是整球, 那么基本一个平面的一半会被遮住, 所以那时候如果遮挡的点大于一半的时候才考虑计算AO.
+
 后面硬件发展, 可以利用法线改成半球采样, 对比整球去掉了灰蒙蒙的感觉, 效果好很多.
 
 还有之前还有SSAO Ray-tracing计算遮蔽, 现在则是使用随机采样点, 这能明显提高效率.
@@ -91,7 +96,9 @@ URP的SSAO
 
 ### **2.1 URPSSAOSettings**
 
-先拆解Settings属性, 看看都有啥!? 看上面属性面板很简单, 看了一眼代码果然很简单呢. 所以这里创建C# **URPSSAORenderFeature.cs**. 直接复制粘贴Settings Class.
+先拆解Settings属性, 看看都有啥!? 看上面属性面板很简单, 看了一眼代码果然很简单呢.
+
+所以这里创建C# **URPSSAORenderFeature.cs**. 直接复制粘贴Settings Class.
 
 ```C#
 [Serializable]
@@ -132,10 +139,15 @@ public class URPSSAORenderFeature: MonoBehaviour
 ### **2.2 URPSSAORenderFeature**
 
 然后再看**RendererFeature**. 这个里面基本就是创建个渲染Pass, 是否该添加到渲染队列, 创建材质和保存Settings. 
+
 **[DisallowMultipleRendererFeature]**这个标签作用是禁止多次添加用的, 在2020是**internal**加上去会报错, 2021终于是**public**.
+
 **Dispose**在切换**RendererData**的时候会触发, 销毁创建的材质.
+
 **URPSSAORenderPass**在后面补充.
+
 修改完善**class URPSSAORenderFeature**.
+
 **k_ShaderName**要和Shader中的name对应, 并且打包的时候注意别剔除了(可以添加材质球强制让其入包, 或者用**Shader Variant Collect**), 不然会报错找不到.
 
 ```C#
@@ -231,8 +243,11 @@ public class URPSSAORenderFeature : ScriptableRendererFeature
 #### **2.3.1 构造函数**
 
 这里先看构造函数.
+
 因为这里我是抄写的, 比较符合我自己的代码习惯. 而且还是一步一步慢慢填充的, 所以会修改一些, 但是大体上的思想基本一致.
+
 比如说**ProfilingSampler.Get(URPProfileId.SSAO)**在外部获取不了, 我这里用**k_tag**来自己创建.
+
 再比如**isRendererDeferred**判断是否为延迟渲染. 因为 **renderer.renderingMode** 是**internal**, 所以没有办法判断, 只能先写成false, 之后再想办法解决.
 
 ```C#
@@ -272,9 +287,13 @@ public class URPSSAORenderPass : ScriptableRenderPass
 #### **2.3.2 Setup**
 
 然后再看看每帧执行的**Setup**.
+
 把**Feature**的变量传递进去,记录保存.
+
 根据变量决定是否要开启SSAO, 渲染队列, 和需要的场景信息.
+
 ConfigureInput告诉管线, 我这个pass需要什么图, 让引擎帮忙启用对应的pass, 得到对应的图.
+
 (URP2021**ConfigureInput**终于支持**Motion Vector**)
 
 比如说:前项渲染且勾选了**DepthNormals**, 则会利用物体的**DepthNormal Pass** 去绘制生成Normal图.
@@ -393,7 +412,9 @@ public class URPSSAORenderPass : ScriptableRenderPass
 #### **2.3.4 OnCameraSetup**
 
 我们这里按照渲染逻辑顺序依次说明. 不过这里只写**override**的方法, 比如**Configure**,**FrameCleanup**都没有重写就跳过顺序说明了.
+
 当成功加入到渲染队列之后, 就是先执行**OnCameraSetup**. 
+
 **OnCameraSetup**这里主要是对材质球的属性设置.
 
 先写SSAO Params的设置.
@@ -583,7 +604,7 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 
 最后的最后就是**descriptors**创建和设置, **RenderTargetIdentifier**的初始化, RT的创建, 和画布的输入.
 
-因为AO的结果图是一个0~1的黑白图,所以单通道的**R8**就可以了.不过可能存在一些设备不支持,就用**ARGB32**.
+因为AO的结果图是一个0~1的黑白图, 所以单通道的**R8**就可以了. 不过可能存在一些设备不支持, 就用**ARGB32**.
 
 可能存在**DownSample**, 为了效果好, 这里RT的用**FilterMode**用**Bilinear**.
 
