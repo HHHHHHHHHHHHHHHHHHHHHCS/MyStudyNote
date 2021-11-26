@@ -1642,7 +1642,7 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 
 再写 **Medium**.
 
-选择上下方向中深度离摄像机较近的一个方向, 左右方向也一样, 分别生成VerViewPos和HorViewPos. 然后cross(VerViewPos - ViewPos, HorViewPos - ViewPos) 就是法线了. 
+选择上下方向中深度离摄像机较远的一个方向, 左右方向也一样, 分别生成VerViewPos和HorViewPos. 然后cross(VerViewPos - ViewPos, HorViewPos - ViewPos) 就是法线了. 
 
 具体效果如下图.
 
