@@ -124,6 +124,7 @@ URP的SSAO
 ![URPSSAO_40](Images/URPSSAO_40.jpg)
 
 还有比如说两个之间间隔很大, 理论上也不会产生AO.
+
 图一是No SSAO. 图二是 SSAO. 图三是HBAO. 可以看到SSAO还是把那块区域标记成AO. 反而HBAO考虑到了距离因素轻微的变暗, 效果真实准确很多.
 
 ![URPSSAO_41](Images/URPSSAO_41.jpg)
@@ -858,10 +859,14 @@ public class URPSSAORenderPass : ScriptableRenderPass
 ```
 
 然后渲染.
+
 设置分辨率(因为可能是半分辨率), 渲染AO, 然后横着模糊.
+
 重新设置全分辨率尺寸, 竖着模糊. 最后对角模糊输出FinalRT.
+
 设置FinalRT和AO参数.
-如果是**AfterOpaque**, 需要对全屏绘制AO. 所以还需要设置RT进行全屏Blend的绘制.
+
+如果是**AfterOpaque**, 需要对全屏绘制AO. 所以还需要设置RT并进行全屏Blend的绘制.
 
 ```C#
 
@@ -1463,8 +1468,11 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 #### **3.4.2 Depth**
 
 已经有uv了,要获取ViewPos,就需要先获取depth.
+
 返回**URPSSAOLib.hlsl**, 添加方法**float SampleAndGetLinearEyeDepth(float2 uv)**.
-正交相机,深度是线性插值.透视相机,是非线性,所以要区分计算.
+
+正交相机, 深度是线性插值. 透视相机, 是非线性. 所以要区分计算.
+
 这里可以直接调用封装好的API来完成.
 
 ```C++
@@ -1496,8 +1504,9 @@ Varyings VertDefault(Attributes input)
 #### **3.4.3 ViewPos**
 
 根据上面的原理还需要计算ViewPos(世界坐标下相对摄像机位置), 即是世界坐标系下, **摄像机位置** 到 **屏幕UV坐标和深度所描述的点** 的向量.
-大体的写法是:
-ViewPos=(左上角起点+x方向*uv.x+y方向*uv.y)*(depth)
+
+大体的写法是: ViewPos=(左上角起点+x方向*uv.x+y方向*uv.y)*(depth)
+
 但是还是要区分相机类型, 还要To Screen 的时候注意Y反转.
 
 添加方法**half3 ReconstructViewPos(float2 uv, float depth)**.
@@ -1538,13 +1547,17 @@ half3 ReconstructViewPos(float2 uv, float depth)
 #### **3.4.4 Normal**
 
 还需要再获取Normal.
+
 如果是延迟渲染利用UV和Gbuffer可以直接获取.
+
 如果是前项渲染且勾选了**DepthNormals**, 则会利用物体的**DepthNormal Pass** 去绘制生成Normal图, 传入Shader.
+
 否则就要利用空间坐标去生成重建.
 
 ![URPSSAO_13](Images/URPSSAO_13.jpg)
 
 先写利用Normal图获取Normal吧. 需要宏 **_SOURCE_DEPTH_NORMALS**.
+
 添加方法**void SampleDepthNormalView(float2 uv, out float depth, out half3 normal, out half3 vpos)**
 
 ```C++
@@ -2077,7 +2090,8 @@ half4 SSAOFrag(Varyings input) : SV_Target
 
 返回**ScreenSpaceAmbientOcclusion.shader**中再添加一个Pass **SSAO_HorizontalBlur**.
 
-**BLUR_SAMPLE_CENTER_NORMAL** , 用于重建normal, 虽然AO图的yzw已经保存了Normal.
+**BLUR_SAMPLE_CENTER_NORMAL** , 用于重建normal, 虽然AO图的yzw已经保存了Normal. 
+
 但是如果在Downsample的时候, AO图是1/2分辨率的, 保存的Normal不是很准确. Horizontalor Blur的时候是1/1, 需要更准确的Normal, 所以再次重建.
 
 ```C++
@@ -2316,7 +2330,8 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 + 比如Screen RT是1920*1080. 
 + Pass1 RT 启用**DOWNSAMPLE**为960x540. 
 + Pass2 RT恢复为1920*1080 . 因为采样Pass1 RT, 所以delta为1/(960x540) . 
-+ Pass3 RT也为1920*1080. 采样Pass2 RT, delta为1/(1920x1080). 这显然是错的, 因为这个时候RT已经Resize过了, 颜色Bilinear重新生成过. 我们需要采样Resize前的颜色点. 所以delta应该是 1/(960|540). 
++ Pass3 RT也为1920*1080. 采样Pass2 RT, delta为1/(1920x1080). 
++ 这显然是错的, 因为这个时候RT已经Resize过了, 颜色Bilinear重新生成过. 我们需要采样Resize前的颜色点. 所以delta应该是 1/(960|540). 
 
 ```C++
 
@@ -2583,7 +2598,7 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 ![URPSSAO_35](Images/URPSSAO_35.jpg)
 
 4. 随机采样算法改用贴图
-	+ 是一个负优化. 效果差, 用时还差不多.(白给, GG)
+	+ 是一个负优化. 效果差, 用时还差不多(白给, GG).
 	+ 大体的想法是:
 	  + 离线生成256*256的half4的贴图一个像素记录四个随机点(fixed2)
 	  + 循环前采样随机图
