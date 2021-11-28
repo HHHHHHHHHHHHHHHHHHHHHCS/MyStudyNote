@@ -1425,11 +1425,10 @@ Varyings VertDefault(Attributes input)
 #### **3.4.1 Pass**
 
 在**ScreenSpaceAmbientOcclusion.shader**中先添加一个Pass.
-
-**_GBUFFER_NORMALS_OCT**, 用于Normal解压缩, 做用是高精度Normal.
-**_SOURCE_DEPTH**, **_SOURCE_DEPTH_NORMALS**, 决定输入的图.
-**_RECONSTRUCT_NORMAL_LOW** , **_RECONSTRUCT_NORMAL_MEDIUM** , **_RECONSTRUCT_NORMAL_HIGH** , 如果是纯Depth 这个关键字决定用什么质量.
-**_ORTHOGRAPHIC**, 摄像机是透视还是正交相机. 相机类型决定深度的反算(透视相机的深度是非线性变化).
+  + **_GBUFFER_NORMALS_OCT**, 用于Normal解压缩, 做用是高精度Normal.
+  + **_SOURCE_DEPTH**, **_SOURCE_DEPTH_NORMALS**, 决定输入的图.
+  + **_RECONSTRUCT_NORMAL_LOW** , **_RECONSTRUCT_NORMAL_MEDIUM** , **_RECONSTRUCT_NORMAL_HIGH** , 如果是纯Depth 这个关键字决定用什么质量.
+  + **_ORTHOGRAPHIC**, 摄像机是透视还是正交相机. 相机类型决定深度的反算(透视相机的深度是非线性变化).
 
 ![URPSSAO_9](Images/URPSSAO_9.jpg)
 
