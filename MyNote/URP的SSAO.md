@@ -1649,9 +1649,10 @@ half3 ReconstructNormal(float2 uv, float depth, float3 vpos)
 
 注意, URP版本**delta**是 *2.0, 我这里改成 *1.0. 因为发现效果会好一点, 不知道为什么他这里写 *2.0. 
 
-下面图一是 *2.0, 图二是 *2.0, 看龙珠那边的瑕疵.
+下面图一是 *2.0, 图二是 *1.0, 看龙珠那边的瑕疵.
 
 ![URPSSAO_14](Images/URPSSAO_14.jpg)
+
 ![URPSSAO_15](Images/URPSSAO_15.jpg)
 
 
