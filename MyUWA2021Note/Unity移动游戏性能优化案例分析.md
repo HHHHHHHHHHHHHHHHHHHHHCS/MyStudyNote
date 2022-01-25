@@ -151,6 +151,7 @@ Unity移动游戏性能优化案例分析
 ### **2.2 C#**
   + Job System + Burst
     + 如DynamicBone插件Job+Burst化
+    + (但是其实DynamicBone可以走GPU, 速度更快. [知乎文章](https://zhuanlan.zhihu.com/p/394632382))
 
 ![](Images/MobilePerformanceOptimization_09.jpg)
 
