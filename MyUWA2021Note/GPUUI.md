@@ -1,7 +1,7 @@
 GPU UI
 =================
 
-(Github正常排版: [GPU UI]())
+(Github正常排版: [GPU UI](https://github.com/HHHHHHHHHHHHHHHHHHHHHCS/MyStudyNote/blob/main/MyUWA2021Note/GPUUI.md))
 
 ------------------------
 
