@@ -18,5 +18,3 @@ UWA2021BB
 当然也有比较有意思的. 如何最优化网络游戏开发整体效率, 讲了一个游戏生产的故事线.
 
 还有一些讲的很多方案, 工具也挺有意思的. 比如说GPU UI, Shader#.
-
-https://edu.uwa4d.com/lesson-detail/325/1381/1?isPreview=0

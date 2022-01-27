@@ -30,8 +30,7 @@ GPU UI
 
 ------------------------
 
-
-&emsp;&emsp; 来自于UWA2021的分享, [视频地址](https://edu.uwa4d.com/course-intro/1/300)
+&emsp;&emsp; 来自于UWA2021的分享 [视频地址](https://edu.uwa4d.com/course-intro/1/300)
 
 麦克风太差了, 听着有点难受hhhh... 所以不会记得很详细, 不过这个工具确实挺有趣的.
 

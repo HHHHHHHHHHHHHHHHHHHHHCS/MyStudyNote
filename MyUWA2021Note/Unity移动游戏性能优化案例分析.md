@@ -30,7 +30,7 @@ Unity移动游戏性能优化案例分析
 
 ------------------------
 
-&emsp;&emsp; 来自于UWA2021的分享, [视频地址](https://edu.uwa4d.com/course-intro/1/322)
+&emsp;&emsp; 来自于UWA2021的分享 [视频地址](https://edu.uwa4d.com/course-intro/1/322)
 
 ------------------------
 
