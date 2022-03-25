@@ -54,7 +54,7 @@ URP的SSAO
 
 -----------------
 
-## **0.先放结论**
+## **0. 先放结论**
 
 &emsp;&emsp; URP去年更新了SSAO,很久之前写(抄)完一直没有写个文章记录学习下.最近放假就写一下.
 
@@ -90,7 +90,7 @@ URP的SSAO
 
 -----------------
 
-## **1.原理**
+## **1. 原理**
 &emsp;&emsp; 先说大体的原理, 然后具体的实现各有不同.
 
 先说说AO(Ambient Occlusion,环境光遮罩). 物体几何之间的遮挡, 从而让光线的接受变少, 让物体变暗, 产生明暗或层次分明的感觉.
@@ -140,7 +140,7 @@ URP的SSAO
 
 -----------------
 
-## **2.拆解C#**
+## **2. 拆解C#**
 
 &emsp;&emsp; 说了这么多, 现在才进入正题. 我的习惯是先拆解C#, 再学习shader. 然后这里为了学习, 是使用抄写, 当然也可以对照源码直接看.
 
@@ -1197,7 +1197,7 @@ public class URPSSAOEditor : UnityEditor.Editor
 
 -----------------
 
-## **3.拆解Shader**
+## **3. 拆解Shader**
 
 &emsp;&emsp; 终于到Shader了.
 
@@ -2482,7 +2482,7 @@ half4 FinalBlur(Varyings input) : SV_Target
 
 -----------------
 
-## **4.应用**
+## **4. 应用**
 
 &emsp;&emsp; 那么怎么表现在物体上面呢. 前面讲了两种方法. 一种物体着色的时候采样变暗, 还有一种开启Setting的**After Opaque** 类似于后处理全屏绘制上去.
 
@@ -2579,7 +2579,7 @@ Shader "MyRP/URPSSAO/ScreenSpaceAmbientOcclusion"
 
 -----------------
 
-## **4.其它**
+## **5.其它**
 
 0. 延迟渲染必定有Normal图. 前向渲染的时候可以其实也建议准备好Normal图. 
 	+ 比如说用Opaque Pass的时候, 用MRT再保存一份Normal图. 
