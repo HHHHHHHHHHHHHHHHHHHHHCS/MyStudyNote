@@ -52,5 +52,5 @@ YiQiuuu的有篇文章是关于HBAO原理和实现, 讲的详细且不错, [文�
 
 -----------------
 
-[1]:https://github.com/HHHHHHHHHHHHHHHHHHHHHCS/MyStudyNote/blob/main/MyNote/
+[1]:https://github.com/HHHHHHHHHHHHHHHHHHHHHCS/MyStudyNote/blob/main/MyNote/%E5%86%99%E5%86%99%E7%AE%80%E5%8D%95%E7%9A%84HBAO.md
 [2]:https://zhuanlan.zhihu.com/p/103683536

@@ -180,7 +180,7 @@ Set-VM –HighMemoryMappedIoSpace 32GB –VMName $vm
 
 -----------------
 
-[1]:https://www.microsoft.com/zh-cn/software-download
+[1]:https://github.com/HHHHHHHHHHHHHHHHHHHHHCS/MyStudyNote/blob/main/MyNote/Hyper-V%26GPU.md
 [2]:https://www.microsoft.com/zh-cn/software-download
 [3]:https://www.xitongku.com/
 [4]:https://blog.csdn.net/mayong43111/article/details/124614480
