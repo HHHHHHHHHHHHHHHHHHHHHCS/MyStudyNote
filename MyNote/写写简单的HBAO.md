@@ -57,7 +57,6 @@ HBAO对比SSAO采样次数更少, 效果也好很多. 虽然可以用TSSAO来减
 
 YiQiuuu的有篇文章是关于HBAO原理和实现, 讲的详细且不错, [文章地址][3]. 这里直接快速引用概括一下.
 
-
 1. 屏幕上的每一个像素, 做一个四等分的四条射线, 然后随机旋转一下. 每一个像素的随机角度不能一样, 否则效果很怪/是错的. 这里的四等分也可以是六等分, 八等分...
 
 ![](Images/HBAO_03.jpg)
@@ -88,23 +87,27 @@ YiQiuuu的有篇文章是关于HBAO原理和实现, 讲的详细且不错, [文�
 
 而根据View Space 利用ddx/ddy重新生成的法线是对的. 之前的SSAO篇中有介绍怎么重新生成法线.
 
-但是我下面的代码还是会用GBuffer的NormalMap, 首先为了提高性能. 
+但是我下面的代码还是会用NormalRT, 首先为了提高性能. 
 
 下面是我用ddx/ddy重新生成的法线出的效果. 发现会出现奇怪的死黑的边缘和锯齿.
 
 ![](Images/HBAO_11.jpg)
 
-如果用的是比较复杂算法生成NormalMap, 看着效果和Gbuffer的NormalMap产生的效果也差不多.
+如果用的是比较复杂算法生成NormalRT, 看着效果和Gbuffer的NormalRT产生的效果也差不多.
 
 ![](Images/HBAO_12.jpg)
 
-不过物体一般都有NormalMap, 我们用深度图重新生成的Normal是没有NormalMap的. 比如地表的石子用的是NormalMap.
+而且物体一般都有NormalMap, 用深度图和算法重新生成的NormalRT是没有NormalMap的. 比如地表的石子用的是NormalMap, 就会出现下面的效果.
 
 ![](Images/HBAO_13.jpg)
 
 ![](Images/HBAO_14.jpg)
 
 因此我这里还是用的GBuffer的Normal 或者 DepthNormals Pass 生成的NormalRT.
+
+其实正确的应该是用BentNormalRT. BentNormal大体指光线大概率通过的平均方向/不被其他物体遮挡的方向. 因此生成这个也更麻烦, 业界做法常常是单个物体离线计算好的贴图.
+
+![](Images/HBAO_15.jpg)
 
 -----------------
 
@@ -155,7 +158,7 @@ sharpness: 模糊深度权重
 
 然后继续在C#文件**HBAORenderFeature.cs**中, 写RenderFeature. **HBAORenderPass** 在后面补充.
 
-因为URP的生命周期越来越神奇 存在反复调用, 所以我用**OnCreate()**和flag来管理.
+因为URP的生命周期越来越神奇 存在反复调用, 所以我用 **OnCreate()** 和 flag 来管理.
 
 这里只是demo, **renderPassEvent**我是随便写的. 比如这里是**RenderPassEvent.BeforeRenderingPostProcessing**.
 
