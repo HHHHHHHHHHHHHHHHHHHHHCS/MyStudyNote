@@ -294,6 +294,151 @@ public class HBAORenderPass : ScriptableRenderPass
 
 ```
 
+从前面知道我们需要depthRT和normalRT, 所以在**Configure**中配置ConfigureInput.
+
+```C#
+
+public class HBAORenderPass : ScriptableRenderPass
+{
+	...
+
+	public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
+	{
+		ConfigureInput(ScriptableRenderPassInput.Depth | ScriptableRenderPassInput.Normal);
+
+	}
+
+	...
+}
+
+```
+
+然后我们需要一个随机旋和射线长度的噪音图, 这里我偷懒用了**ComputeBuffer**. 但是建议离线把Texture保存下来传入.
+
+noise.x: 随机初始角度
+noise.y: 射线随机初始化长度
+
+```C#
+
+public class HBAORenderPass : ScriptableRenderPass
+{
+	...
+
+	private ComputeBuffer noiseCB;
+	private HBAORenderSettings settings;
+	private Material effectMat;
+
+	...
+
+	public void OnInit(Material _effectMat, HBAORenderSettings _renderSettings)
+	{
+		effectMat = _effectMat;
+		settings = _renderSettings;
+		if (noiseCB != null)
+		{
+			noiseCB.Release();
+		}
+		Vector2[] noiseData = GenerateNoise();
+		noiseCB = new ComputeBuffer(noiseData.Length, sizeof(float) * 2);
+		noiseCB.SetData(noiseData);
+	}
+
+	public void OnDestroy()
+	{
+		if (noiseCB != null)
+		{
+			noiseCB.Release();
+			noiseCB = null;
+		}
+	}
+
+	...
+
+	public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+	{
+		...
+	}
+
+	private Vector2[] GenerateNoise()
+	{
+		Vector2[] noises = new Vector2[4 * 4];
+
+		for (int i = 0; i < noises.Length; i++)
+		{
+			float x = Random.value;
+			float y = Random.value;
+			noises[i] = new Vector2(x, y);
+		}
+
+		return noises;
+	}
+}
+
+```
+
+然后就是Shader属性ID. 这里直接全部一把梭写完了, 方便不用来回折腾也可以自动补全.
+
+```C#
+
+public class HBARenderPass : ScriptableRenderPass
+{
+	private const string k_tag = "HBAO";
+
+	private static readonly int hbaoRT_ID = Shader.PropertyToID("_HBAORT");
+	private static readonly int hbaoBlurRT_ID = Shader.PropertyToID("_HBAOBlurRT");
+	private static readonly int noiseCB_ID = Shader.PropertyToID("_NoiseCB");
+	private static readonly int aoTex_ID = Shader.PropertyToID("_AOTex");
+	private static readonly int intensity_ID = Shader.PropertyToID("_Intensity");
+	private static readonly int radius_ID = Shader.PropertyToID("_Radius");
+	private static readonly int negInvRadius2_ID = Shader.PropertyToID("_NegInvRadius2");
+	private static readonly int maxRadiusPixels_ID = Shader.PropertyToID("_MaxRadiusPixels");
+	private static readonly int angleBias_ID = Shader.PropertyToID("_AngleBias");
+	private static readonly int aoMultiplier_ID = Shader.PropertyToID("_AOMultiplier");
+	private static readonly int maxDistance_ID = Shader.PropertyToID("_MaxDistance");
+	private static readonly int distanceFalloff_ID = Shader.PropertyToID("_DistanceFalloff");
+	private static readonly int sharpness_ID = Shader.PropertyToID("_Sharpness");
+	private static readonly int blurDeltaUV_ID = Shader.PropertyToID("_BlurDeltaUV");
+
+	...
+
+}
+
+```
+
+在**Execute(ScriptableRenderContext context, ref RenderingData renderingData)**方法中, 把Settings参数和NoiseCB等传输给GPU.
+
+```C#
+
+public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+{
+	var cmd = CommandBufferPool.Get();
+	using (new ProfilingScope(cmd, profilingSampler))
+	{
+		int width = renderingData.cameraData.cameraTargetDescriptor.width;
+		int height = renderingData.cameraData.cameraTargetDescriptor.height;
+		float fov = renderingData.cameraData.camera.fieldOfView;
+		float tanHalfFovY = Mathf.Tan(0.5f * fov * Mathf.Deg2Rad);
+
+		cmd.SetGlobalBuffer(noiseCB_ID, noiseCB);
+		cmd.SetGlobalFloat(intensity_ID, settings.intensity);
+		cmd.SetGlobalFloat(radius_ID, settings.radius * 0.5f * height / (2.0f * tanHalfFovY));
+		cmd.SetGlobalFloat(negInvRadius2_ID, -1.0f / (settings.radius * settings.radius));
+		float radiusPixels = settings.maxRadiusPixels * Mathf.Sqrt((width * height) / (1080.0f * 1920.0f));
+		cmd.SetGlobalFloat(maxRadiusPixels_ID, Mathf.Max(16, radiusPixels));
+		cmd.SetGlobalFloat(angleBias_ID, settings.angleBias);
+		cmd.SetGlobalFloat(aoMultiplier_ID, 2.0f * (1.0f / (1.0f - settings.angleBias)));
+		cmd.SetGlobalFloat(maxDistance_ID, settings.maxDistance);
+		cmd.SetGlobalFloat(distanceFalloff_ID, settings.distanceFalloff);
+	}
+
+	context.ExecuteCommandBuffer(cmd);
+	CommandBufferPool.Release(cmd);
+}
+
+```
+
+
+
 -----------------
 
 Settings
