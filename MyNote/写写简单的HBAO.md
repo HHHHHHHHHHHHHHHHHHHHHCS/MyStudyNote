@@ -15,6 +15,9 @@
   - [**2.1 RenderSettings**](#21-rendersettings)
   - [**2.2 RenderFeature**](#22-renderfeature)
   - [**2.3 RenderPass**](#23-renderpass)
+- [**3. Shader**](#3-shader)
+  - [**3.1 基础的框架**](#31-基础的框架)
+  - [**3.2 数据准备**](#32-数据准备)
 
 <!-- /code_chunk_output -->
 
@@ -316,6 +319,7 @@ public class HBAORenderPass : ScriptableRenderPass
 然后我们需要一个随机旋和射线长度的噪音图, 这里我偷懒用了**ComputeBuffer**. 但是建议离线把Texture保存下来传入.
 
 noise.x: 随机初始角度
+
 noise.y: 射线随机初始化长度
 
 ```C#
@@ -405,7 +409,11 @@ public class HBARenderPass : ScriptableRenderPass
 
 ```
 
-在**Execute(ScriptableRenderContext context, ref RenderingData renderingData)**方法中, 把Settings参数和NoiseCB等传输给GPU.
+在 **Execute(ScriptableRenderContext context, ref RenderingData renderingData)** 方法中, 把Settings参数和NoiseCB等传输给GPU.
+
+radius, 跟屏幕尺寸比例有关.
+
+maxRadiusPixels, 跟屏幕分辨率有关.
 
 ```C#
 
@@ -423,8 +431,8 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 		cmd.SetGlobalFloat(intensity_ID, settings.intensity);
 		cmd.SetGlobalFloat(radius_ID, settings.radius * 0.5f * height / (2.0f * tanHalfFovY));
 		cmd.SetGlobalFloat(negInvRadius2_ID, -1.0f / (settings.radius * settings.radius));
-		float radiusPixels = settings.maxRadiusPixels * Mathf.Sqrt((width * height) / (1080.0f * 1920.0f));
-		cmd.SetGlobalFloat(maxRadiusPixels_ID, Mathf.Max(16, radiusPixels));
+		float maxRadiusPixels = settings.maxRadiusPixels * Mathf.Sqrt((width * height) / (1080.0f * 1920.0f));
+		cmd.SetGlobalFloat(maxRadiusPixels_ID, Mathf.Max(16, maxRadiusPixels));
 		cmd.SetGlobalFloat(angleBias_ID, settings.angleBias);
 		cmd.SetGlobalFloat(aoMultiplier_ID, 2.0f * (1.0f / (1.0f - settings.angleBias)));
 		cmd.SetGlobalFloat(maxDistance_ID, settings.maxDistance);
@@ -437,7 +445,161 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 
 ```
 
+然后就是申请RT, SetRT, 绘制HBAO, 别忘了释放RT.
 
+Blur的模块之后再补充.
+
+```C#
+
+public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+{
+	...
+	using (new ProfilingScope(cmd, profilingSampler))
+	{
+		...
+		cmd.SetGlobalFloat(distanceFalloff_ID, settings.distanceFalloff);
+	
+		cmd.GetTemporaryRT(hbaoRT_ID, width, height, 0, FilterMode.Bilinear, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
+
+		cmd.SetRenderTarget(hbaoRT_ID);
+		CoreUtils.DrawFullScreen(cmd, effectMat, null, 0);
+
+		cmd.ReleaseTemporaryRT(hbaoRT_ID);
+	}
+	...
+}
+
+```
+
+这样简单的HBAO C#基本写完了.
+
+-----------------
+
+## **3. Shader**
+
+### **3.1 基础的框架**
+
+创建一个Shader文件 **HBAO.shader**. 写个空的框架进去.
+
+```C++
+
+Shader "HBAO"
+{
+	SubShader
+	{
+		Tags
+		{
+			"RenderType"="Opaque"
+		}
+		LOD 100
+
+		Cull Off
+		ZWrite Off
+		ZTest Always
+
+		Pass
+		{
+
+			Name "HBAO"
+
+			HLSLPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag
+
+			#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+			struct a2v
+			{
+				uint vertexID :SV_VertexID;
+			};
+
+			struct v2f
+			{
+				float4 pos:SV_Position;
+				float2 uv:TEXCOORD0;
+			};
+
+
+			v2f vert(a2v IN)
+			{
+				v2f o;
+				o.pos = GetFullScreenTriangleVertexPosition(IN.vertexID);
+				o.uv = GetFullScreenTriangleTexCoord(IN.vertexID);
+				return o;
+			}
+
+			half frag(v2f IN) : SV_Target
+			{
+				float2 uv = IN.uv;
+
+				return 1;
+			}
+			ENDHLSL
+		}
+
+	}
+}
+
+```
+
+把C#的传入的参数写上. 
+
+还有我们需要DephtRT和NormalRT, 把它们的include也写上, **DeclareDepthTexture.hlsl** 和 **DeclareNormalsTexture.hlsl**.
+
+同时定义方向等分个数(DIRECTIONS)和射线步进次数(STEPS). 这里直接大力出奇迹! 8等分, 6步进.
+
+我这里偷懒用了Buffer!!!
+
+```C++
+
+Pass
+{
+
+	Name "HBAO"
+
+	HLSLPROGRAM
+
+	...
+	#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+	#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
+	#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareNormalsTexture.hlsl"
+
+	...
+
+	struct v2f
+	{
+		...
+	};
+
+	#define DIRECTIONS 8
+	#define STEPS 6
+
+	StructuredBuffer<float2> _NoiseCB;
+
+	float _Intensity;
+	float _Radius;
+	float _NegInvRadius2;
+	float _MaxRadiusPixels;
+	float _AngleBias;
+	float _AOMultiplier;
+	float _MaxDistance;
+	float _DistanceFalloff;
+
+	v2f vert(a2v IN)
+	{
+		...
+	}
+
+	...
+
+}
+
+```
+
+### **3.2 数据准备**
+
+在循环判断HBAO之前还要在Fragment中做点数据准备.
 
 -----------------
 
