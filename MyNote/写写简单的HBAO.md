@@ -18,6 +18,7 @@
 - [**3. Shader**](#3-shader)
   - [**3.1 基础的框架**](#31-基础的框架)
   - [**3.2 数据准备**](#32-数据准备)
+  - [**3.3 循环迭代**](#33-循环迭代)
 
 <!-- /code_chunk_output -->
 
@@ -600,6 +601,84 @@ Pass
 ### **3.2 数据准备**
 
 在循环判断HBAO之前还要在Fragment中做点数据准备.
+
+先写一个 **GetViewPos** . 输入uv, uv采样深度图获得depth. uv和depth和UNITY_MATRIX_I_P 反算出viewPos. viewPos的z是near~far而不是0~1.
+
+再写一个 **FetchViewNormals** . 采样之前ConfigInput的WorldNormal, 再转换到ViewSpace下. 注意反转YZ.
+
+```C++
+
+...
+float _DistanceFalloff;
+
+float3 GetViewPos(float2 uv)
+{
+	float depth = SampleSceneDepth(uv);
+	float2 newUV = float2(uv.x, uv.y);
+	newUV = newUV * 2 - 1;
+	float4 viewPos = mul(UNITY_MATRIX_I_P, float4(newUV, depth, 1));
+	viewPos /= viewPos.w;
+	viewPos.z = -viewPos.z;
+	return viewPos.xyz;
+}
+
+float3 FetchViewNormals(float2 uv)
+{
+	float3 N = SampleSceneNormals(uv);
+	N = TransformWorldToViewDir(N, true);
+	N.y = -N.y;
+	N.z = -N.z;
+
+	return N;
+}
+
+v2f vert(a2v IN)
+{
+	...
+}
+
+```
+
+回到 **Frag** . 
+
+得到当前像素的viewPos, 如果z>=_MaxDistance, 则无AO(return 1).
+
+再得到当前像素的ViewNormal.
+
+随机值. 根据屏幕坐标划分用NoiseCB得到noise. 因为这里是4x4=16的buffer, 所以是%4.
+
+stepSize和stepAng. 步进的半径由深度决定, 近的时候放大, 远的时候缩小.
+
+```C++
+
+half frag(v2f IN) : SV_Target
+{
+	float2 uv = IN.uv;
+
+	float3 viewPos = GetViewPos(uv);
+	if (viewPos.z >= _MaxDistance)
+	{
+		return 1;
+	}
+
+	float3 nor = FetchViewNormals(uv, _ScreenSize.zw, viewPos);
+
+	int noiseX = (uv.x * _ScreenSize.x - 0.5) % 4;
+	int noiseY = (uv.y * _ScreenSize.y - 0.5) % 4;
+	int noiseIndex = 4 * noiseY + noiseX;
+	float2 rand = _NoiseCB[noiseIndex];
+
+	float stepSize = min(_Radius / viewPos.z, _MaxRadiusPixels) / (STEPS + 1.0);
+	float startAng = TWO_PI / DIRECTIONS;
+
+	...
+}
+
+```
+
+### **3.3 循环迭代**
+
+下面就是循环迭代计算AO了. 先写一个二重循环. 循环角度和步进.
 
 -----------------
 
