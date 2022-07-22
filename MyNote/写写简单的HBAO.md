@@ -19,6 +19,7 @@
   - [**3.1 基础的框架**](#31-基础的框架)
   - [**3.2 数据准备**](#32-数据准备)
   - [**3.3 循环迭代**](#33-循环迭代)
+  - [**3.4 ComputeAO**](#34-computeao)
 
 <!-- /code_chunk_output -->
 
@@ -678,13 +679,118 @@ half frag(v2f IN) : SV_Target
 
 ### **3.3 循环迭代**
 
-下面就是循环迭代计算AO了. 先写一个二重循环. 循环角度和步进.
+下面就是循环迭代计算AO了. 先写一个二重循环, 循环角度和步进.
+
+角度和射线步进长度 都需要 **随机值** 做起始. 而且射线的起始像素不包含自己本身的像素, 所以给个最小值1.
+
+为什么要随机值? 因为效果看起来不会那么规则, 而且Blur之后的效果会更好. 可以看下面的两张图, 图一:无随机值且开启Blur 和 图二:有随机值开启Blur.
+
+![](Images/HBAO_16.jpg)
+
+![](Images/HBAO_17.jpg)
+
+```C++
+
+half frag(v2f IN) : SV_Target
+{
+	...
+	float startAng = TWO_PI / DIRECTIONS;
+
+	float ao = 0;
+
+	UNITY_UNROLL
+	for (int d = 0; d < DIRECTIONS; ++d)
+	{
+		float angle = stepAng * (float(d) + rand.x);
+
+		float cosAng, sinAng;
+		sincos(angle, sinAng, cosAng);
+		float2 direction = float2(cosAng, sinAng);
+
+		float rayPixels = frac(rand.y) * stepSize + 1.0;
+
+		UNITY_UNROLL
+		for (int s = 0; s < STEPS; ++s)
+		{
+			...
+		}
+	}
+
+	return ao;
+}
+
+```
+
+在循环里面累加AO.
+
+偏移UV, 得到新的偏移ViewPos.
+
+利用 当前ViewPos, 当前Normal, 偏移ViewPos, 调用**ComputeAO**方法得到AO值, 方法在后面补充.
+
+```C++
+
+half frag(v2f IN) : SV_Target
+{
+	...
+	UNITY_UNROLL
+	for (int s = 0; s < STEPS; ++s)
+	{
+		float2 snappedUV = round(rayPixels * direction) * _ScreenSize.zw + uv;
+		float3 tempViewPos = GetViewPos(snappedUV);
+		rayPixels += stepSize;
+		float tempAO = ComputeAO(viewPos, nor, tempViewPos);
+		ao += tempAO;
+	}
+	...
+}
+
+```
+
+### **3.4 ComputeAO**
+
+完善**ComputeAO**方法.
+
+这里的公式跟上面的PPT不一样, 但是思想大致相同.
+
+首先上面PPT用的是重新生成的面法线, 所以要做重新生成起始角度即要做角度补偿. 但是这里用的是顶点插值生成的法线. 所以去掉了角度补偿.
+
+NoV越大, 说明两个向量的角度越小, 即V靠近N, 周围的物体比较高, AO则越强. NoV 别忘了减去 settings 传入的 **_AngleBias** .
+
+rsqrt(VoV) = 1 / sqrt(VoV) = 1 / sqrt(dot(VoV)) = 1 / length(V);
+
+NoV = dot(n, v) * rsqrt(VoV) = dot(n, v / length(v)) = dot(n, normalize(v));
+
+然后还要考虑到距离的衰减, 这里用了一个简单的公式: 1 - (dist^2 / maxDist^2).
+
+```C++
+
+float Falloff(float distanceSquare)
+{
+	return distanceSquare * _NegInvRadius2 + 1.0;
+}
+
+float ComputeAO(float3 p, float3 n, float3 s)
+{
+	float3 v = s - p;
+	float VoV = dot(v, v);
+	float NoV = dot(n, v) * rsqrt(VoV);
+
+	return saturate(NoV - _AngleBias) * saturate(Falloff(VoV));
+}
+
+v2f vert(a2v IN)
+{
+	...
+}
+
+...
+
+```
+
+
+
 
 -----------------
-
-Settings
-
-C#
 
 Shader
 
