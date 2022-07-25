@@ -20,6 +20,7 @@
   - [**3.2 数据准备**](#32-数据准备)
   - [**3.3 循环迭代**](#33-循环迭代)
   - [**3.4 ComputeAO**](#34-computeao)
+  - [**3.5 强度**](#35-强度)
 
 <!-- /code_chunk_output -->
 
@@ -27,7 +28,7 @@
 
 ## **0. 起因**
 
-&emsp;&emsp; URP有SSAO, HDRP有GTAO. 所以摆烂学一个HBAO.
+&emsp;&emsp; URP有SSAO, HDRP有GTAO. 所以摆烂学一个HBAO. [5][Github地址]
 
 下面是效果图.
 
@@ -39,20 +40,25 @@
 
 ![](Images/HBAO_08.jpg)
 
-下面是自己洗的GTAO, 调参没有调对. GTAO多了多次弹射的结果, 感觉更黑了.
+下面是自己写的GTAO, 调参没有调对. GTAO因为多了多次弹射的结果, 感觉更黑了.
 
 ![](Images/HBAO_09.jpg)
 
-下面随便写的RayTracingAO, 也没有仔细的调参. 但是基本的视觉效果是有了.
+下面随便写的RayTracingAO, 也没有仔细的调参. 但是视觉效基本上和上面的差不多.
 
 ![](Images/HBAO_10.jpg)
 
-自己调参可能有点不准确, 这是官方给的对比图.
+自己调参可能有点不准确, 这是官方给的SSAO和HBAO的对比图.
 
 ![](Images/HBAO_02.jpg)
 
+![](Images/HBAO_24.jpg)
 
 HBAO对比SSAO采样次数更少, 效果也好很多. 虽然可以用TSSAO来减少采样和降低噪点.
+
+同时我在找资料的时候还发现CACAO, 算是SSAO的升级, 效果也不错.[4][Github地址]
+
+![](Images/HBAO_22.jpg)
 
 -----------------
 
@@ -141,7 +147,6 @@ public class HBAORenderSettings
 	[Min(0)] public float distanceFalloff = 50.0f;
 	[Range(0.0f,16.0f)] public float sharpness = 8.0f;
 }
-
 
 ```
 
@@ -436,7 +441,7 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 		float maxRadiusPixels = settings.maxRadiusPixels * Mathf.Sqrt((width * height) / (1080.0f * 1920.0f));
 		cmd.SetGlobalFloat(maxRadiusPixels_ID, Mathf.Max(16, maxRadiusPixels));
 		cmd.SetGlobalFloat(angleBias_ID, settings.angleBias);
-		cmd.SetGlobalFloat(aoMultiplier_ID, 2.0f * (1.0f / (1.0f - settings.angleBias)));
+		cmd.SetGlobalFloat(aoMultiplier_ID, 2.0f / (1.0f - settings.angleBias));
 		cmd.SetGlobalFloat(maxDistance_ID, settings.maxDistance);
 		cmd.SetGlobalFloat(distanceFalloff_ID, settings.distanceFalloff);
 	}
@@ -762,6 +767,22 @@ NoV = dot(n, v) * rsqrt(VoV) = dot(n, v / length(v)) = dot(n, normalize(v));
 
 然后还要考虑到距离的衰减, 这里用了一个简单的公式: 1 - (dist^2 / maxDist^2).
 
+为什么要 **_AngleBias** ?
+
+不然在弧形区域会出现不连续的问题, 即出现一段一段的AO. 不过我自己试验了一下好像没有出现.
+
+![](Images/HBAO_18.jpg)
+
+为什么要距离衰减?
+
+距离衰减可以解决距离过渡导致的跳变的问题, 使其淡出更柔和. 而且还能解决在距离过大的时候, 但是还会计算AO的问题.
+
+![](Images/HBAO_19.jpg)
+
+![](Images/HBAO_20.jpg)
+
+![](Images/HBAO_21.jpg)
+
 ```C++
 
 float Falloff(float distanceSquare)
@@ -787,36 +808,59 @@ v2f vert(a2v IN)
 
 ```
 
+### **3.5 强度**
 
+最后就是把上面累加的AO除以Count, 再把Settings的强度乘进去.
+
+Settings的强度里面有考虑 **AngleBias** . 不然bias过大就会让AO显得很弱 偏白. 所以 引入 **_AOMultiplier** , **AngleBias** 越大, **_AOMultiplier** 会越小, 让AO越黑.
+
+因为上面z>_MaxDistance 直接 return 1, 太过于突兀了. 所以这里再考虑一个AO距离的衰减.
+
+```C++
+
+half frag(v2f IN) : SV_Target
+{
+	...
+
+	float ao = 0;
+
+	UNITY_UNROLL
+	for (int d = 0; d < DIRECTIONS; ++d)
+	{
+		...
+	}
+
+	//apply bias multiplier
+	ao *= _Intensity * _AOMultiplier / (STEPS * DIRECTIONS);
+
+	float distFactor = saturate((viewPos.z - (_MaxDistance - _DistanceFalloff)) / _DistanceFalloff);
+
+	ao = lerp(saturate(1 - ao), 1, distFactor);
+
+	return ao;
+}
+
+```
+
+HBAO第一个pass写完基本就是这样 充满噪点. 后面就是横竖两次Blur就够了.
+
+![](Images/HBAO_23.jpg)
 
 
 -----------------
-
-Shader
-
-Blur
-
------------------
-
-Low-Tessellation问题
-bias
-
-不连续问题
-衰减
-
-噪声
-blur
-
 
 -----------------
 
 [1]:https://github.com/HHHHHHHHHHHHHHHHHHHHHCS/MyStudyNote/blob/main/MyNote/%E5%86%99%E5%86%99%E7%AE%80%E5%8D%95%E7%9A%84HBAO.md
 [2]:https://developer.download.nvidia.cn/presentations/2008/SIGGRAPH/HBAO_SIG08b.pdf
 [3]:https://zhuanlan.zhihu.com/p/103683536
-
+[4]:https://github.com/GPUOpen-Effects/FidelityFX-CACAO/tree/master/sample
+[5]:https://github.com/scanberg/hbao
 
 https://blog.csdn.net/qjh5606/article/details/120001743
 
 https://www.csdn.net/tags/MtTaAg2sOTIzOTM4LWJsb2cO0O0O.html
 
 https://zhuanlan.zhihu.com/p/367793439
+
+https://zhuanlan.zhihu.com/p/545497019
