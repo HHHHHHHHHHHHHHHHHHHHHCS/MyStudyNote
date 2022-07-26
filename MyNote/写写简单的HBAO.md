@@ -15,12 +15,17 @@
   - [**2.1 RenderSettings**](#21-rendersettings)
   - [**2.2 RenderFeature**](#22-renderfeature)
   - [**2.3 RenderPass**](#23-renderpass)
-- [**3. Shader**](#3-shader)
+- [**3. AOShader**](#3-aoshader)
   - [**3.1 基础的框架**](#31-基础的框架)
   - [**3.2 数据准备**](#32-数据准备)
   - [**3.3 循环迭代**](#33-循环迭代)
   - [**3.4 ComputeAO**](#34-computeao)
   - [**3.5 强度**](#35-强度)
+- [**4. Blur**](#4-blur)
+  - [**4.1 C#**](#41-c)
+  - [**4.2 Shader框架**](#42-shader框架)
+  - [**4.3 提前准备**](#43-提前准备)
+  - [**4.4 Blur**](#44-blur)
 
 <!-- /code_chunk_output -->
 
@@ -407,7 +412,7 @@ public class HBARenderPass : ScriptableRenderPass
 	private static readonly int aoMultiplier_ID = Shader.PropertyToID("_AOMultiplier");
 	private static readonly int maxDistance_ID = Shader.PropertyToID("_MaxDistance");
 	private static readonly int distanceFalloff_ID = Shader.PropertyToID("_DistanceFalloff");
-	private static readonly int sharpness_ID = Shader.PropertyToID("_Sharpness");
+	private static readonly int blurSharpness_ID = Shader.PropertyToID("_BlurSharpness");
 	private static readonly int blurDeltaUV_ID = Shader.PropertyToID("_BlurDeltaUV");
 
 	...
@@ -471,6 +476,9 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 		cmd.SetRenderTarget(hbaoRT_ID);
 		CoreUtils.DrawFullScreen(cmd, effectMat, null, 0);
 
+		//TODO:Blur
+		//TODO:Combine
+
 		cmd.ReleaseTemporaryRT(hbaoRT_ID);
 	}
 	...
@@ -482,7 +490,7 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 
 -----------------
 
-## **3. Shader**
+## **3. AOShader**
 
 ### **3.1 基础的框架**
 
@@ -842,12 +850,279 @@ half frag(v2f IN) : SV_Target
 
 ```
 
-HBAO第一个pass写完基本就是这样 充满噪点. 后面就是横竖两次Blur就够了.
+HBAO第一个pass写完基本就是下图这样, 充满噪点, 放大看就是一个格子一个格子的跳变. 后面就是横竖两次Blur就够了.
 
 ![](Images/HBAO_23.jpg)
 
-
 -----------------
+
+## **4. Blur**
+
+### **4.1 C#**
+
+在**HBAORenderPass.cs**文件中, 修改**Execute**方法 添加blur pass. 
+
+申请一个blurRT.
+
+把AORT作为Input, BlurRT作为Target, 进行一次Horizontal Blur. 再把BlurRT作为Input, AORT作为Target, 进行一次Vertical Blur.
+
+最后别忘了销毁申请的BlurRT.
+
+```C++
+
+public class HBAORenderPass : ScriptableRenderPass
+{
+	...
+
+	public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+	{
+		var cmd = CommandBufferPool.Get();
+		using (new ProfilingScope(cmd, profilingSampler))
+		{
+			...
+			CoreUtils.DrawFullScreen(cmd, effectMat, null, 0);
+
+			cmd.GetTemporaryRT(hbaoBlurRT_ID, width, height, 0, FilterMode.Bilinear, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
+
+			
+			cmd.SetGlobalFloat(blurSharpness_ID, settings.sharpness);
+
+			cmd.SetGlobalVector(blurDeltaUV_ID, new Vector4(1.0f / width, 0, 0, 0));
+			cmd.SetGlobalTexture(aoTex_ID, hbaoRT_ID);
+			cmd.SetRenderTarget(hbaoBlurRT_ID);
+			CoreUtils.DrawFullScreen(cmd, effectMat, null, 1);
+			
+			cmd.SetGlobalVector(blurDeltaUV_ID, new Vector4(0, 1.0f / height, 0, 0));
+			cmd.SetGlobalTexture(aoTex_ID, hbaoBlurRT_ID);
+			cmd.SetRenderTarget(hbaoRT_ID);
+			CoreUtils.DrawFullScreen(cmd, effectMat, null, 1);
+
+			//TODO:Combine
+
+			cmd.ReleaseTemporaryRT(hbaoRT_ID);
+			cmd.ReleaseTemporaryRT(hbaoBlurRT_ID);
+		}
+		context.ExecuteCommandBuffer(cmd);
+		CommandBufferPool.Release(cmd);
+	}
+
+}
+
+```
+
+### **4.2 Shader框架**
+
+返回 **HBAO.shader** , 添加一个新的Blur Pass框架.
+
+```C++
+
+Shader "HBAO"
+{
+	SubShader
+	{
+		...
+
+		Pass
+		{
+
+			Name "HBAO"
+			...
+		}
+
+		Pass
+		{
+			Name "Blur"
+
+			HLSLPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag
+
+			#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
+
+			struct a2v
+			{
+				uint vertexID :SV_VertexID;
+			};
+
+			struct v2f
+			{
+				float4 pos:SV_Position;
+				float2 uv:TEXCOORD0;
+			};
+
+			v2f vert(a2v IN)
+			{
+				v2f o;
+				o.pos = GetFullScreenTriangleVertexPosition(IN.vertexID);
+				o.uv = GetFullScreenTriangleTexCoord(IN.vertexID);
+				return o;
+			}
+
+			half frag(v2f IN) : SV_Target
+			{
+				float2 uv = IN.uv;
+
+				return 0;
+			}
+			ENDHLSL
+		}
+	}
+}
+
+```
+
+添加C#传入的属性 和 KERNEL_RADIUS(模糊半径).
+
+```C++
+
+Pass
+{
+	Name "Blur"
+
+	HLSLPROGRAM
+
+	...
+	struct v2f
+	{
+		...
+	};
+
+	#define KERNEL_RADIUS 2
+
+	TEXTURE2D(_AOTex);
+	SAMPLER(sampler_AOTex);
+
+	float _BlurSharpness;
+	float2 _BlurDeltaUV;
+
+	v2f vert(a2v IN)
+	{
+		...
+	}
+
+	...
+	ENDHLSL
+}
+
+```
+
+### **4.3 提前准备**
+
+在Blur之前还要写一些方法.
+
+**FetchAOAndDepth** . 传入UV, 得到AO和线性的0~1深度.
+
+```C++
+
+...
+float2 _BlurDeltaUV;
+
+void FetchAOAndDepth(float2 uv, inout float ao, inout float depth)
+{
+	ao = SAMPLE_TEXTURE2D_LOD(_AOTex, sampler_AOTex, uv, 0).r;
+	depth = SampleSceneDepth(uv);
+	depth = Linear01Depth(depth, _ZBufferParams);
+}
+
+v2f vert(a2v IN)
+{
+	...
+}
+
+
+half frag(v2f IN) : SV_Target
+{
+	...
+}
+
+```
+
+再添加三个方法, **CrossBilateralWeight**, **ProcessSample** , **ProcessRadius**.
+
+**CrossBilateralWeight**, 通过采样半径和深度差得到一个滤波权重.
+
+**ProcessSample**, 累加 滤波权重 和 AO*滤波权重, 后面得到平均AO用.
+
+**ProcessRadius**, 循环偏移UV进行采样和累加.
+
+```C++
+
+void FetchAOAndDepth(float2 uv, inout float ao, inout float depth)
+{
+	...
+}
+
+float CrossBilateralWeight(float r, float d, float d0)
+{
+	float blurSigma = KERNEL_RADIUS * 0.5;
+	float blurFalloff = 1.0 / (2.0 * blurSigma * blurSigma);
+
+	float dz = (d0 - d) * _ProjectionParams.z * _BlurSharpness;
+	return exp2(-r * r * blurFalloff - dz * dz);
+}
+
+void ProcessSample(float ao, float d, float r, float d0, inout float totalAO, inout float totalW)
+{
+	float w = CrossBilateralWeight(r, d, d0);
+	totalW += w;
+	totalAO += w * ao;
+}
+
+void ProcessRadius(float2 uv0, float2 deltaUV, float d0, inout float totalAO, inout float totalW)
+{
+	float ao;
+	float d;
+	float2 uv;
+	UNITY_UNROLL
+	for (int r = 1; r <= KERNEL_RADIUS; r++)
+	{
+		uv = uv0 + r * deltaUV;
+		FetchAOAndDepth(uv, ao, d);
+		ProcessSample(ao, d, r, d0, totalAO, totalW);
+	}
+}
+
+v2f vert(a2v IN)
+{
+	...
+}
+
+```
+
+### **4.4 Blur**
+
+直接在frag中调用刚才创建的方法. 即累加AO除权就好了.
+
+```C++
+
+half frag(v2f IN) : SV_Target
+{
+	float2 uv = IN.uv;
+	float2 deltaUV = _BlurDeltaUV;
+
+	float totalAO;
+	float depth;
+	FetchAOAndDepth(uv, totalAO, depth);
+	float totalW = 1.0;
+
+	ProcessRadius(uv, -deltaUV, depth, totalAO, totalW);
+	ProcessRadius(uv, +deltaUV, depth, totalAO, totalW);
+
+	totalAO /= totalW;
+
+	return totalAO;
+}
+
+```
+
+Blur这一步做完就是这样了. 下面就是Combine了.
+
+![](Images/HBAO_25.jpg)
+
+这里用的是Unity2022 API可能有点不一样.
+
 
 -----------------
 
