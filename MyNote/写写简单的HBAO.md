@@ -26,6 +26,9 @@
   - [**4.2 Shader框架**](#42-shader框架)
   - [**4.3 提前准备**](#43-提前准备)
   - [**4.4 Blur**](#44-blur)
+- [**5. Combine**](#5-combine)
+  - [**5.1 C#**](#51-c)
+  - [**5.2 Shader**](#52-shader)
 
 <!-- /code_chunk_output -->
 
@@ -33,7 +36,7 @@
 
 ## **0. 起因**
 
-&emsp;&emsp; URP有SSAO, HDRP有GTAO. 所以摆烂学一个HBAO. [5][Github地址]
+&emsp;&emsp; URP有SSAO, HDRP有GTAO. 所以摆烂学一个HBAO. [官方的Github地址][5]
 
 下面是效果图.
 
@@ -59,9 +62,9 @@
 
 ![](Images/HBAO_24.jpg)
 
-HBAO对比SSAO采样次数更少, 效果也好很多. 虽然可以用TSSAO来减少采样和降低噪点.
+HBAO对比SSAO采样次数更少, 效果也好很多, 不过使用了多次三角函数. 虽然SSAO可以变成TSSAO来减少采样和降低噪点.
 
-同时我在找资料的时候还发现CACAO, 算是SSAO的升级, 效果也不错.[4][Github地址]
+同时我在找资料的时候还发现CACAO, 算是SSAO的升级, 效果也不错.[Github地址][4]
 
 ![](Images/HBAO_22.jpg)
 
@@ -77,7 +80,7 @@ YiQiuuu的有篇文章是关于HBAO原理和实现, 讲的详细且不错, [文�
 
 ![](Images/HBAO_03.jpg)
 
-2. 对于任意一条射线, 沿着射线方向生成一个一维的高度. 然后根据深度做RayMarch找到一个最大的水平角(Horizon Angle).
+2. 对于任意一条射线, 沿着射线方向生成一个一维的高度. 然后RayMarch根据深度做找到一个最大的水平角(Horizon Angle).
 
 ![](Images/HBAO_04.jpg)
 
@@ -87,7 +90,7 @@ YiQiuuu的有篇文章是关于HBAO原理和实现, 讲的详细且不错, [文�
 
 4. 根据Horizon Angle和Tangent Angle, 得到AO. AO = sin(h) - sin(t).
 
-至于为什么AO=角度差值? 
+至于为什么AO=角度值的差? 
 
 我的理解(个人理解)是 周围的东西对比当前点越高, 则表示光被周围东西遮挡的越多, 则越暗.
 
@@ -121,7 +124,7 @@ YiQiuuu的有篇文章是关于HBAO原理和实现, 讲的详细且不错, [文�
 
 因此我这里还是用的GBuffer的Normal 或者 DepthNormals Pass 生成的NormalRT.
 
-其实正确的应该是用BentNormalRT. BentNormal大体指光线大概率通过的平均方向/不被其他物体遮挡的方向. 因此生成这个也更麻烦, 业界做法常常是单个物体离线计算好的贴图.
+其实正确的应该是用BentNormalRT. BentNormal大体指光线大概率通过的平均方向/不被其他物体遮挡的方向. 因此生成这个也更麻烦, 业界做法常常是离线烘焙好贴图.
 
 ![](Images/HBAO_15.jpg)
 
@@ -392,7 +395,7 @@ public class HBAORenderPass : ScriptableRenderPass
 
 ```
 
-然后就是Shader属性ID. 这里直接全部一把梭写完了, 方便不用来回折腾也可以自动补全.
+然后就是Shader属性ID. 这里直接全部一把梭写完了, 不用来回折腾, 也方便自动补全.
 
 ```C#
 
@@ -427,6 +430,8 @@ radius, 跟屏幕尺寸比例有关.
 
 maxRadiusPixels, 跟屏幕分辨率有关.
 
+aoMultiplier, 跟bias有关系, 因为bias会减弱ao, 所以这个做补偿.
+
 ```C#
 
 public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
@@ -459,7 +464,7 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 
 然后就是申请RT, SetRT, 绘制HBAO, 别忘了释放RT.
 
-Blur的模块之后再补充.
+Blur和Combine的模块之后再补充.
 
 ```C#
 
@@ -534,7 +539,6 @@ Shader "HBAO"
 				float4 pos:SV_Position;
 				float2 uv:TEXCOORD0;
 			};
-
 
 			v2f vert(a2v IN)
 			{
@@ -696,7 +700,9 @@ half frag(v2f IN) : SV_Target
 
 角度和射线步进长度 都需要 **随机值** 做起始. 而且射线的起始像素不包含自己本身的像素, 所以给个最小值1.
 
-为什么要随机值? 因为效果看起来不会那么规则, 而且Blur之后的效果会更好. 可以看下面的两张图, 图一:无随机值且开启Blur 和 图二:有随机值开启Blur.
+为什么要随机值? 
+
+因为效果看起来不会那么规则, 而且Blur之后的效果会更好. 可以看下面的两张图, 图一:无随机值且开启Blur 和 图二:有随机值开启Blur.
 
 ![](Images/HBAO_16.jpg)
 
@@ -765,9 +771,11 @@ half frag(v2f IN) : SV_Target
 
 这里的公式跟上面的PPT不一样, 但是思想大致相同.
 
-首先上面PPT用的是重新生成的面法线, 所以要做重新生成起始角度即要做角度补偿. 但是这里用的是顶点插值生成的法线. 所以去掉了角度补偿.
+首先上面PPT用的是重新生成的面法线, 所以要做起始角度的补偿. 但是这里用的是顶点插值生成的法线. 所以去掉了角度补偿.
 
-NoV越大, 说明两个向量的角度越小, 即V靠近N, 周围的物体比较高, AO则越强. NoV 别忘了减去 settings 传入的 **_AngleBias** .
+接着我这里用的是累加每个Marching的AO值, 而文章是找到最大值角度值去计算AO.
+
+NoV越大, 说明两个向量的角度越小, 即V靠近N, 周围的物体比较高, AO则越强. NoV 别忘了减去 settings 传入的 **_AngleBias** . 
 
 rsqrt(VoV) = 1 / sqrt(VoV) = 1 / sqrt(dot(VoV)) = 1 / length(V);
 
@@ -862,9 +870,7 @@ HBAO第一个pass写完基本就是下图这样, 充满噪点, 放大看就是�
 
 在**HBAORenderPass.cs**文件中, 修改**Execute**方法 添加blur pass. 
 
-申请一个blurRT.
-
-把AORT作为Input, BlurRT作为Target, 进行一次Horizontal Blur. 再把BlurRT作为Input, AORT作为Target, 进行一次Vertical Blur.
+再申请一个blurRT. 把AORT作为Input, BlurRT作为Target, 进行一次Horizontal Blur. 再把BlurRT作为Input, AORT作为Target, 进行一次Vertical Blur.
 
 最后别忘了销毁申请的BlurRT.
 
@@ -1117,12 +1123,145 @@ half frag(v2f IN) : SV_Target
 
 ```
 
-Blur这一步做完就是这样了. 下面就是Combine了.
+Blur这一步做完就是下图这样. 之后就是要Combine了.
 
 ![](Images/HBAO_25.jpg)
 
-这里用的是Unity2022 API可能有点不一样.
+-----------------
 
+## **5. Combine**
+
+### **5.1 C#**
+
+最后就是把AO图贴回到主画布上.
+
+我这里用的是Unity2022, API和2021有点不一样.
+
+返回 **HBAORenderPass.cs** , 继续修改 **Execute** 方法. 其实就是把AOTex传给Shader, 再SetRT为ColorTarget, 最后执行全屏绘制.
+
+```C#
+
+public class HBAORenderPass : ScriptableRenderPass
+{
+	...
+
+	public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+	{
+		var cmd = CommandBufferPool.Get();
+		using (new ProfilingScope(cmd, profilingSampler))
+		{
+			...
+			CoreUtils.DrawFullScreen(cmd, effectMat, null, 1);
+
+			cmd.SetGlobalTexture(aoTex_ID, hbaoRT_ID);
+			cmd.SetRenderTarget(renderingData.cameraData.renderer.cameraColorTargetHandle);
+			CoreUtils.DrawFullScreen(cmd, effectMat, null, 2);
+
+			cmd.ReleaseTemporaryRT(hbaoRT_ID);
+			...
+		}
+		context.ExecuteCommandBuffer(cmd);
+		CommandBufferPool.Release(cmd);
+	}
+}
+
+```
+
+### **5.2 Shader**
+
+Shader这里准备用Color Blend(OM)模式来做, 我们把AO的值当作Alpha来输出. 最后就是 finalColor = DestRT.rgb(原图颜色) * srcAlpha(AO) + srcColor(白色) * 0 .
+
+为什么原图的rgb要输出白色?
+因为方便改Color Blend(OM)进行debug. 比如说 把 Blend SrcAlpha Zero 改成 Blend SrcAlpha Zero 就可以直接进行debug了.
+
+修改 **HBAO.Shader** 文件, 加一个CombinePass.
+
+```C++
+
+Shader "HBAO"
+{
+	SubShader
+	{
+		...
+
+		Pass
+		{
+
+			Name "HBAO"
+			...
+		}
+
+		Pass
+		{
+			Name "Blur"
+		}
+
+		Pass
+		{
+			Name "Combine"
+
+			Blend Zero SrcAlpha
+			// Blend SrcAlpha Zero
+
+			HLSLPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag
+
+			#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+			struct a2v
+			{
+				uint vertexID :SV_VertexID;
+			};
+
+			struct v2f
+			{
+				float4 pos:SV_Position;
+				float2 uv:TEXCOORD0;
+			};
+
+			TEXTURE2D(_AOTex);
+			SAMPLER(sampler_AOTex);
+
+			v2f vert(a2v IN)
+			{
+				v2f o;
+				o.pos = GetFullScreenTriangleVertexPosition(IN.vertexID);
+				o.uv = GetFullScreenTriangleTexCoord(IN.vertexID);
+				return o;
+			}
+
+			half4 frag(v2f IN) : SV_Target
+			{
+				half ao = SAMPLE_TEXTURE2D_LOD(_AOTex, sampler_AOTex, IN.uv, 0).x;
+
+				return half4(1, 1, 1, ao);
+			}
+			ENDHLSL
+		}
+	}
+}
+
+```
+
+这样做完了一个简单的HBAO.
+
+-----------------
+
+在计算AO和Blur阶段, 感觉用Compute Shader应该会快一点, 用groupshared 去缓存depth 减少采样. 
+
+下面还有一些别人的文章, 里面有代码和其它的AO可以做参考. 
+
+[图形学基础|环境光遮蔽（Ambient Occlusion）][6]
+
+[【论文复现】Image-Space Horizon-Based Ambient Occlusion][7]
+
+[环境遮罩][8]
+
+-----------------
+
+写完印度の剑3正好上线, 芜湖起飞!
 
 -----------------
 
@@ -1131,11 +1270,6 @@ Blur这一步做完就是这样了. 下面就是Combine了.
 [3]:https://zhuanlan.zhihu.com/p/103683536
 [4]:https://github.com/GPUOpen-Effects/FidelityFX-CACAO/tree/master/sample
 [5]:https://github.com/scanberg/hbao
-
-https://blog.csdn.net/qjh5606/article/details/120001743
-
-https://www.csdn.net/tags/MtTaAg2sOTIzOTM4LWJsb2cO0O0O.html
-
-https://zhuanlan.zhihu.com/p/367793439
-
-https://zhuanlan.zhihu.com/p/545497019
+[6]:https://blog.csdn.net/qjh5606/article/details/120001743
+[7]:https://zhuanlan.zhihu.com/p/367793439
+[8]:https://zhuanlan.zhihu.com/p/545497019
