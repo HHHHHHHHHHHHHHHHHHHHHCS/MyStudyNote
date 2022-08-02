@@ -323,7 +323,6 @@ public class HBAORenderPass : ScriptableRenderPass
 	public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
 	{
 		ConfigureInput(ScriptableRenderPassInput.Depth | ScriptableRenderPassInput.Normal);
-
 	}
 
 	...
@@ -332,6 +331,8 @@ public class HBAORenderPass : ScriptableRenderPass
 ```
 
 然后我们需要一个随机旋和射线长度的噪音图, 这里我偷懒用了**ComputeBuffer**. 但是建议离线把Texture保存下来传入.
+
+创建一个变量 **ComputeBuffer noiseCB** , 和 **GenerateNoise** 方法.
 
 noise.x: 随机初始角度
 
@@ -564,7 +565,7 @@ Shader "HBAO"
 
 把C#的传入的参数写上. 
 
-还有我们需要DephtRT和NormalRT, 把它们的include也写上, **DeclareDepthTexture.hlsl** 和 **DeclareNormalsTexture.hlsl**.
+还有我们需要DephtRT和NormalRT, 把它们的include也写上 **DeclareDepthTexture.hlsl** 和 **DeclareNormalsTexture.hlsl**.
 
 同时定义方向等分个数(DIRECTIONS)和射线步进次数(STEPS). 这里直接大力出奇迹! 8等分, 6步进.
 
@@ -679,7 +680,7 @@ half frag(v2f IN) : SV_Target
 		return 1;
 	}
 
-	float3 nor = FetchViewNormals(uv, _ScreenSize.zw, viewPos);
+	float3 nor = FetchViewNormals(uv);
 
 	int noiseX = (uv.x * _ScreenSize.x - 0.5) % 4;
 	int noiseY = (uv.y * _ScreenSize.y - 0.5) % 4;
@@ -687,7 +688,7 @@ half frag(v2f IN) : SV_Target
 	float2 rand = _NoiseCB[noiseIndex];
 
 	float stepSize = min(_Radius / viewPos.z, _MaxRadiusPixels) / (STEPS + 1.0);
-	float startAng = TWO_PI / DIRECTIONS;
+	float stepAng = TWO_PI / DIRECTIONS;
 
 	...
 }
@@ -713,7 +714,7 @@ half frag(v2f IN) : SV_Target
 half frag(v2f IN) : SV_Target
 {
 	...
-	float startAng = TWO_PI / DIRECTIONS;
+	float stepAng = TWO_PI / DIRECTIONS;
 
 	float ao = 0;
 
@@ -731,7 +732,7 @@ half frag(v2f IN) : SV_Target
 		UNITY_UNROLL
 		for (int s = 0; s < STEPS; ++s)
 		{
-			...
+			//TODO:ComputeAO
 		}
 	}
 
@@ -870,7 +871,7 @@ HBAO第一个pass写完基本就是下图这样, 充满噪点, 放大看就是�
 
 在**HBAORenderPass.cs**文件中, 修改**Execute**方法 添加blur pass. 
 
-再申请一个blurRT. 把AORT作为Input, BlurRT作为Target, 进行一次Horizontal Blur. 再把BlurRT作为Input, AORT作为Target, 进行一次Vertical Blur.
+再申请一个BlurRT. 把AORT作为Input, BlurRT作为Target, 进行一次Horizontal Blur. 再把BlurRT作为Input, AORT作为Target, 进行一次Vertical Blur.
 
 最后别忘了销毁申请的BlurRT.
 
@@ -919,6 +920,8 @@ public class HBAORenderPass : ScriptableRenderPass
 ### **4.2 Shader框架**
 
 返回 **HBAO.shader** , 添加一个新的Blur Pass框架.
+
+后面权重比较需要Depth, 这里先提前加了include **DeclareDepthTexture.hlsl** .
 
 ```C++
 
@@ -1245,11 +1248,21 @@ Shader "HBAO"
 
 ```
 
-这样做完了一个简单的HBAO.
+这样做完了一个简单的HBAO. 下面是Combine之后的对比图, 效果能凑活着用.
+
+![](Images/HBAO_26.jpg)
+
+![](Images/HBAO_27.jpg)
+
+![](Images/HBAO_28.jpg)
+
+![](Images/HBAO_29.jpg)
 
 -----------------
 
-在计算AO和Blur阶段, 感觉用Compute Shader应该会快一点, 用groupshared 去缓存depth 减少采样. 
+在计算AO和Blur阶段, 感觉用Compute Shader应该会快一点. 用groupshared 去缓存depth, 从而减少采样. 
+
+项目中感觉可以用半分辨率+更少的方向划分和步进, 效果其实差不了多少.
 
 下面还有一些别人的文章, 里面有代码和其它的AO可以做参考. 
 
