@@ -1189,7 +1189,6 @@ Shader "HBAO"
 
 		Pass
 		{
-
 			Name "HBAO"
 			...
 		}
@@ -1197,6 +1196,7 @@ Shader "HBAO"
 		Pass
 		{
 			Name "Blur"
+			...
 		}
 
 		Pass
