@@ -27,7 +27,7 @@
 
 我使用CapsuleAO, 最主要是想要生成影中影和贴近墙壁地板的AO的效果.
 
-UE的Docs上有一个很好的对比图, 比我不知道高到哪里去了. [对比地址][3]. 建议抄UE的代码.
+UE的Docs上有一个很好的对比图, 比我不知道高到哪里去了. [对比地址][3]. 建议抄UE的代码[UE分享][8].
 
 ![](Images/CapsuleAO_01.jpg)
 
@@ -55,7 +55,7 @@ Shadow: 发射点沿着LightDir 产生一个圆锥(锥角由我们决定, 效果
 
 还有一个预计算贴图, 用于Directional term, 是蒙特卡洛算法在离线时预计算出遮挡体与被渲染点几何关系与遮挡值的函数关系. 因为那时是PS3时代, ALU不足, 用贴图采样取代复杂的算法. **但是这篇文章的代码里面并没有用到这个图**.
 
-对于一个给定的锥角而言, 遮挡值可以用遮挡体对于当前点的张角(\theta)以及到球心的射线与椎体轴线夹角(\phi)的函数来表示, 这个结果被存成像上面一样的贴图里. 对于不同的锥角, 可分别输出2D贴图, 然后组成3D贴图.
+对于一个给定的锥角而言, 遮挡值可以用遮挡体对于当前点的张角(Θ,theta)以及到球心的射线与椎体轴线夹角(Φ,phi)的函数来表示, 这个结果被存成像上面一样的贴图里. 对于不同的锥角, 可分别输出2D贴图, 然后组成3D贴图. ([文章写数学符号][7])
 
 ![](Images/CapsuleAO_05.png)
 
@@ -78,10 +78,10 @@ Shadow: 发射点沿着LightDir 产生一个圆锥(锥角由我们决定, 效果
 [4]:https://www.jianshu.com/p/7d0704442306
 [5]:http://miciwan.com/SIGGRAPH2013/Lighting%20Technology%20of%20The%20Last%20Of%20Us.pdf
 [6]:https://zhuanlan.zhihu.com/p/460444838
-https://zhuanlan.zhihu.com/p/368039787
-https://www.jianshu.com/p/7d0704442306
+[7]:https://gist.github.com/mrquincle/1102e58562411b7f633c08d5dc9a2e1f
+[8]:https://zhuanlan.zhihu.com/p/368039787
 
-
+shadertoy
 character shadow
 editor
 manager
