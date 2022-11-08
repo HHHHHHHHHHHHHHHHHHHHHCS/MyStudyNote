@@ -110,7 +110,7 @@ half4 frag(v2f IN) : SV_Target
 
 我们定义AA为3, 也就是计算九次, 然后平均.
 
-创建方法 ** GetCapsuleColor ** 用于得到CapsuleColor(废话).
+创建方法 **GetCapsuleColor** 用于得到CapsuleColor(废话).
 
 ```C++
 
@@ -153,13 +153,13 @@ half4 frag(v2f IN) : SV_Target
 
 再完善刚才写的 **GetCapsuleColor** 方法.
 
-传入的 fragCoord 是像素(如:0~1920等), o是 offset(如:0~AA), 然后转成屏幕uv(如:-1~1等). 但是这里为了美观, 不是除以xy(会被拉伸很丑), 而是根据屏幕的长宽比重新做了拉伸, 就是除以了y.
+传入的 fragCoord 是像素(如:0 ~ 1920等), o是 offset(如:0 ~ AA), 然后转成屏幕uv(如:-1 ~ 1等). 但是这里为了美观, 不是除以xy(会被拉伸很丑), 而是根据屏幕的长宽比重新做了拉伸, 就是除以了y.
 
 如果除以xy而不是除以y, 就会得到下图这种效果, 拉伸了.
 
 ![](Images/CapsuleAO_08.jpg)
 
-再建立相机的forward, up, right. 因为forward方向基本都是事先知道的, 不会和float3(0,1,0)重合所以这里放心大胆使用了.
+再建立相机的forward, up, right. 因为forward方向基本都是事先知道的, 不会和float3(0,1,0)重合, 所以这里放心大胆使用了.
 
 再生成相机的射线方向 rd.
 
@@ -183,13 +183,13 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 ### **2.3. CapsuleIntersect**
 
-先做RayTrace CapsuleIntersect., 创建个 **CapsuleIntersect** 方法. 用射线去检测是否碰撞到了Capsule.
+先做RayTrace CapsuleIntersect. 创建个 **CapsuleIntersect** 方法. 用射线去检测是否碰撞到了Capsule.
 
 ![](Images/CapsuleAO_09.jpg)
 
 ro, 射线起点. rd, 射线方向. pa, 胶囊体A点. pb, 胶囊体B点. r, 胶囊体半径. 返回值是 射线起点到碰撞点的距离(射线方向需要是Normalize的).
 
-具体的数学这里就不展开BB了, 去搜下挺多的.
+具体的数学这里就不展开BB了, 去搜下挺多的(能用就行).
 
 ```C++
 
@@ -469,11 +469,11 @@ float CapsuleShadow(float3 ro, float3 rd, float3 a, float3 b, float r, float k)
 	float3 ba = b - a;
 	float3 oa = ro - a;
 
-	float oad = dot(oa, rd);
-	float dba = dot(rd, ba);
+	float oard = dot(oa, rd);
+	float rdba = dot(rd, ba);
 	float baba = dot(ba, ba);
 	float oaba = dot(oa, ba);
-	float2 th = float2(-oad * baba + dba * oaba, oaba - oad * dba) / (baba - dba * dba);
+	float2 th = float2(rdba * oaba - oard * baba, oaba - oard * rdba) / (baba - rdba * rdba);
 
 	th.x = max(th.x, 0.0001);
 	th.y = clamp(th.y, 0.0, 1.0);
