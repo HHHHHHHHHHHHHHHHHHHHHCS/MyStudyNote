@@ -313,7 +313,7 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 之前说过射线在胶囊体的碰撞位置就是 ro + t * rd, 然后用 **CapsuleNormal** 计算法线.
 
-```
+```C++
 
 half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 {
@@ -459,6 +459,9 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 但是他这里用了另外一种方法(因为要做软阴影, 算是一种假阴影的做法). 地板上的点沿着光的方向发射射线, 计算射线离胶囊体最短的距离. 根据距离判断要阴影的程度.
 
+![](Images/CapsuleAO_15.png)
+
+//TODO:
 
 ```C++
 
