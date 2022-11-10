@@ -191,6 +191,9 @@ ro, 射线起点. rd, 射线方向. pa, 胶囊体A点. pb, 胶囊体B点. r, 胶
 
 具体的数学这里就不展开BB了, 去搜下挺多的(能用就行).
 
+![](Images/CapsuleAO_16.jpg)
+
+
 ```C++
 
 float CapsuleIntersect(float3 ro, float3 rd, float3 pa, float3 pb, float r)
@@ -459,9 +462,15 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 但是他这里用了另外一种方法(因为要做软阴影, 算是一种假阴影的做法). 地板上的点沿着光的方向发射射线, 计算射线离胶囊体最短的距离. 根据距离判断要阴影的程度.
 
+![](Images/CapsuleAO_17.jpg)
+
+胶囊体可以看成 圆球半径r 球心在a, 然后球心从a位移到b形成的一个形状. 这样射线离胶囊体最近的点可以看成两个线的问题.
+
+射线rord 找到距离线段 ab 最近的点q, 同时找到离射线最近的点p. d = dist(p,q) - r.
+
 ![](Images/CapsuleAO_15.png)
 
-//TODO:
+添加 **CapsuleShadow** 方法, 返回射线和胶囊体的最近距离.
 
 ```C++
 
@@ -485,9 +494,7 @@ float CapsuleShadow(float3 ro, float3 rd, float3 a, float3 b, float r, float k)
 	float3 q = ro + rd * th.x;
 	float d = length(p - q) - r;
 
-	//fake shadow
-	float s = clamp(k * d / th.x + 0.5, 0.0, 1.0);
-	return s * s * (3.0 - 2.0 * s);
+	return d;
 }
 
 float CapsuleIntersect(float3 ro, float3 rd, float3 pa, float3 pb, float r)
@@ -496,6 +503,76 @@ float CapsuleIntersect(float3 ro, float3 rd, float3 pa, float3 pb, float r)
 }
 
 ```
+
+先输出d看看符不符合预想结果. 修改 **GetCapsuleColor** 方法, 添加刚写的 **CapsuleShadow** , 同时修改返回值为 **sha** 进行测试.
+
+```C++
+
+half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
+{
+	...
+	float3 nor = float3(0, 0, 0);
+
+	// plane(floor)
+	{
+		float t = (floorHeight - ro.y) / rd.y;
+		if (t > 0.0 && t < tmin)
+		{
+			tmin = t;
+			float3 pos = ro + t * rd;
+			nor = float3(0.0, 1.0, 0.0);
+			//fake soft shadow
+			sha = CapsuleShadow(pos + 0.001 * nor, lig, capA, capB, capR, 4.0);
+
+		}
+	}
+
+	// capsule
+	{
+		...
+	}
+
+	// lighting
+	if (tmin < 1e20)
+	{
+		...
+	}
+
+	return sha;
+}
+
+```
+
+![](Images/CapsuleAO_18.jpg)
+
+然后再根据距离生成假的阴影效果. 这里为了美观加了点魔法. 同时还有个挺有趣的想法. th.x越大, 说明投影物体离地板越远, 产生的阴影越虚(淡), 但是阴影面积越大. 如果th.x越小, 说明投影物体离地板越近, 产生的阴影越实, 面积越小. 有点类似于pcss.
+
+继续返回修改 **CapsuleShadow** , 观察修改后的效果.
+
+```C++
+
+float CapsuleShadow(float3 ro, float3 rd, float3 a, float3 b, float r, float k)
+{
+	...
+	float d = length(p - q) - r;
+
+	//fake shadow
+	float s = clamp(k * d / th.x + 0.5, 0.0, 1.0);
+	return s * s * (3.0 - 2.0 * s);
+}
+
+
+```
+
+下图分别为 当k和d保持不变, th.x为原值, th.x*=10, th.x/=10. 正常效果, 很虚但是面积很大, 很实面积较小. 当然这个效果其实可以通过调节k来实现.
+
+![](Images/CapsuleAO_19.jpg)
+
+![](Images/CapsuleAO_20.jpg)
+
+![](Images/CapsuleAO_21.jpg)
+
+
 
 -----------------
 
