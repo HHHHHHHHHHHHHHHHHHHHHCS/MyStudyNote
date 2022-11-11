@@ -20,6 +20,9 @@
   - [**2.5. Lighting**](#25-lighting)
   - [**2.6. Floor**](#26-floor)
   - [**2.7. CapsuleShadow**](#27-capsuleshadow)
+  - [**2.8. CapsuleOcclusion**](#28-capsuleocclusion)
+  - [**2.9. Final**](#29-final)
+- [**3. Unity**](#3-unity)
 
 <!-- /code_chunk_output -->
 
@@ -37,6 +40,8 @@
 UE的Docs上有一个很好的对比图, 比我不知道高到哪里去了. [对比地址][3]. 建议抄UE的代码[UE分享][8].
 
 ![](Images/CapsuleAO_01.jpg)
+
+尽可能的跳过了数学的地方. 因为讲起来好复杂啊!!! 还是直接Ctrl+C+V快!!!
 
 -----------------
 
@@ -353,7 +358,9 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 然后再加两个变量 **sha** 阴影系数, **occ** AO系数. occ 根据nor.y来变化. 
 
-胶囊体的颜色 = 环境颜色 * AO + 光颜色 * NoL * shadow * 0.8(ambient).
+胶囊体的颜色 = 环境颜色 * AO + 光颜色 * NoL * shadow * ambient. 
+
+设 ambient = 0.8.
 
 ```C++
 
@@ -405,7 +412,7 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 ### **2.6. Floor**
 
-写了那么长都差点忘了主题----CapsuleAO, 所以要让胶囊对地面产生效果.
+写了那么长都差点忘了主题----CapsuleAO, 所以要让胶囊对地板产生效果.
 
 所以先创建个地板吧. 自定义地板高度 **floorHeight** 为 -0.3.
 
@@ -545,7 +552,7 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 ![](Images/CapsuleAO_18.jpg)
 
-然后再根据距离生成假的阴影效果. 这里为了美观加了点魔法. 同时还有个挺有趣的想法. th.x越大, 说明投影物体离地板越远, 产生的阴影越虚(淡), 但是阴影面积越大. 如果th.x越小, 说明投影物体离地板越近, 产生的阴影越实, 面积越小. 有点类似于pcss.
+然后再根据距离生成假的阴影效果. 这里为了美观加了点魔法. 同时还有个挺有趣的想法. th.x越大, 说明投影物体离地板越远, 产生的阴影越虚(淡), 但是阴影面积越大. 如果th.x越小, 说明投影物体离地板越近, 产生的阴影越实, 面积越小. 有点类似于PCSS(脑补闫老师的钢笔图吧2333).
 
 继续返回修改 **CapsuleShadow** , 观察修改后的效果.
 
@@ -561,7 +568,6 @@ float CapsuleShadow(float3 ro, float3 rd, float3 a, float3 b, float r, float k)
 	return s * s * (3.0 - 2.0 * s);
 }
 
-
 ```
 
 下图分别为 当k和d保持不变, th.x为原值, th.x*=10, th.x/=10. 正常效果, 很虚但是面积很大, 很实面积较小. 当然这个效果其实可以通过调节k来实现.
@@ -572,7 +578,161 @@ float CapsuleShadow(float3 ro, float3 rd, float3 a, float3 b, float r, float k)
 
 ![](Images/CapsuleAO_21.jpg)
 
+返回 **GetCapsuleColor**, 把之前测试输出的sha 改成回原来的颜色看看. 对味了.
 
+```C++
+
+half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
+{
+	...
+	// lighting
+	if (tmin < 1e20)
+	{
+		...
+	}
+
+	return col;
+}
+
+```
+
+![](Images/CapsuleAO_22.png)
+
+### **2.8. CapsuleOcclusion**
+
+之后就是AO模块了. 这里依旧还是快速跳过数学吧.
+
+可以先看作地板点P 在 线段AB 上的哪个点(记做x)最近. 然后根据 x和P 的距离计算AO. 他这里还考虑到了法线和Dir(x,P).
+
+![](Images/CapsuleAO_23.png)
+
+先求h, 就是 dot(pa, ba) / dot(ba, ba), 然后因为要在线段上 所以要clamp01 一下. 
+
+再求方向d, d = pa - x 即 d = pa - h * ba.
+
+得到P离线段AB最近的距离为 l = length(d). 
+
+添加方法 **CapsuleOcclusion** . 这里为了美观加了点别的代码, 自行理解.
+
+```C++
+
+float CapsuleOcclusion(float3 p, float3 n, float3 a, float3 b, float r)
+{
+	float3 ba = b - a;
+	float3 pa = p - a;
+	float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);		float t = (floorHeight - ro.y) / rd.y;
+		if (t > 0.0 && t < tmin)
+		{
+			tmin = t;
+			float3 pos = ro + t * rd;
+			nor = float3(0.0, 1.0, 0.0);
+			//fake soft shadow
+			sha = CapsuleShadow(pos + 0.001 * nor, lig, capA, capB, capR, 4.0);
+	
+			//fake occlusion
+			occ = CapsuleOcclusion(pos, nor, capA, capB, capR);
+		}
+	}
+
+	// capsule
+	{
+		...
+	}
+
+	// lighting
+	if (tmin < 1e20)
+	{
+		...
+	}
+	
+	return occ;
+}
+
+对比看看, 有无AO效果.
+
+
+	float3 d = pa - h * ba;
+	float l = length(d);
+	float o = 1.0 - max(0.0, dot(-d, n)) * r * r / (l * l * l);
+	return sqrt(o * o * o);
+}
+
+```
+
+修改 **GetCapsuleColor** 方法. 在plane中添加刚写的 **CapsuleOcclusion**, 顺便修改输出值为 **occ**, 方便观察我们刚添加的AO.
+
+
+```C++
+
+half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
+{
+
+	// plane(floor)
+	{
+		float t = (floorHeight - ro.y) / rd.y;
+		if (t > 0.0 && t < tmin)
+		{
+			tmin = t;
+			float3 pos = ro + t * rd;
+			nor = float3(0.0, 1.0, 0.0);
+			//fake soft shadow
+			sha = CapsuleShadow(pos + 0.001 * nor, lig, capA, capB, capR, 4.0);
+	
+			//fake occlusion
+			occ = CapsuleOcclusion(pos, nor, capA, capB, capR);
+		}
+	}
+
+	// capsule
+	{
+		...
+	}
+
+	// lighting
+	if (tmin < 1e20)
+	{
+		...
+	}
+	
+	return occ;
+}
+
+```
+
+对比看看, 有无AO效果.
+
+![](Images/CapsuleAO_24.png)
+
+![](Images/CapsuleAO_25.png)
+
+### **2.9. Final**
+
+修改 **GetCapsuleColor** 把之前输出的 occ 改回为 col. 
+
+```C++
+
+half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
+{
+	...
+	
+	// lighting
+	if (tmin < 1e20)
+	{
+		...
+	}
+
+	return col;
+}
+
+```
+
+ShaderToy Capsule AO 写轮眼完成.
+
+![](Images/CapsuleAO_26.png)
+
+-----------------
+
+## **3. Unity**
 
 -----------------
 
@@ -587,10 +747,12 @@ float CapsuleShadow(float3 ro, float3 rd, float3 a, float3 b, float r, float k)
 [9]:https://www.shadertoy.com/view/MlGczG
 
 
-shadertoy
 character shadow
 editor
 manager
 feature
 pass
 shader
+
+
+还有Capsule Shadow做法是. 用圆进行不规则拉伸, 把它拉长像胶囊体, 记录Transform Martix. 然后把射线传入矩阵进行判断求交, 这样就可以使用球的公式来计算, 避免用复杂的胶囊体的公式来计算.
