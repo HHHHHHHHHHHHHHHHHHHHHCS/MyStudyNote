@@ -194,7 +194,7 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 ro, 射线起点. rd, 射线方向. pa, 胶囊体A点. pb, 胶囊体B点. r, 胶囊体半径. 返回值是 射线起点到碰撞点的距离(射线方向需要是Normalize的).
 
-具体的数学这里就不展开BB了, 去搜下挺多的(能用就行).
+具体的数学这里就不展开BB了, 去搜下挺多的(能用就行). 我是自己用C#写了一版检测, 这里还是用他的吧.
 
 ![](Images/CapsuleAO_16.jpg)
 
@@ -733,6 +733,52 @@ ShaderToy Capsule AO 写轮眼完成.
 -----------------
 
 ## **3. Unity**
+
+写完ShaderToy的版本, 回到游戏中思考(麦麦:别思). 
+
+一个场景有N个角色需要胶囊体阴影. 每个角色由N个胶囊体包裹. 同时每个角色受到光不一样, 导致光线方向不一样和胶囊体阴影强度不一样.
+
+我们用一个 **List\<Capsule\> capsules**记录胶囊体, 这样角色就只用记录他的胶囊体在capsules中的index位置了.
+
+为了避免阴影投影在角色自己身上, 还要记录角色的Renderer. 虽然其实也可以用stencil来解决. 但这里的做法是再次绘制一次角色, if(abs(depth - characterDepth) < eps), 就不产生投影.
+
+下面为开启角色自投影 和 关闭的对比.
+
+![](Images/CapsuleAO_27.png)
+
+![](Images/CapsuleAO_28.png)
+
+创建一个C# 文件 **CapsuleAOManager.cs** . 添加结构体和数据.
+
+```C#
+
+using System.Collections.Generic;
+using UnityEngine;
+
+public struct Capsule
+{
+	public Vector3 a, b;
+	public float radius;
+}
+
+public struct Character
+{
+	public Vector3 position;
+	public float radius;
+	public int startID, endID;
+	public Vector4 lightDir;
+}
+
+public class CapsuleV2Manager
+{
+	private List<Capsule> capsules = new();
+	private List<Character> characters = new();
+	private List<Renderer> renderers = new();
+}
+
+```
+
+
 
 -----------------
 
