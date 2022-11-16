@@ -12,7 +12,7 @@
 
 - [**0. 起因**](#0-起因)
 - [**1. 原理**](#1-原理)
-- [**2. 先写个Capsule**](#2-先写个capsule)
+- [**2. ShaderToy**](#2-shadertoy)
   - [**2.1. frag**](#21-frag)
   - [**2.2. GetCapsuleColor**](#22-getcapsulecolor)
   - [**2.3. CapsuleIntersect**](#23-capsuleintersect)
@@ -23,6 +23,9 @@
   - [**2.8. CapsuleOcclusion**](#28-capsuleocclusion)
   - [**2.9. Final**](#29-final)
 - [**3. Unity**](#3-unity)
+- [**3.1 Capsule Collider**](#31-capsule-collider)
+- [**3.2 结构体**](#32-结构体)
+- [**3.3 自阴影**](#33-自阴影)
 
 <!-- /code_chunk_output -->
 
@@ -77,7 +80,7 @@ Shadow: 发射点沿着LightDir 产生一个圆锥(锥角由我们决定, 效果
 
 -----------------
 
-## **2. 先写个Capsule**
+## **2. ShaderToy**
 
 可以尝试写(Copy)一下Shader toy 上面 iq大佬的 Capsule AO. 抄完大致先效果如下图, [ShaderToy地址][9].
 
@@ -734,26 +737,27 @@ ShaderToy Capsule AO 写轮眼完成.
 
 ## **3. Unity**
 
-写完ShaderToy的版本, 回到游戏中思考(麦麦:别思). 
+写完ShaderToy的版本, 回到游戏中思考(麦麦:别思). 这里就不写过多的代码了, 快速看看就行, 反正原理相似.
 
-一个场景有N个角色需要胶囊体阴影. 每个角色由N个胶囊体包裹. 同时每个角色受到光不一样, 导致光线方向不一样和胶囊体阴影强度不一样.
+## **3.1 Capsule Collider**
+
+就是把Capsule Collider装在角色的骨骼上, 然后设为Disable. 其实不建议这么做, 因为我这里是偷懒, 纯为了显示直观. 可以Runtime的时候把Capsule Collider的数据就好了, 直接删掉组件.
+
+这里吐槽下Unity 2022.2.0b14有Bug. 如果直接选中骨骼, 添加Capsule Collider /已存在Capsule Collider, 是不会显示Gizmos的. 需要选中根节点, 再去选中骨骼才行.
+
+![](Images/CapsuleAO_29.png)
+
+然而2021就可以直接显示, 很神奇.
+
+![](Images/CapsuleAO_30.png)
+
+## **3.2 结构体**
+
+一个场景有N个角色需要Capsule阴影. 每个角色由N个Capsule包裹. 同时每个角色可以加自定义方向和强度, 因为灯光越暗阴影需要的强度越高不然就不明显. 为了减少射线检测开销, 还要加个角色的center pos 和 raidus, 方便大于一定距离的直接不显示CapsuleAO.
 
 我们用一个 **List\<Capsule\> capsules**记录胶囊体, 这样角色就只用记录他的胶囊体在capsules中的index位置了.
 
-为了避免阴影投影在角色自己身上, 还要记录角色的Renderer. 虽然其实也可以用stencil来解决. 但这里的做法是再次绘制一次角色, if(abs(depth - characterDepth) < eps), 就不产生投影.
-
-下面为开启角色自投影 和 关闭的对比.
-
-![](Images/CapsuleAO_27.png)
-
-![](Images/CapsuleAO_28.png)
-
-创建一个C# 文件 **CapsuleAOManager.cs** . 添加结构体和数据.
-
 ```C#
-
-using System.Collections.Generic;
-using UnityEngine;
 
 public struct Capsule
 {
@@ -765,18 +769,23 @@ public struct Character
 {
 	public Vector3 position;
 	public float radius;
+	public Vector4 lightDir; //xyz:lightDir, w:根据lightColor 算个系数
 	public int startID, endID;
-	public Vector4 lightDir;
-}
-
-public class CapsuleV2Manager
-{
-	private List<Capsule> capsules = new();
-	private List<Character> characters = new();
-	private List<Renderer> renderers = new();
 }
 
 ```
+
+然后就是创建ComputeBuffer, 把这两个数据存进去了传给GPU. 角色带动作, 每帧都要更新Buffer.
+
+## **3.3 自阴影**
+
+为了避免阴影投影在角色自己身上, 还要记录角色的Renderer. 虽然其实也可以用stencil来解决. 但这里的做法是再次绘制一次角色, if(abs(depth - characterDepth) < eps), 就不产生投影.
+
+下面为开启角色自投影 和 关闭的对比.
+
+![](Images/CapsuleAO_27.png)
+
+![](Images/CapsuleAO_28.png)
 
 
 
