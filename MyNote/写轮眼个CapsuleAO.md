@@ -22,10 +22,22 @@
   - [**2.7. CapsuleShadow**](#27-capsuleshadow)
   - [**2.8. CapsuleOcclusion**](#28-capsuleocclusion)
   - [**2.9. Final**](#29-final)
-- [**3. Unity**](#3-unity)
-- [**3.1 Capsule Collider**](#31-capsule-collider)
-- [**3.2 结构体**](#32-结构体)
-- [**3.3 自阴影**](#33-自阴影)
+- [**3. Pass**](#3-pass)
+  - [**3.1 Capsule Collider**](#31-capsule-collider)
+  - [**3.2 结构体**](#32-结构体)
+  - [**3.3 自阴影**](#33-自阴影)
+  - [**3.4 Pass**](#34-pass)
+- [**4. Shader**](#4-shader)
+  - [**4.1 Blend**](#41-blend)
+  - [**4.2 变量**](#42-变量)
+  - [**4.2 frag**](#42-frag)
+  - [**4.3 CalcAmbientOcclusion**](#43-calcambientocclusion)
+  - [**4.4 IsInBounds**](#44-isinbounds)
+  - [**4.5 CalcCapsuleShadowByIndex**](#45-calccapsuleshadowbyindex)
+  - [**4.6 CalcCapsuleOcclusionByIndex**](#46-calccapsuleocclusionbyindex)
+  - [**4.7 完善CalcAmbientOcclusion**](#47-完善calcambientocclusion)
+  - [**4.9 完善frag**](#49-完善frag)
+  - [**4.10 其它**](#410-其它)
 
 <!-- /code_chunk_output -->
 
@@ -361,9 +373,9 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 然后再加两个变量 **sha** 阴影系数, **occ** AO系数. occ 根据nor.y来变化. 
 
-胶囊体的颜色 = 环境颜色 * AO + 光颜色 * NoL * shadow * ambient. 
+胶囊体的颜色 = AmbientColor * AO + LightColor * AlbedoColor * NoL * Shadow. 
 
-设 ambient = 0.8.
+设 AlbedoColor = half3(0.8, 0.8, 0.8).
 
 ```C++
 
@@ -615,7 +627,7 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 得到P离线段AB最近的距离为 l = length(d). 
 
-添加方法 **CapsuleOcclusion** . 这里为了美观加了点别的代码, 自行理解.
+添加方法 **CapsuleOcclusion** . 这里为了美观加了点魔法代码, 自行理解.
 
 ```C++
 
@@ -623,41 +635,16 @@ float CapsuleOcclusion(float3 p, float3 n, float3 a, float3 b, float r)
 {
 	float3 ba = b - a;
 	float3 pa = p - a;
-	float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);		float t = (floorHeight - ro.y) / rd.y;
-		if (t > 0.0 && t < tmin)
-		{
-			tmin = t;
-			float3 pos = ro + t * rd;
-			nor = float3(0.0, 1.0, 0.0);
-			//fake soft shadow
-			sha = CapsuleShadow(pos + 0.001 * nor, lig, capA, capB, capR, 4.0);
-	
-			//fake occlusion
-			occ = CapsuleOcclusion(pos, nor, capA, capB, capR);
-		}
-	}
-
-	// capsule
-	{
-		...
-	}
-
-	// lighting
-	if (tmin < 1e20)
-	{
-		...
-	}
-	
-	return occ;
-}
-
-对比看看, 有无AO效果.
-
-
+	float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
 	float3 d = pa - h * ba;
 	float l = length(d);
 	float o = 1.0 - max(0.0, dot(-d, n)) * r * r / (l * l * l);
 	return sqrt(o * o * o);
+}
+
+float CapsuleIntersect(float3 ro, float3 rd, float3 pa, float3 pb, float r)
+{
+	...
 }
 
 ```
@@ -735,27 +722,27 @@ ShaderToy Capsule AO 写轮眼完成.
 
 -----------------
 
-## **3. Unity**
+## **3. Pass**
 
 写完ShaderToy的版本, 回到游戏中思考(麦麦:别思). 这里就不写过多的代码了, 快速看看就行, 反正原理相似.
 
-## **3.1 Capsule Collider**
+### **3.1 Capsule Collider**
 
-就是把Capsule Collider装在角色的骨骼上, 然后设为Disable. 其实不建议这么做, 因为我这里是偷懒, 纯为了显示直观. 可以Runtime的时候把Capsule Collider的数据就好了, 直接删掉组件.
+就是把Capsule Collider装在角色的骨骼上, 然后设为Disable. 其实不建议这么做, 因为我这里是偷懒, 纯为了直观显示Gizmos. 可以Runtime的时候, 储存Capsule Collider的数据和骨骼的Transform, 直接删掉Collider组件就好了.
 
-这里吐槽下Unity 2022.2.0b14有Bug. 如果直接选中骨骼, 添加Capsule Collider /已存在Capsule Collider, 是不会显示Gizmos的. 需要选中根节点, 再去选中骨骼才行.
+这里数遍吐槽下Unity 2022.2.0b14有Bug. 如果直接选中骨骼, 添加Capsule Collider /已存在Capsule Collider, 是不会显示Gizmos的. 需要选中Root节点(ybot), 再去选中骨骼才显示.
 
-![](Images/CapsuleAO_29.png)
+![](Images/CapsuleAO_29.jpg)
 
 然而2021就可以直接显示, 很神奇.
 
-![](Images/CapsuleAO_30.png)
+![](Images/CapsuleAO_30.jpg)
 
-## **3.2 结构体**
+### **3.2 结构体**
 
-一个场景有N个角色需要Capsule阴影. 每个角色由N个Capsule包裹. 同时每个角色可以加自定义方向和强度, 因为灯光越暗阴影需要的强度越高不然就不明显. 为了减少射线检测开销, 还要加个角色的center pos 和 raidus, 方便大于一定距离的直接不显示CapsuleAO.
+一个场景有N个角色需要Capsule阴影. 每个角色由N个Capsule包裹. 同时每个角色可以加自定义方向和强度. 需要强度是因为灯光越暗, Capsule需要的强度越高, 不然就显示不明显. 同时为了减少射线检测开销, 还要加个角色的center pos 和 raidus, 方便大于一定距离的直接不显示CapsuleAO.
 
-我们用一个 **List\<Capsule\> capsules**记录胶囊体, 这样角色就只用记录他的胶囊体在capsules中的index位置了.
+我们用一个 **List\<Capsule\> capsules**记录胶囊体, 这样角色就只用记录他的胶囊体在capsules中的start index 和  end index.
 
 ```C#
 
@@ -775,9 +762,9 @@ public struct Character
 
 ```
 
-然后就是创建ComputeBuffer, 把这两个数据存进去了传给GPU. 角色带动作, 每帧都要更新Buffer.
+然后就是创建两个ComputeBuffer, 把这两个数据更新进去, 再传给GPU. 角色带动作, 每帧都要更新ComputeBuffer.
 
-## **3.3 自阴影**
+### **3.3 自阴影**
 
 为了避免阴影投影在角色自己身上, 还要记录角色的Renderer. 虽然其实也可以用stencil来解决. 但这里的做法是再次绘制一次角色, if(abs(depth - characterDepth) < eps), 就不产生投影.
 
@@ -787,7 +774,345 @@ public struct Character
 
 ![](Images/CapsuleAO_28.png)
 
+### **3.4 Pass**
 
+首先我这里是用的前项渲染.
+
+因为计算需要Normal 计算AO, Depth 反算出 WorldPos. 所以需要 **ScriptableRenderPassInput.Normal | ScriptableRenderPassInput.Depth** . 再绘制Opaque Pass.
+
+为了避免自阴影需要再创建一个Depth RT进行绘制CapsuleAO角色的Render.
+
+之后直接在Opaque Pass的Color Attachment上绘制AO.
+
+下面分别为Opaque之后的效果, 单独渲染角色的Depth, 渲染CapsuleAO.
+
+![](Images/CapsuleAO_31.jpg)
+
+![](Images/CapsuleAO_32.png)
+
+![](Images/CapsuleAO_33.jpg)
+
+-----------------
+
+## **4. Shader**
+
+Shader这里也快速写写了, 懂得都懂(DDDD).
+
+### **4.1 Blend**
+
+这里和之前写AO一样, 是对原来的ColorRT 和 黑色进行 blend. 所以需要修改Blend Mode.
+
+```C++
+
+Cull Off
+ZWrite Off
+ZTest Always
+Blend Zero SrcAlpha
+
+```
+
+### **4.2 变量**
+
+快速写下大概需要的变量.
+
+```C++
+
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareNormalsTexture.hlsl"
+
+struct Capsule
+{
+	float3 a;
+	float3 b;
+	float radius;
+};
+
+struct Character
+{
+	float3 position;
+	float radius;
+	float4 lightDir;
+	int startID;
+	int endID;
+};
+
+TEXTURE2D(_CapsuleCharacterDepthRT);
+SAMPLER(s_linear_clamp_sampler);
+
+StructuredBuffer<Capsule> _CapsuleData;
+uint _CapsulesCount;
+StructuredBuffer<Character> _CharacterData;
+uint _CharactersCount;
+float _AmbientIntensity;
+float _ShadowIntensity;
+float _ShadowSharpness;
+
+```
+
+### **4.2 frag**
+
+如果depth相近, 就不需要投影. 然后反算出WorldPos, 采样获得 WorldNormal.
+
+```C++
+
+half4 frag(v2f IN) : SV_Target
+{
+	const float2 uv = IN.uv;
+
+	float depth = SampleSceneDepth(uv);
+
+	float maskDepth = SAMPLE_TEXTURE2D_LOD(_CapsuleCharacterDepthRT, s_linear_clamp_sampler, uv, 0).x;
+	if (abs(depth - maskDepth) < 0.0001)
+	{
+		return half4(1, 0, 0, 1);
+	}
+
+	float2 sceneUV = uv;
+	sceneUV.y = 1 - sceneUV.y;
+	sceneUV = sceneUV * 2 - 1;
+	float4 worldPos = mul(UNITY_MATRIX_I_VP, float4(sceneUV, depth, 1));
+	worldPos /= worldPos.w;
+
+	float3 worldNormal = SampleSceneNormals(uv);
+
+	//TODO:计算AO
+
+	return half4(0, 0, 0, 1);
+}
+
+```
+
+### **4.3 CalcAmbientOcclusion**
+
+遍历角色, 计算得到AO和Shadow. 但是如果WorldPos不在角色的bounds内就不计算, 减少性能消耗.
+
+输出结果用比较简单的Shadow*Occlusion来表达最终结果, 而不像ShaderToy的公式 AmbientColor * AO + LightColor * AlbedoColor * NoL * Shadow.
+
+
+```C++
+
+float CalcAmbientOcclusion(float3 worldPos, float3 worldNormal)
+{
+	float shadow = 1.0;
+	float occlusion = 1.0;
+	for (uint i = 0; i < _CharactersCount; ++i)
+	{
+		float intensity;
+		Character c = _CharacterData[i];
+		if (IsInBounds(worldPos, c.position, c.radius, intensity))
+		{
+			//TODO: 计算AO
+		}
+	}
+	return shadow * occlusion;
+}
+
+half4 frag(v2f IN) : SV_Target
+{
+	...
+}
+
+```
+
+### **4.4 IsInBounds**
+
+补充方法 **IsInBounds**. 为了过渡效果, 如果越靠近边界, 阴影越弱.
+
+```C++
+
+bool IsInBounds(float3 p, float3 c, float b, out float intensity)
+{
+	float3 diff = abs(p - c);
+	if (diff.x < b && diff.y < b && diff.z < b)
+	{
+		intensity = saturate(dot(diff, diff) / dot(b, b));
+		return true;
+	}
+	intensity = 0;
+	return false;
+}
+
+float CalcAmbientOcclusion(float3 worldPos, float3 worldNormal)
+{
+	...
+}
+
+```
+
+### **4.5 CalcCapsuleShadowByIndex**
+
+添加方法 **CalcCapsuleShadowByIndex** , 和ShaderToy的代码很像. 就是多了遍历Character下的Capsules.
+
+这里的Shadow用shadow*=s, 而不是shadow=min(shadow,s). 是因为如果用min会产生断层, 有割裂感.
+
+```C++
+
+bool IsInBounds(float3 p, float3 c, float b, out float intensity)
+{
+	...
+}
+
+float CalcCapsuleShadowByIndex(float3 ro, float3 rd, uint s, uint e, in float k, float intensity)
+{
+	float shadow = 1.0;
+	for (uint i = s; i < e; ++i)
+	{
+		Capsule c = _CapsuleData[i];
+		float3 a = c.a;
+		float3 b = c.b;
+		float r = c.radius;
+		float3 ba = b - a;
+		float3 oa = ro - a;
+
+		float oad = dot(oa, rd);
+		float dba = dot(rd, ba);
+		float baba = dot(ba, ba);
+		float oaba = dot(oa, ba);
+		float2 th = float2(-oad * baba + dba * oaba, oaba - oad * dba) / (baba - dba * dba);
+
+		th.x = max(th.x, 0.0001);
+		th.y = saturate(th.y);
+
+		float3 p = a + ba * th.y;
+		float3 q = ro + rd * th.x;
+		float d = length(p - q) - r;
+
+		float s = saturate(k * d / th.x + 0.3);
+		s = s * s * (3.0 - 2.0 * s);
+		shadow *= s;
+	}
+
+	shadow = saturate(lerp(shadow, 1, intensity));
+	return saturate(lerp(shadow, 1, _ShadowIntensity));
+}
+
+float CalcAmbientOcclusion(float3 worldPos, float3 worldNormal)
+{
+	...
+}
+
+```
+
+### **4.6 CalcCapsuleOcclusionByIndex**
+
+添加个方法 **CalcCapsuleOcclusionByIndex**, 其实和ShaderToy的代码也很像(yi mu yi yang).  只是每个Capsule产生的AO结果累乘.
+
+```C++
+
+float CalcCapsuleShadowByIndex(float3 ro, float3 rd, uint s, uint e, in float k, float intensity)
+{
+	...
+}
+
+float CalcCapsuleOcclusionByIndex(float3 p, float3 n, uint s, uint e, float intensity)
+{
+	float ao = 1.0;
+	for (uint i = s; i < e; ++i)
+	{
+		Capsule capsule = _CapsuleData[i];
+		float3 a = capsule.a;
+		float3 b = capsule.b;
+		float r = capsule.radius;
+		float3 ba = b - a;
+		float3 pa = p - a;
+		float h = saturate(dot(pa, ba) / dot(ba, ba));
+		float3 d = pa - h * ba;
+		float l = length(d);
+		float o = 1.0 - max(0.0, dot(-d, n)) * r * r / (l * l * l);
+		o = sqrt(o * o * o);
+		ao *= o;
+	}
+
+	ao = saturate(lerp(ao, 1, intensity));
+	return saturate(lerp(ao, 1, _AmbientIntensity));
+}
+
+float CalcCapsuleShadowByIndex(float3 ro, float3 rd, uint s, uint e, in float k, float intensity)
+{
+	...
+}
+
+```
+
+### **4.7 完善CalcAmbientOcclusion**
+
+返回 **CalcAmbientOcclusion** 方法, 补充刚才写的两个方法.
+
+如果灯光强度过暗, Shadow适当增强, 凸显效果.
+
+为了看起来真实点, 每个角色的shadow用min, ao用累乘.
+
+```C++
+
+float CalcAmbientOcclusion(float3 worldPos, float3 worldNormal)
+{
+	...
+	for (uint i = 0; i < _CharactersCount; ++i)
+	{
+		...
+		if (IsInBounds(worldPos, c.position, c.radius, intensity))
+		{
+			float tempIntensity = intensity / saturate(1 * smoothstep(0.001, 1, c.lightDir.w));
+			float tempShadow = CalcCapsuleShadowByIndex(worldPos, c.lightDir.xyz, c.startID, c.endID, _ShadowSharpness,  tempIntensity);
+			shadow = min(shadow, tempShadow);
+			occlusion *= CalcCapsuleOcclusionByIndex(worldPos, worldNormal, c.startID, c.endID, intensity);
+		}
+	}
+	return shadow * occlusion;
+}
+
+```
+
+### **4.9 完善frag**
+
+完善 **frag** 方法, 补充刚写上的获取Shadow*AO的方法 **CalcAmbientOcclusion** .
+
+```C++
+
+half4 frag(v2f IN) : SV_Target
+{
+	...
+	float3 worldNormal = SampleSceneNormals(uv);
+
+	float ao = CalcAmbientOcclusion(worldPos.xyz, worldNormal);
+
+	return half4(1, 1, 1, ao);
+}
+
+```
+
+因为目的是在阴影中产生AO, 所以还要加入阴影判断. 胡烈走你!
+
+```C++
+
+half4 frag(v2f IN) : SV_Target
+{
+	...
+	float ao = CalcAmbientOcclusion(worldPos.xyz, worldNormal);
+
+	float4 shadowCoord = TransformWorldToShadowCoord(worldPos.xyz);
+	Light mainLight = GetMainLight(shadowCoord, worldPos.xyz, half4(1, 1, 1, 1));
+	//只在阴影处产生AO
+	ao = lerp(ao, 1, step(0.5, mainLight.shadowAttenuation));
+
+	return half4(1, 1, 1, ao);
+}
+
+```
+
+到这里就差不多结束了.
+
+### **4.10 其它**
+
+之前看还有的Capsule Shadow做法是. 用圆进行不规则拉伸, 把圆拉长像胶囊体, 记录Transform Martix. 
+
+然后把射线传入矩阵进行判断求交, 这样就可以使用球的公式来计算, 避免用复杂的胶囊体的公式来计算.
+
+-----------------
+
+这次写的是无解注水了hhhh. 要怪就怪XGP的游戏太好玩了吧(Doge).
+
+如果Ray Tracing 搞起来, 那Shadow/AO/反射 直接嘎嘎杀!!!
 
 -----------------
 
@@ -800,14 +1125,3 @@ public struct Character
 [7]:https://gist.github.com/mrquincle/1102e58562411b7f633c08d5dc9a2e1f
 [8]:https://zhuanlan.zhihu.com/p/368039787
 [9]:https://www.shadertoy.com/view/MlGczG
-
-
-character shadow
-editor
-manager
-feature
-pass
-shader
-
-
-还有Capsule Shadow做法是. 用圆进行不规则拉伸, 把它拉长像胶囊体, 记录Transform Martix. 然后把射线传入矩阵进行判断求交, 这样就可以使用球的公式来计算, 避免用复杂的胶囊体的公式来计算.
