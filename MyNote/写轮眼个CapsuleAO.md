@@ -1112,7 +1112,7 @@ half4 frag(v2f IN) : SV_Target
 
 这次写的是无解注水了hhhh. 要怪就怪XGP的游戏太好玩了吧(Doge).
 
-如果Ray Tracing 搞起来, 那Shadow/AO/反射 直接嘎嘎杀!!!
+如果Ray Tracing 搞起来, 那Shadow/AO/Reflect 直接嘎嘎杀!!!
 
 -----------------
 
