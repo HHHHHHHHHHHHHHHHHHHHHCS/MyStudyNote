@@ -730,7 +730,7 @@ ShaderToy Capsule AO 写轮眼完成.
 
 就是把Capsule Collider装在角色的骨骼上, 然后设为Disable. 其实不建议这么做, 因为我这里是偷懒, 纯为了直观显示Gizmos. 可以Runtime的时候, 储存Capsule Collider的数据和骨骼的Transform, 直接删掉Collider组件就好了.
 
-这里数遍吐槽下Unity 2022.2.0b14有Bug. 如果直接选中骨骼, 添加Capsule Collider /已存在Capsule Collider, 是不会显示Gizmos的. 需要选中Root节点(ybot), 再去选中骨骼才显示.
+这里顺便吐槽下Unity 2022.2.0b14有Bug. 如果直接选中骨骼, 添加Capsule Collider /已存在Capsule Collider, 是不会显示Gizmos的. 需要选中Root节点(ybot), 再去选中骨骼才显示.
 
 ![](Images/CapsuleAO_29.jpg)
 
