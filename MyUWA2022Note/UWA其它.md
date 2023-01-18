@@ -1,7 +1,7 @@
 UWA其它
 ======
 
-(Github正常排版: [UWA其它][0])
+(Github正常排版: [UWA其它][1])
 
 -----------------
 
@@ -52,6 +52,19 @@ UWA其它
   - [**4.3. AI系统**](#-43-ai系统-)
   - [**4.4. 角色Tick优化**](#-44-角色tick优化-)
   - [**4.5. 加载优化**](#-45-加载优化-)
+- [**5. 引擎与TA中台的工业化实践**](#-5-引擎与ta中台的工业化实践-)
+  - [**5.1. 技术共享**](#-51-技术共享-)
+  - [**5.2. 开发效率**](#-52-开发效率-)
+  - [**5.3. 模块化场景**](#-53-模块化场景-)
+  - [**5.4 内存拷贝**](#-54-内存拷贝-)
+  - [**5.5 Shader填充**](#-55-shader填充-)
+  - [**5.6 遮挡剔除**](#-56-遮挡剔除-)
+- [**5.7. LookDev**](#-57-lookdev-)
+- [**5.8. 标准**](#-58-标准-)
+- [**5.8. Asset Processor**](#-58-asset-processor-)
+- [**5.9. Asset Flows**](#-59-asset-flows-)
+- [**5.10. 局部PCG**](#-510-局部pcg-)
+- [**5.11. 场景编辑器**](#-511-场景编辑器-)
 
 <!-- /code_chunk_output -->
 
@@ -515,7 +528,7 @@ while(i < len)
     + 关闭一些不重要的场景物件的渲染
     + 同时可以降低场景相机分辨率
   + 不透明的UI部分用面片遮挡场景相机对应位置
-    + 例 聊天界面出现时, 在场景相机对应的位置放置一个Quad面片
+    + 例: 聊天界面出现时, 在场景相机对应的位置放置一个Quad面片
 
   LOD相关:
   + 场景复杂物件设置2-3层LOD
@@ -855,6 +868,7 @@ IOS适合用ADPCM和MP3格式, Android适合用OGG Vorbis格式
   运行时, 利用Animator Controller 生成Playable结构, 同时借助Playable Mapping的组合数据构建Playable Graph的数据流.
 
   优点: 自定义加载策略, 更好的性能表现. 高度自由的动作组合替换机制.
+
   缺点: 不够直观, 具备一定学习成本需要更多的配套工具辅助开发
 
   8. 动作工具流
@@ -992,6 +1006,173 @@ IOS适合用ADPCM和MP3格式, Android适合用OGG Vorbis格式
 
 -----------------
 
+## **5. 引擎与TA中台的工业化实践**
+
+  [视频地址][9]
+
+
+### **5.1. 技术共享**
+
+  中台TA去进入项目组, 定制化服务项目, 同时把项目技术带回中台.
+
+  把技术做成Packages包, 方便快速安装.
+
+### **5.2. 开发效率**
+
+  Brust C# 内存访问的overlay导致的效率下降.
+
+![](Images/UWAOther_51.jpg)
+
+  Pass的资源管理.
+
+![](Images/UWAOther_52.jpg)
+
+  渲染中间结果输出到屏幕, 和渲染流程可视化.
+
+![](Images/UWAOther_53.jpg)
+
+  大项目开发, 每天SVN更新资源, 然后Unity Import, 需要很久的耗时.
+
+  Library下会生成一份cache, 把cache存在asset server. 通过asset ID 把 asset server上的cache拉取到用户本地.(感觉跟Unity Asset Server做的事情差不多.)
+
+![](Images/UWAOther_54.jpg)
+
+  构建App包体缓慢, 如无增量构建常常达到小时或者数小时级别.
+
+  增量构建依赖CI平台, 对于开发或者修复bug时的调试工作流不友好.
+
+  App包体巨大, 构建完还得传输和安装到手机, 需要较长的时间.
+
+  那么就可以在Unity Editor中打出空的手机包. 运行游戏, 用到asset的时候把数据streaming到手机. 这时候开发机作为streaming server.
+
+### **5.3. 模块化场景**
+
+  用ECS渲染, 减少DrawCall.
+
+  把建筑资源模块化, 可以复用模型和贴图. 但是模块化会都大量增加C#对象和Render Nodes. 每个模块是一个Entity, 静态Instanced Batching.
+
+  (其实可以打包的时候做统计预处理. 运行游戏的时候用Graphics.DrawInstance去合批绘制, 类似于自己手动做合批, 但是要注意Culling.)
+
+![](Images/UWAOther_55.jpg)
+
+### **5.4 内存拷贝**
+
+  CommandBuffer的内存拷贝, 来保证Unity的引擎安全. 同时C#端就不用考虑生命周期了.
+
+```C++
+
+void ScriptableRenderContet::ExecuteCommandBuffer(RenderingCommandBuffer& commandBuffer)
+{
+	#if UNITY_EDITOR
+		commandBuffer.ValidateForSRP(m_IsInsideRenderPassForValidation);
+	#endif
+
+	// Copy the command buffer to allow the passed in one to be cleared and reused
+	MemLabelRef memLabel = commandBuffer.GetMemLabel();
+	RenderingCommandBuffer* clonedCommandBuffer = UNITY_NEW(RenderingCommandBuffer, memLabel)(memLabel, commandBuffer);
+
+	UInt32 idex = static_cast<UInt32>(m_CommandBuffers.Size());
+	m_CommandBuffers.push_back(clonedCommandBuffer);
+	AddCommandWithIndex(kScriptRenderCommand_ExecuteCommandBuffer, index);
+}
+```
+
+  Instance Data的内存拷贝.
+
+```C++
+
+void RenderingCommandBuffer::AddDrawMeshInstanced(Mesh* mesh, int subset, Material* material, int pass, const Matrix4x4f* matrices, size_t numInstances, ShaderPropertySheet* properties)
+{
+	DebugAssert(mesh != NULL);
+	DebugAssert(material != NULL);
+	DebugAssert(matrices != NULL);
+	int propIndex = RegisterPropertySheet();
+	PrepareSourceInstanceData(*m_PropertySheets[propIndex], matrices, numInstances, properties);
+
+	UInt32 materialID = m_Materials.Put(material);
+	UInt32 internalNodeID = RegisterNode(NULL, materialID, mesh, kNodeResolveFlag_CheckMaterialInstancing);
+	RenderCommandDrawMeshInstanced cmd = {materialID, (SInt16)subset, (SInt16)pass, propIndex, internalNodeID, false , nullptr};
+	m_Buffer.WriteValueType<RenderCommandType>(kRenderCommand_DrawMeshInstanced);
+	m_Buffer.WriteValueType(cmd);
+}
+```
+
+  那么就可以在引擎源码层把内存拷贝全部去掉, 只传入引用, 自己去管理生命周期. 比如对这些cmd, instanceData再封装一层保证生命周期安全.
+
+### **5.5 Shader填充**
+
+  ConstantBuffer的填充.
+
+  比如原来的Unity是用SetVector(Time), SetVector(SinTime), SetVector(CosTime), SetVector(CameraPos)等. 因为他无法确认这个相同生命周期的数据块内的数据来自于哪里, 就只能一个一个设置.
+
+  那么可以自己写一个ConstantBuffer, 把数据都Set进来, 最后一起Bind给Shader.
+
+  (但是要注意float4对齐.)
+
+![](Images/UWAOther_56.jpg)
+
+### **5.6 遮挡剔除**
+
+  他们的Hi-Z: GPU的深度图生成Mipmap, 用CPU去请求GPU的深度图Mipmap. 然后CPU做遮挡剔除. GPU->CPU存在3帧延迟, 尽管做了矩阵恢复到上3帧, 但是还是有瑕疵.
+
+  比如说3帧前, 人在墙后, 这时候移动到了墙前面, 这时候新的东西需要过3帧才能显示.
+
+  所以用了Intel提出的Masked Software Occlusion Culling, [相关文章][10], 能解决延迟3帧问题, 但是GPU会有1ms的开销.
+
+  保留了两种方案, 默认是Hi-Z, 然后判断可能会出现延迟问题的时候, 就上软光栅SOC.
+
+## **5.7. LookDev**
+
+  加入LookDev. Unity新版本中就有. 但是还要对齐Unity和各个外部软件的渲染结果.
+
+![](Images/UWAOther_57.jpg)
+
+## **5.8. 标准**
+
+  美术组成, 命名, 用处, 面数规范.
+
+  mesh的Physics Cook. mesh之前为readable, 但是子节点经过旋转和非同一缩放, 产生了skew. 所以Unity会把Skew后的mesh bake成一个新的mesh, 然后作为物理碰撞体. 所以规范不要出现非同一缩放且带旋转的子节点.
+
+![](Images/UWAOther_58.jpg)
+
+## **5.8. Asset Processor**
+
+  Asset导入处理的流程直观化.
+
+  比如说资源, 后处理类型, 版本号, 作者, SVN提交记录. 资源的规则, 正则表达式.
+
+  同时因为文件标记了会被哪些Processor处理, 所以如果改动Processor代码, 只用处理标记文件就好了, 不需要整个re-import.
+
+![](Images/UWAOther_59.jpg)
+
+![](Images/UWAOther_60.jpg)
+
+![](Images/UWAOther_61.jpg)
+
+## **5.9. Asset Flows**
+
+  比如说Maya的资源导出做一次检查, 然后提交到Database. DataBase会自动在Unity中创建文件夹, 导入文件, 自动绑定材质球和贴图.
+
+![](Images/UWAOther_62.jpg)
+
+## **5.10. 局部PCG**
+
+  Unity中连接了Houdini Server, 实现PCG.
+
+  白模的布尔操作, 类似于UE的.
+
+![](Images/UWAOther_63.jpg)
+
+## **5.11. 场景编辑器**
+
+  Unity如果把大世界的全部GO都加载进来会很卡. 做个分块化编辑器, 分块加载, 再把GO变成ECS渲染.
+
+  然后又开发了场景编辑器 用于多人协同. 分块加载, 同职位协同. 分图层保存, 同块不同职位协同.
+
+![](Images/UWAOther_64.jpg)
+
+-----------------
+
 [1]:https://github.com/HHHHHHHHHHHHHHHHHHHHHCS/MyStudyNote/blob/main/MyUWA2022Note/%E7%A7%BB%E5%8A%A8%E7%AB%AF%E5%AE%9E%E6%97%B6GI%E6%96%B9%E6%A1%88.md
 [2]:https://edu.uwa4d.com/course-intro/1/486
 [3]:https://github.com/ina-amagami/OverdrawForURP
@@ -1000,3 +1181,5 @@ IOS适合用ADPCM和MP3格式, Android适合用OGG Vorbis格式
 [6]:https://www.bilibili.com/video/BV1Tt4y1X7f6
 [7]:https://www.bilibili.com/video/BV1Bp4y1i7wK
 [8]:https://edu.uwa4d.com/course-intro/1/475
+[9]:https://edu.uwa4d.com/course-intro/1/470
+[10]:https://www.intel.com/content/www/us/en/developer/articles/technical/masked-software-occlusion-culling.html
