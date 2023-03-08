@@ -9,8 +9,10 @@
 
 <!-- code_chunk_output -->
 
-- [**0. 起因**](#-0-起因-)
-- [**1. MeshDescriptor**](#-1-meshdescriptor-)
+- [**0. 起因**](#0-起因)
+- [**1. MeshDescriptor**](#1-meshdescriptor)
+- [**2. NativeArray + Job**](#2-nativearray--job)
+  - [**2.1 老方法**](#21-老方法)
 
 <!-- /code_chunk_output -->
 
@@ -20,12 +22,14 @@
 
 &emsp;&emsp; 都什么年代了还在用传统Mesh API. 随着Unity版本更新, 学点新的API. (你什么档次和我用一样的API, 砸了!)
 
-包括下面几个点, 主要参考来源都是keijiro的Gayhub.
+包括下面几个点, 主要参考来源[代码仓库][5]. 当然也可以看看keijiro的Gayhub, 里面也有很多新奇的东西.
   + MeshDescriptor
   + NativeArray + Job
   + RawData + Compute Shader
   + Combine相关
   + 序列化相关
+
+建议使用2021+的版本, 因为RawData需要.
 
 -----------------
 
@@ -100,7 +104,7 @@ indicesBuffer.Dispose();
 
 同时因为上面让其不要自动生成包围盒, 渲染的时候存在Culling问题. 所以还可以指定一下.
 
-```C++
+```C#
 
 var subMesh = new SubMeshDescriptor(0, indicesCount, MeshTopology.Triangles);
 mesh.SetSubMesh(0, subMesh);
@@ -110,11 +114,43 @@ mesh.bounds = subMesh.bounds;
 
 ```
 
-甚至还可以调用 **mesh.UploadMeshData(true)** , 立即把修改后的Mesh Data 发给 渲染API. **markNoLongerReadable** 如果为true, mesh将卸载掉脚本层的数据拷贝, 脚本层不能对mesh数据做读取, 跟Mesh的ReadOnly很像. [官方文档][4]
+甚至还可以调用 **mesh.UploadMeshData(true)** , 立即把修改后的Mesh Data 发给 渲染API. **markNoLongerReadable** 如果为true, mesh将卸载掉脚本层的数据拷贝, 但是脚本层之后不能对mesh数据做读取, 跟Mesh的ReadOnly很像. [官方文档][4]
 
 -----------------
 
-[1]:https://github.com/HHHHHHHHHHHHHHHHHHHHHCS/MyStudyNote/tree/main/MyNote
+## **2. NativeArray + Job**
+
+Talk is cheap, show me your code!
+
+### **2.1 老方法**
+
+先来写一个以前版本的写法. 写完大概就是下图这样.
+
+![MeshAPI_00](Images/MeshAPI_00.png)
+
+新建一个Plane, 命名为Water. 然后以Water为父节点, 随便摆放几个Cube.
+
+![MeshAPI_00](Images/MeshAPI_01.jpg)
+
+![MeshAPI_00](Images/MeshAPI_02.jpg)
+
+新建个C# **WaterMesh.cs**, 并且拖拽给Water.
+
+```C#
+
+using UnityEngine;
+
+[RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
+public class WaterMesh : MonoBehaviour
+{
+}
+
+```
+
+-----------------
+
+[1]:https://github.com/HHHHHHHHHHHHHHHHHHHHHCS/MyStudyNote/blob/main/MyNote/%E5%BF%AB%E9%80%9F%E5%AD%A6%E7%82%B9MeshAPI.md
 [2]:https://docs.unity3d.com/2022.2/Documentation/ScriptReference/Rendering.VertexAttributeDescriptor.html
 [3]:https://docs.unity.cn/ScriptReference/Rendering.MeshUpdateFlags.html
-[4]:https://docs.unity.cn/ScriptReference/Rendering.MeshUpdateFlags.html
+[4]:https://docs.unity3d.com/ScriptReference/Mesh.UploadMeshData.html
+[5]:https://github.com/Unity-Technologies/MeshApiExamples
