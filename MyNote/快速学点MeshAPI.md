@@ -13,6 +13,9 @@
 - [**1. MeshDescriptor**](#1-meshdescriptor)
 - [**2. NativeArray + Job**](#2-nativearray--job)
   - [**2.1 老方法**](#21-老方法)
+  - [**2.1.1 基础代码**](#211-基础代码)
+  - [**2.1.2 创建Mesh**](#212-创建mesh)
+  - [**2.1.3 动起来**](#213-动起来)
 
 <!-- /code_chunk_output -->
 
@@ -134,11 +137,14 @@ Talk is cheap, show me your code!
 
 ![MeshAPI_00](Images/MeshAPI_02.jpg)
 
-新建个C# **WaterMesh.cs**, 并且拖拽给Water.
+### **2.1.1 基础代码**
+
+新建个C# **WaterMesh.cs**, 添加 **RequireComponent**, 并且拖拽给Water.
 
 ```C#
 
 using UnityEngine;
+using UnityEngine.Rendering;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class WaterMesh : MonoBehaviour
@@ -146,6 +152,106 @@ public class WaterMesh : MonoBehaviour
 }
 
 ```
+
+首先需要数据, 这个Plane需要多大, 细分多少个点.
+
+然后直接补充方法, 在 **OnEnable** 中创建 Mesh, **OnDisable** 中销毁Mesh.
+
+因为要考虑到后面别的MeshAPI测试, 所以写了点代码结构.
+
+```C#
+
+public float widthSize = 10;
+public float heightSize = 10;
+public int widthPoints = 100;
+public int heightPoints = 100;
+
+private Mesh waterMesh;
+
+private void OnEnable()
+{
+	CreateMesh();
+}
+
+private void OnDisable()
+{
+	if (waterMesh != null)
+	{
+		CoreUtils.Destroy(waterMesh);
+	}
+}
+
+private void CreateMesh()
+{
+	waterMesh = CreateMesh_Old();
+	GetComponent<MeshFilter>().sharedMesh = waterMesh;
+}
+
+private Mesh CreateMesh_Old()
+{
+	//TODO:
+}
+
+```
+
+### **2.1.2 创建Mesh**
+
+完善 **CreateMesh_Old** 方法. 
+
+不多赘述, 注意三角绘制顺序就行.
+
+```C#
+
+private Mesh CreateMesh_Old()
+{
+	var mesh = new Mesh();
+
+	mesh.name = "CreateMesh_Old";
+	mesh.indexFormat = IndexFormat.UInt32;
+
+	Vector3[] vertices = new Vector3[widthPoints * heightPoints];
+
+	Vector3 startPos = new Vector3(-widthSize * 0.5f, 0, -heightSize * 0.5f);
+	float stepOffsetX = widthSize / (widthPoints - 1);
+	float stepOffsetZ = heightSize / (heightPoints - 1);
+
+	for (int y = 0; y < heightPoints; y++)
+	{
+		for (int x = 0; x < widthPoints; x++)
+		{
+			vertices[y * widthPoints + x] = startPos + new Vector3(x * stepOffsetX, 0, y * stepOffsetZ);
+		}
+	}
+
+	int row = heightPoints - 1;
+	int column = widthPoints - 1;
+	int[] indices = new int[column * row * 6];
+	int idxStart = 0;
+
+	for (int y = 0; y < row; y++)
+	{
+		for (int x = 0; x < column; x++, idxStart += 6)
+		{
+			int startVert = y * widthPoints + x;
+			indices[idxStart + 0] = indices[idxStart + 3] = startVert;
+			indices[idxStart + 1] = indices[idxStart + 5] = startVert + widthPoints + 1;
+			indices[idxStart + 2] = startVert + 1;
+			indices[idxStart + 4] = startVert + widthPoints;
+		}
+	}
+
+	mesh.SetVertices(vertices);
+	mesh.SetIndices(indices, MeshTopology.Triangles, 0);
+	mesh.bounds = new Bounds(Vector3.zero, new Vector3(widthSize, float.Epsilon, heightSize));
+	mesh.RecalculateNormals();
+
+	return mesh;
+}
+
+```
+
+
+### **2.1.3 动起来**
 
 -----------------
 
