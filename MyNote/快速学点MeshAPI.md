@@ -167,6 +167,7 @@ public int widthPoints = 100;
 public int heightPoints = 100;
 
 private Mesh waterMesh;
+private Vector3[] vertices;
 
 private void OnEnable()
 {
@@ -196,9 +197,11 @@ private Mesh CreateMesh_Old()
 
 ### **2.1.2 创建Mesh**
 
-完善 **CreateMesh_Old** 方法. 
+完善 **CreateMesh_Old** 方法.
 
 不多赘述, 注意三角绘制顺序就行.
+
+当老模式的时候, 用Unity自带的方法 **RecalculateNormals** 去重建Normal比较快.
 
 ```C#
 
@@ -209,7 +212,7 @@ private Mesh CreateMesh_Old()
 	mesh.name = "CreateMesh_Old";
 	mesh.indexFormat = IndexFormat.UInt32;
 
-	Vector3[] vertices = new Vector3[widthPoints * heightPoints];
+	vertices = new Vector3[widthPoints * heightPoints];
 
 	Vector3 startPos = new Vector3(-widthSize * 0.5f, 0, -heightSize * 0.5f);
 	float stepOffsetX = widthSize / (widthPoints - 1);
@@ -250,8 +253,115 @@ private Mesh CreateMesh_Old()
 
 ```
 
-
 ### **2.1.3 动起来**
+
+接着让Water Mesh动起来.
+
+那么先要获取目标点(即cubes), 可以直接偷懒用Linq写. 添加属性Transform[] cubes, 然后直接用Linq Select. 注意这时候Cube的父节点要为Water.
+
+```C#
+
+public class WaterMesh : MonoBehaviour
+{
+	...
+	private Vector3[] vertices;
+
+	private Transform[] cubes;
+
+	private void OnEnable()
+	{
+		cubes = transform.Cast<Transform>().Select(x => x.transform).ToArray();
+		CreateMesh();
+	}
+}
+
+```
+
+添加UpdateMesh相关的属性和方法.
+
+添加 水的波动周期 **waveFrequency** , 周期时间 **localTime**.
+
+更新Mesh相关的三个方法 **Update** , **UpdateMesh** 和 **UpdateMesh_Old** .
+
+```C#
+
+public class WaterMesh : MonoBehaviour
+{
+	...
+	public int heightPoints = 100;
+	public float waveFrequency = 2.0f;
+
+	...
+
+	private Transform[] cubes;
+	private float localTime;
+
+	...
+
+	private void OnDisable()
+	{
+		...
+	}
+
+	private void Update()
+	{
+		UpdateMesh();
+	}
+
+	private void CreateMesh()
+	{
+		...
+	}
+
+	private void UpdateMesh()
+	{
+		localTime = waveFrequency * Time.time;
+		UpdateMesh_Old();
+	}
+
+	private Mesh CreateMesh_Old()
+	{
+		...
+	}
+
+	private void UpdateMesh_Old()
+	{
+		//TODO:
+	}
+}
+
+```
+
+完善 **UpdateMesh_Old** 方法.
+
+波浪的y其实就是 **sin(dist * 12.0f - time) / (dist * 20 + 10)** , 再遍历cube做叠加.
+
+```C#
+
+private void UpdateMesh_Old()
+{
+	for (int i = 0; i < vertices.Length; i++)
+	{
+		var p = vertices[i];
+		var y = 0.0f;
+		foreach (var cube in cubes)
+		{
+			Vector3 cubePos = cube.transform.position;
+			var p1 = new Vector2(p.x, p.z);
+			var p2 = new Vector2(cubePos.x, cubePos.z);
+			var dist = Vector2.Distance(p1, p2);
+			y += Mathf.Sin(dist * 12.0f - localTime) / (dist * 20 + 10);
+		}
+
+		p.y = y;
+		vertices[i] = p;
+	}
+
+	waterMesh.SetVertices(vertices);
+	waterMesh.RecalculateNormals();
+}
+
+```
 
 -----------------
 
