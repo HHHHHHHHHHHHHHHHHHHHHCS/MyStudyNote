@@ -16,6 +16,8 @@
   - [**2.1.1 基础代码**](#211-基础代码)
   - [**2.1.2 创建Mesh**](#212-创建mesh)
   - [**2.1.3 动起来**](#213-动起来)
+  - [**2.2 Job**](#22-job)
+  - [**2.2.1 Create Mesh**](#221-create-mesh)
 
 <!-- /code_chunk_output -->
 
@@ -110,9 +112,8 @@ indicesBuffer.Dispose();
 ```C#
 
 var subMesh = new SubMeshDescriptor(0, indicesCount, MeshTopology.Triangles);
-mesh.SetSubMesh(0, subMesh);
-
 subMesh.bounds = new Bounds(Vector3.zero, new Vector3(10, 10, 10));
+mesh.SetSubMesh(0, subMesh);
 mesh.bounds = subMesh.bounds;
 
 ```
@@ -209,7 +210,7 @@ private Mesh CreateMesh_Old()
 {
 	var mesh = new Mesh();
 
-	mesh.name = "CreateMesh_Old";
+	mesh.name = "WaterMesh_Old";
 	mesh.indexFormat = IndexFormat.UInt32;
 
 	vertices = new Vector3[widthPoints * heightPoints];
@@ -362,6 +363,18 @@ private void UpdateMesh_Old()
 }
 
 ```
+
+### **2.2 Job**
+
+改成Job的模式去更新.
+
+### **2.2.1 Create Mesh**
+
+//TODO: Enum
+//TODO: 创建和销毁   创建效率没有第一种高
+//TODO: Create Mesh
+//TODO: Job Update
+
 
 -----------------
 
