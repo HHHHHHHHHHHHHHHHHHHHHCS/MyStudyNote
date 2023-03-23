@@ -370,11 +370,175 @@ private void UpdateMesh_Old()
 
 ### **2.2.1 Create Mesh**
 
-//TODO: Enum
-//TODO: 创建和销毁   创建效率没有第一种高
-//TODO: Create Mesh
-//TODO: Job Update
+创建enum **MeshMode** 和变量 **meshMode** 用于走哪个API.
 
+同时修改 **CreateMesh** 和 **UpdateMesh** 方法, 并且创建方法 **CreateMesh_Job** 和 **UpdateMesh_Job** .
+
+
+```C#
+
+	public class WaterMesh : MonoBehaviour
+	{
+		public enum MeshMode
+		{
+			OldMethod,
+			Job,
+			GPU,
+		}
+
+		public MeshMode meshMode = MeshMode.Job;
+		public float widthSize = 10;
+		...
+
+		private void CreateMesh()
+		{
+			switch (meshMode)
+			{
+				case MeshMode.OldMethod:
+					waterMesh = CreateMesh_Old();
+					break;
+				case MeshMode.Job:
+					waterMesh = CreateMesh_Job();
+					break;
+				case MeshMode.GPU:
+					break;
+			}
+
+			GetComponent<MeshFilter>().sharedMesh = waterMesh;
+		}
+
+		private void UpdateMesh()
+		{
+			localTime = waveFrequency * Time.time;
+			switch (meshMode)
+			{
+				case MeshMode.OldMethod:
+					UpdateMesh_Old();
+					break;
+				case MeshMode.Job:
+					UpdateMesh_Job();
+					break;
+				case MeshMode.GPU:
+					break;
+			}
+		}
+
+		...
+
+		private Mesh CreateMesh_Job()
+		{
+			//TODO:Create
+		}
+
+		private void UpdateMesh_Job()
+		{
+			//TODO:Update
+		}
+	}
+
+```
+
+### **2.2.1 创建Mesh**
+
+这种创建方法的效率没有第一种快, 老方法是0.9ms, Job创建是2.8ms. 但是后面Update Mesh的时候速度就是云泥之别了. 
+
+创建NativeArray<float3> vertexArray, normalArray. 这里用Job去更新Normal, 一是用来对比Unity自带生成Normal的速度, 二是方便后面用GPU. 因为申请的是 **Allocator.Persistent** 的, 所以要Dispose.
+
+再用上面说的 **VertexBuffer** , **VertexDescriptor** 去创建Mesh.
+
+```C#
+
+...
+
+private Vector3[] vertices;
+private NativeArray<float3> vertexArray;
+private NativeArray<float3> normalArray;
+
+private void OnDisable()
+{
+	...
+	if (vertexArray.IsCreated)
+	{
+		vertexArray.Dispose();
+	}
+
+	if (normalArray.IsCreated)
+	{
+		normalArray.Dispose();
+	}
+}
+
+...
+
+private Mesh CreateMesh_Job()
+{
+	int vertCount = widthPoints * heightPoints;
+	var mesh = new Mesh();
+	mesh.name = "WaterMesh_Job";
+	mesh.SetVertexBufferParams(vertCount, new VertexAttributeDescriptor(VertexAttribute.Position, stream: 0)
+		, new VertexAttributeDescriptor(VertexAttribute.Normal, stream: 1));
+
+	vertexArray = new NativeArray<float3>(widthPoints * heightPoints, Allocator.Persistent);
+
+	float3 startPos = new float3(-widthSize * 0.5f, 0, -heightSize * 0.5f);
+	float stepOffsetX = widthSize / (widthPoints - 1);
+	float stepOffsetZ = heightSize / (heightPoints - 1);
+
+	for (int y = 0; y < heightPoints; y++)
+	{
+		for (int x = 0; x < widthPoints; x++)
+		{
+			vertexArray[y * widthPoints + x] = startPos + new float3(x * stepOffsetX, 0, y * stepOffsetZ);
+		}
+	}
+
+	normalArray = new NativeArray<float3>(widthPoints * heightPoints, Allocator.Persistent);
+
+	for (int y = 0; y < heightPoints; y++)
+	{
+		for (int x = 0; x < widthPoints; x++)
+		{
+			normalArray[y * widthPoints + x] = new float3(0, 1, 0);
+		}
+	}
+
+	int row = heightPoints - 1;
+	int column = widthPoints - 1;
+	NativeArray<int> indexArray = new NativeArray<int>(row * column * 6, Allocator.Temp);
+
+	int idxStart = 0;
+
+	for (int y = 0; y < row; y++)
+	{
+		for (int x = 0; x < column; x++, idxStart += 6)
+		{
+			int startVert = y * widthPoints + x;
+			indexArray[idxStart + 0] = indexArray[idxStart + 3] = startVert;
+			indexArray[idxStart + 1] = indexArray[idxStart + 5] = startVert + widthPoints + 1;
+			indexArray[idxStart + 2] = startVert + 1;
+			indexArray[idxStart + 4] = startVert + widthPoints;
+		}
+	}
+
+	mesh.SetIndexBufferParams(indexArray.Length, IndexFormat.UInt32);
+	mesh.SetVertexBufferData(vertexArray, 0, 0, vertexArray.Length, 0, MeshUpdateFlags.DontRecalculateBounds);
+	mesh.SetVertexBufferData(normalArray, 0, 0, normalArray.Length, 1, MeshUpdateFlags.DontRecalculateBounds);
+	mesh.SetIndexBufferData(indexArray, 0, 0, indexArray.Length, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
+
+	var subMesh = new SubMeshDescriptor(0, indexArray.Length, MeshTopology.Triangles)
+	{
+		bounds = new Bounds(Vector3.zero, new Vector3(widthSize, 2.0f, heightSize))
+	};
+	mesh.SetSubMesh(0, subMesh);
+	mesh.bounds = subMesh.bounds;
+
+	return mesh;
+}
+
+```
+
+
+### **2.2.3 更新Mesh**
 
 -----------------
 
