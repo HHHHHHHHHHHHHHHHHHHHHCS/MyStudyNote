@@ -18,6 +18,9 @@
   - [**2.1.3 动起来**](#213-动起来)
   - [**2.2 Job**](#22-job)
   - [**2.2.1 Create Mesh**](#221-create-mesh)
+  - [**2.2.1 创建Mesh**](#221-创建mesh)
+  - [**2.2.3 更新MeshPos**](#223-更新meshpos)
+  - [**2.2.3 更新MeshNormal**](#223-更新meshnormal)
 
 <!-- /code_chunk_output -->
 
@@ -164,8 +167,8 @@ public class WaterMesh : MonoBehaviour
 
 public float widthSize = 10;
 public float heightSize = 10;
-public int widthPoints = 100;
-public int heightPoints = 100;
+[Min(2)] public int widthPoints = 100;
+[Min(2)] public int heightPoints = 100;
 
 private Mesh waterMesh;
 private Vector3[] vertices;
@@ -289,7 +292,7 @@ public class WaterMesh : MonoBehaviour
 public class WaterMesh : MonoBehaviour
 {
 	...
-	public int heightPoints = 100;
+	[Min(2)] public int heightPoints = 100;
 	public float waveFrequency = 2.0f;
 
 	...
@@ -444,7 +447,7 @@ private void UpdateMesh_Old()
 
 创建NativeArray<float3> vertexArray, normalArray. 这里用Job去更新Normal, 一是用来对比Unity自带生成Normal的速度, 二是方便后面用GPU. 因为申请的是 **Allocator.Persistent** 的, 所以要Dispose.
 
-再用上面说的 **VertexBuffer** , **VertexDescriptor** 去创建Mesh.
+再用上面说的 **VertexBuffer** , **VertexDescriptor** 去创建Mesh. 默认normal朝上, 后面Update再修改.
 
 ```C#
 
@@ -537,8 +540,143 @@ private Mesh CreateMesh_Job()
 
 ```
 
+### **2.2.3 更新MeshPos**
 
-### **2.2.3 更新Mesh**
+之后创建Job去更新Mesh的position.y, 完善UpdateMesh_Job.
+
+首先要获取全部cube的位置. 然后创建Job去更新数据, 最后把数据传递给Mesh.
+
+创建Job **UpdateMeshPosJob**, 因为是要做循环任务, 所以要继承 **IJobParallelFor**. 
+
+**NativeDisableParallelForRestriction** 可以理解为禁用对并行处理的限制, Unity对为了安全性对数据读写添加了限制. 比如当前的Job Index是1, 但是想要读取的数据的位置是100, 那么超出了安全范围, 就会报错.
+
+记得添加 **BurstCompile** 走burst优化编译 可以加速执行.
+
+```C#
+
+private void UpdateMesh_Job()
+{
+	NativeArray<float3> cubePosArray = new NativeArray<float3>(cubes.Length, Allocator.TempJob);
+	for (int i = 0; i < cubes.Length; i++)
+	{
+		cubePosArray[i] = cubes[i].position;
+	}
+
+	UpdateMeshPosJob posJob = new UpdateMeshPosJob()
+	{
+		vertices = vertexArray,
+		cubePos = cubePosArray,
+		time = localTime
+	};
+	
+	posJob.Schedule(vertexArray.Length, 16).Complete();
+	//TODO:change Normal
+	waterMesh.SetVertexBufferData(vertexArray, 0, 0, vertexArray.Length, 0, MeshUpdateFlags.DontRecalculateBounds);
+	cubePosArray.Dispose();
+}
+
+[BurstCompile]
+private struct UpdateMeshPosJob : IJobParallelFor
+{
+	public NativeArray<float3> vertices;
+
+	[ReadOnly, NativeDisableParallelForRestriction]
+	public NativeArray<float3> cubePos;
+
+	public float time;
+
+	public void Execute(int index)
+	{
+		var p = vertices[index];
+		var y = 0.0f;
+		foreach (var cubePos in cubePos)
+		{
+			var p1 = new Vector2(p.x, p.z);
+			var p2 = new Vector2(cubePos.x, cubePos.z);
+			var dist = Vector2.Distance(p1, p2);
+			y += Mathf.Sin(dist * 12.0f - time) / (dist * 20 + 10);
+		}
+
+		p.y = y;
+		vertices[index] = p;
+	}
+}
+
+```
+
+现在虽然可以动起来了, 但是因为是统一的颜色, 没有改动Normal, 所以效果不是很明显.
+
+### **2.2.3 更新MeshNormal**
+
+然后再写UpdateJob.
+
+```C#
+
+private void UpdateMesh_Job()
+{
+	...
+	posJob.Schedule(vertexArray.Length, 16).Complete();
+
+	UpdateMeshNormalJob normalJob = new UpdateMeshNormalJob()
+	{
+		normals = normalArray,
+		vertices = vertexArray,
+		columnNum = widthPoints,
+		rowNum = heightPoints
+	};
+
+	normalJob.Schedule(normalArray.Length, 16).Complete();
+
+	waterMesh.SetVertexBufferData(vertexArray, 0, 0, vertexArray.Length, 0, MeshUpdateFlags.DontRecalculateBounds);
+	waterMesh.SetVertexBufferData(normalArray, 0, 0, normalArray.Length, 1, MeshUpdateFlags.DontRecalculateBounds);
+
+	cubePosArray.Dispose();
+}
+
+
+[BurstCompile]
+private struct UpdateMeshPosJob : IJobParallelFor
+{
+	...
+}
+
+[BurstCompile]
+private struct UpdateMeshNormalJob : IJobParallelFor
+{
+	[WriteOnly] public NativeArray<float3> normals;
+
+	[ReadOnly, NativeDisableParallelForRestriction]
+	public NativeArray<float3> vertices;
+
+	public int columnNum, rowNum;
+
+	public void Execute(int index)
+	{
+		int x = index % columnNum;
+		int y = index / columnNum;
+
+		int x_l = math.max(x - 1, 0);
+		int x_r = math.min(x + 1, columnNum - 1);
+		int y_b = math.max(y - 1, 0);
+		int y_t = math.min(y + 1, rowNum - 1);
+
+		float3 center = vertices[index];
+		float3 left = vertices[y * columnNum + x_l] - center;
+		float3 right = vertices[y * columnNum + x_r] - center;
+		float3 bottom = vertices[y_b * columnNum + x] - center;
+		float3 top = vertices[y_t * columnNum + x] - center;
+
+		float3 normal = math.cross(top, right);
+		normal += math.cross(left, top);
+		normal += math.cross(bottom, left);
+		normal += math.cross(right, bottom);
+
+		normals[index] = math.normalize(normal);
+	}
+}
+
+```
+
 
 -----------------
 
