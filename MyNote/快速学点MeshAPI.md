@@ -33,7 +33,7 @@
 包括下面几个点, 主要参考来源[代码仓库][5]. 当然也可以看看keijiro的Gayhub, 里面也有很多新奇的东西.
   + MeshDescriptor
   + NativeArray + Job
-  + RawData + Compute Shader
+  + GraphicsBuffer.Target.Raw + RWByteAddressBuffer
   + Combine相关
   + 序列化相关
 
@@ -608,7 +608,8 @@ private struct UpdateMeshPosJob : IJobParallelFor
 
 ### **2.2.3 更新MeshNormal**
 
-然后再写UpdateJob.
+然后再写UpdateJob. 
+这里的算法比较简单, 直接累加Cross 和 normalize.
 
 ```C#
 
@@ -677,6 +678,15 @@ private struct UpdateMeshNormalJob : IJobParallelFor
 
 ```
 
+老方法约25ms. Job Pos + RecalculateNormals约0.7ms. Job Pos + Job Normal约0.5ms.
+
+数据证明用Job重算Normal比较快一点.
+
+-----------------
+
+## **3. GPU**
+
+最后就是需要Unity2021才支持的 GPU算顶点. 设置BufferTarget, 然后传入GPU, 通过RWByteAddressBuffer进行计算.
 
 -----------------
 
