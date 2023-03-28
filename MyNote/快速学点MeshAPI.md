@@ -21,6 +21,9 @@
   - [**2.2.1 创建Mesh**](#221-创建mesh)
   - [**2.2.3 更新MeshPos**](#223-更新meshpos)
   - [**2.2.3 更新MeshNormal**](#223-更新meshnormal)
+- [**2.3. GPU**](#23-gpu)
+  - [**2.3.1 Create Mesh**](#231-create-mesh)
+  - [**2.3.2 绑定GPU资源**](#232-绑定gpu资源)
 
 <!-- /code_chunk_output -->
 
@@ -404,6 +407,7 @@ private void UpdateMesh_Old()
 					waterMesh = CreateMesh_Job();
 					break;
 				case MeshMode.GPU:
+					//TODO:
 					break;
 			}
 
@@ -422,6 +426,7 @@ private void UpdateMesh_Old()
 					UpdateMesh_Job();
 					break;
 				case MeshMode.GPU:
+					//TODO:
 					break;
 			}
 		}
@@ -608,8 +613,11 @@ private struct UpdateMeshPosJob : IJobParallelFor
 
 ### **2.2.3 更新MeshNormal**
 
-然后再写UpdateJob. 
-这里的算法比较简单, 直接累加Cross 和 normalize.
+然后再写 **UpdateJob** .
+
+这里的算法比较简单, 直接累加Cross得到的Normal再normalize.
+
+这里要注意 **SetVertexBufferData** . 根据上面的**SetVertexBufferParams** 的设置, position 的 stream 为 0, normal 的 stream 为1.
 
 ```C#
 
@@ -684,9 +692,148 @@ private struct UpdateMeshNormalJob : IJobParallelFor
 
 -----------------
 
-## **3. GPU**
+## **2.3. GPU**
 
-最后就是需要Unity2021才支持的 GPU算顶点. 设置BufferTarget, 然后传入GPU, 通过RWByteAddressBuffer进行计算.
+最后就是需要Unity2021才支持的 GPU修改顶点数据. 设置BufferTarget, 然后传入GPU, 通过RWByteAddressBuffer进行计算.
+
+### **2.3.1 Create Mesh**
+
+添加方法 **CreateMesh_GPU** 和 空方法 **UpdateMesh_GPU** .
+
+CreateMesh_GPU 与 CreateMesh_Old 类似.
+
+```C#
+
+private Mesh CreateMesh_GPU()
+{
+	var mesh = new Mesh();
+
+	mesh.name = "CreateMesh_GPU";
+	mesh.indexFormat = IndexFormat.UInt32;
+
+	var verts = new Vector3[widthPoints * heightPoints];
+
+	Vector3 startPos = new Vector3(-widthSize * 0.5f, 0, -heightSize * 0.5f);
+	float stepOffsetX = widthSize / (widthPoints - 1);
+	float stepOffsetZ = heightSize / (heightPoints - 1);
+
+	for (int y = 0; y < heightPoints; y++)
+	{
+		for (int x = 0; x < widthPoints; x++)
+		{
+			verts[y * widthPoints + x] = startPos + new Vector3(x * stepOffsetX, 0, y * stepOffsetZ);
+		}
+	}
+
+	var nors = new Vector3[widthPoints * heightPoints];
+
+	for (int i = 0; i < nors.Length; i++)
+	{
+		nors[i] = Vector3.up;
+	}
+
+	int row = heightPoints - 1;
+	int column = widthPoints - 1;
+	int[] idxs = new int[column * row * 6];
+	int idxStart = 0;
+
+	for (int y = 0; y < row; y++)
+	{
+		for (int x = 0; x < column; x++, idxStart += 6)
+		{
+			int startVert = y * widthPoints + x;
+			idxs[idxStart + 0] = idxs[idxStart + 3] = startVert;
+			idxs[idxStart + 1] = idxs[idxStart + 5] = startVert + widthPoints + 1;
+			idxs[idxStart + 2] = startVert + 1;
+			idxs[idxStart + 4] = startVert + widthPoints;
+		}
+	}
+
+	mesh.SetVertices(verts);
+	mesh.SetIndices(idxs, MeshTopology.Triangles, 0);
+	mesh.SetNormals(nors);
+	mesh.bounds = new Bounds(Vector3.zero, new Vector3(widthSize, float.Epsilon, heightSize));
+
+	return mesh;
+}
+
+private void UpdateMesh_GPU()
+{
+	//TODO:
+}
+
+```
+
+然后 在 **CreateMesh** 和 **UpdateMesh** 中分别调用上面两个方法.
+
+```C#
+
+private void CreateMesh()
+{
+	switch (meshMode)
+	{
+		...
+		case MeshMode.GPU:
+			waterMesh = CreateMesh_GPU();
+			break;
+	}
+	...
+}
+
+private void UpdateMesh()
+{
+	...
+	switch (meshMode)
+	{
+		...
+		case MeshMode.GPU:
+			UpdateMesh_GPU();
+			break;
+	}
+}
+
+```
+
+### **2.3.2 绑定GPU资源**
+
+**mesh.vertexBufferTarget |= GraphicsBuffer.Target.Raw**
+
+把MeshData进行Raw标记, 即数据变成原始数据类型(RWBuffer). 少了对数据转换和对齐, 方便当作RWBuffer给Compute Shader使用. 
+
+**为什么用 Raw Buffer,  Structured Buffer 不行吗?** 
+
+Vertex Buffer 可以当作是 Structured Buffer, 但是在一些图形API(尤其是DX11)上不受支持. 所以这里用Raw Buffer代替.
+
+```C#
+
+private Mesh CreateMesh_GPU()
+{
+	...
+	mesh.name = "CreateMesh_GPU";
+	mesh.vertexBufferTarget |= GraphicsBuffer.Target.Raw;
+	...
+}
+
+```
+
+然后创建 **GraphicsBuffer** . 一个用于顶点位置, 一个用于绑定Mesh的GPU资源.
+
+```C#
+public class WaterMesh : MonoBehaviour
+{
+	...
+	private NativeArray<float3> normalArray;
+
+	private GraphicsBuffer gpuPositionsCB;
+	private GraphicsBuffer gpuVerticesCB;
+	...
+
+
+	private void OnDisable()
+	{
+	}
+
+```
 
 -----------------
 
