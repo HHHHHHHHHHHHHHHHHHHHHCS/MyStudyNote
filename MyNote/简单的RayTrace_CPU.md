@@ -89,7 +89,7 @@ CPU都被拉满了,比博人传都要燃啊,堪比献给未来的游戏--某剑�
 
 创建一个C# **CPURayTracingTest.cs**
 
-```C#
+```CSharp
 using System;
 using System.Diagnostics;
 using Unity.Collections;
@@ -123,7 +123,7 @@ public class CPURayTracingTest : MonoBehaviour
 
 这样一来基础的配置就完成了.
 
-```C#
+```CSharp
 public class CPURayTracingTest : MonoBehaviour
 {
 	....
@@ -167,7 +167,7 @@ public class CPURayTracingTest : MonoBehaviour
 
 创建一个static class**CPURayTracingMathUtil.cs**.为了后面写代码方便用**static**方法导入**Mathematics**.
 
-```C#
+```CSharp
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
@@ -187,7 +187,7 @@ public static class CPURayTracingMathUtil
 
 球:**Sphere**,球就是圆心位置**center**和半径**radius**.
 
-```C#
+```CSharp
 ...
 
 public struct Ray
@@ -250,7 +250,7 @@ aperture = 1 * 0.2 , distToFocus = 6
 
 用传入的数据构建摄像机完成基础的属性.
 
-```C#
+```CSharp
 
 ...
 
@@ -302,7 +302,7 @@ public static class CPURayTracingMathUtil
 
 随机方向这块可以用别的方法替代(这里用ref传入是为了保证下一次的结果不一致),甚至可以用do-while.但是要确保要在圆/球的外面,且不能超过单位1的cube.因为在球内则可能值过小,如果是归一化,则分布的还不够随机过于密集.
 
-```C#
+```CSharp
 
 public struct Camera
 {
@@ -513,7 +513,7 @@ public static class CPURayTracingMathUtil
 
 然后一组是4个,因为floatN最大是float4,开辟一个向上4取整的长度进行初始化.并且别忘记添加销毁代码.
 
-```C#
+```CSharp
 ...
 
 public struct Sphere
@@ -584,7 +584,7 @@ tMax是初始化射线用的距离(默认最大值)
 
 先初始化射线的起始点和方向,循环次数,中心点半径等.
 
-```C#
+```CSharp
 
 public struct SpheresSOA
 {
@@ -628,7 +628,7 @@ public struct SpheresSOA
 这时候储存的是4个float距离,还需要在之后进一步选出4个中的最小一个.
 
 
-```C#
+```CSharp
 ...
 
 float4* ptrSqRadius = (float4*) sqRadius.GetUnsafeReadOnlyPtr();
@@ -682,7 +682,7 @@ for (int i = 0; i < simdLen; ++i)
 
 如果什么都没有找到 则返回-1
 
-```C#
+```CSharp
 ...
 
 for (int i = 0; i < simdLen; ++i)
@@ -732,7 +732,7 @@ return -1;
 
 ![CPURayTrace_9](Images/CPURayTrace_9.jpg)
 
-```C#
+```CSharp
 public struct Material
 {
 	public enum Type
@@ -764,7 +764,7 @@ public class CPURayTracing
 
 因为材质球有自发光属性,是光照计算需要的数据.所以记录全部的自发光球体.返回**CPURayTracingMathUtil.cs**的**struct SpheresSOA**添加一点自发光数据的代码.
 
-```C#
+```CSharp
 public struct SpheresSOA
 {	
 	...
@@ -814,7 +814,7 @@ public struct SpheresSOA
 
 在**CPURayTracing.cs**中导入一堆namespace和static namespace.
 
-```C#
+```CSharp
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
@@ -840,7 +840,7 @@ public class CPURayTracing
   + tMaxT:初始化射线的最大值
   + kMaxDepth:光线深度循环最大的次数.光线碰到物体会进行一次新的弹射,然后再碰到物体,再次弹射,循环ing.所以可能会出现一束光反复弹来弹去,很难终止.次数一旦上去会对性能造成很大的压力,当然次数给少了渲染效果也不好看.
 
-```C#
+```CSharp
 public class CPURayTracing
 {
 	private const int DO_SAMPLES_PER_PIXEL = 4;
@@ -855,7 +855,7 @@ public class CPURayTracing
 
 先在顶部定义#define DO_BIG_SCENE, 然后在下面写两个属性**static Sphere[] spheresData**和**static Material[] sphereMatsData**用来储存球和材质球,别忘了用region包起来.
 
-```C#
+```CSharp
 
 #define DO_BIG_SCENE
 
@@ -884,7 +884,7 @@ public class CPURayTracing
 
 之后就是把数据丢进去,数据可以随便写...只要数量一致的就好了.
 
-```C#
+```CSharp
 
 		private static Sphere[] spheresData =
 		{
@@ -994,7 +994,7 @@ public class CPURayTracing
 
 然后还要创建之前写的球交数据结构体**SpheresSOA**,别忘了销毁.
 
-```C#
+```CSharp
 public class CPURayTracing
 {
 	#region Data
@@ -1024,7 +1024,7 @@ public class CPURayTracing
 
 同时我们这里也把球和材质的更新也写到这里.
 
-```C#
+```CSharp
 public class CPURayTracing
 {
 
@@ -1061,7 +1061,7 @@ public class CPURayTracing
 
 在**CPURayTracing.cs**中创建Job **TraceRowJob**
 
-```C#
+```CSharp
 public class CPURayTracing
 {
 	...
@@ -1095,7 +1095,7 @@ public class CPURayTracing
   + spheres:球的信息
   + materials:材质信息
 
-```C#
+```CSharp
 
 private struct TraceRowJob : IJobParallelFor
 {
@@ -1116,7 +1116,7 @@ private struct TraceRowJob : IJobParallelFor
 
 修改**DoDraw(int screenWidth, int screenHeight)**方法 , 在里面创建Job并且完成数据的配置. Job要执行的长度即**screenHeight**
 
-```C#
+```CSharp
 public class CPURayTracing
 {
 	[BurstCompile]
@@ -1161,7 +1161,7 @@ public class CPURayTracing
 
 为了达到遍历像素数量,所以Job里面要For screenWidth.然后每个像素还要发出N(DO_SAMPLES_PER_PIXEL)根射线,所以还要For一次.
 
-```C#
+```CSharp
 private struct TraceRowJob : IJobParallelFor
 {
 	...
@@ -1184,7 +1184,7 @@ private struct TraceRowJob : IJobParallelFor
 
 初始化随机种子(随便写,开心就好),创建射线.
 
-```C#
+```CSharp
 
 	public void Execute(int y)
 	{
@@ -1213,7 +1213,7 @@ private struct TraceRowJob : IJobParallelFor
 
 在**CPURayTracing.cs**中创建**HitWorld**用于判断光线是否碰撞成功
 
-```C#
+```CSharp
 	public class CPURayTracing
 	{
 		public void Dispose()
@@ -1246,7 +1246,7 @@ private struct TraceRowJob : IJobParallelFor
 
 创建一个方法**Trace**,主要用于得到最终的颜色.
 
-```C#
+```CSharp
 private static bool HitWorld(Ray r, float tMin, float tMax
 	, ref Hit outHit, ref int outID, ref SpheresSOA spheres)
 {
@@ -1287,7 +1287,7 @@ albedo:可以直白理解越黑色越吸收光.比如吸光材料/布是黑色�
 
 如果没有射中,返回天空颜色.
 
-```C#
+```CSharp
 
 private static float3 Trace(Ray r, int depth, ref int inoutRayCount, ref SpheresSOA spheres,
 			NativeArray<Material> materials, ref uint randState, bool doMaterialE = true)
@@ -1330,7 +1330,7 @@ private static float3 Trace(Ray r, int depth, ref int inoutRayCount, ref Spheres
 
 然后编写**Scatter**方法.**outLightE**后面写光照计算用.
 
-```C#
+```CSharp
 
 public class CPURayTracing
 {
@@ -1363,7 +1363,7 @@ public class CPURayTracing
 
 ![CPURayTrace_24](Images/CPURayTrace_24.jpg)
 
-```C#
+```CSharp
 private static bool Scatter(Material mat, Ray r_in, Hit rec, out float3 attenuation, out Ray scattered,
 	out float3 outLightE, ref int inoutRayCount, ref SpheresSOA spheres, NativeArray<Material> materials,
 	ref uint randState)
@@ -1401,7 +1401,7 @@ private static bool Scatter(Material mat, Ray r_in, Hit rec, out float3 attenuat
 
 ![CPURayTrace_25](Images/CPURayTrace_25.jpg)
 
-```C#
+```CSharp
 
 if (mat.type == Material.Type.Lambert)
 {
@@ -1425,7 +1425,7 @@ else if (mat.type == Material.Type.Metal)
   + **Schlick**,Schlick Fresnel
   + 详细可以参考这篇: https://graphics.stanford.edu/courses/cs148-10-summer/docs/2006--degreve--reflection_refraction.pdf
 
-```C#
+```CSharp
 public static class CPURayTracingMathUtil
 {
 	//Math
@@ -1470,7 +1470,7 @@ public static class CPURayTracingMathUtil
 
 ![CPURayTrace_26](Images/CPURayTrace_26.jpg)
 
-```C#
+```CSharp
 
 else if (mat.type == Material.Type.Metal)
 {
@@ -1534,7 +1534,7 @@ else
 
 最后就是BUG标记.避免意外情况
 
-```C#
+```CSharp
 ...
 else if (mat.type == Material.Type.Dielectric)
 {
@@ -1562,7 +1562,7 @@ finalColor = lerp(nowColor,oldColor,frameCount/(frameCount+1))
 
 ![CPURayTrace_32](Images/CPURayTrace_32.jpg)
 
-```C#
+```CSharp
 
 private struct TraceRowJob : IJobParallelFor
 {
@@ -1608,7 +1608,7 @@ private struct TraceRowJob : IJobParallelFor
 
 创建**int frameCounter**,统计帧数,随机种子,也是finalColor的lerp用的参数.
 
-```C#
+```CSharp
 public class CPURayTracingTest : MonoBehaviour
 {
 	...
@@ -1638,7 +1638,7 @@ public class CPURayTracingTest : MonoBehaviour
 
 创建一个函数**UpdateLoop**,执行绘制.并且在**Update**中调用.
 
-```C#
+```CSharp
 private void Update()
 {
 	UpdateLoop();
@@ -1674,7 +1674,7 @@ private void UpdateLoop()
 
 为了方便观察自发光产生的效果,需要在**CPURayTracing*.cs** #define DO_LIGHT_SAMPLING 进行开关处理.
 
-```C#
+```CSharp
 #define DO_LIGHT_SAMPLING
 #define DO_BIG_SCENE
 
@@ -1692,7 +1692,7 @@ public class CPURayTracing
 
 之前的问题我们已经了解到.噪点主要原因是随机的光线一些弹射在了自发光上面,一些没有.所以我们在**Trace**中可以单独对lambert的反射进行处理,让它计算最终颜色的时候不加自发光.把自发光的计算放到**Scatter**中处理.
 
-```C#
+```CSharp
 private static float3 Trace(Ray r, int depth, ref int inoutRayCount, ref SpheresSOA spheres,
 			NativeArray<Material> materials, ref uint randState, bool doMaterialE = true)
 {
@@ -1747,7 +1747,7 @@ private static float3 Trace(Ray r, int depth, ref int inoutRayCount, ref Spheres
 
 不过它这里这样计算好像会过亮...算了抄它...
 
-```C#
+```CSharp
 private static bool Scatter(Material mat, Ray r_in, Hit rec, out float3 attenuation, out Ray scattered,
 	out float3 outLightE, ref int inoutRayCount, ref SpheresSOA spheres, NativeArray<Material> materials,
 	ref uint randState)
@@ -1843,7 +1843,7 @@ private static bool Scatter(Material mat, Ray r_in, Hit rec, out float3 attenuat
 
 在**CPURayTracing.cs**中 #define DO_ANIMATE 方便开关和观察. 还有 **float DO_ANIMATE_SMOOTHING** 因为是动态的,所以lerpColor到后面的权重不能接近于1. 然后球就是根据输入的时间进行sin或cos运动就好了.
 
-```C#
+```CSharp
 #define DO_ANIMATE 
 #define DO_LIGHT_SAMPLING
 
@@ -1889,7 +1889,7 @@ public class CPURayTracing
 
 可以看到残影和很明显的噪点,建议关闭23333.注释掉#define DO_ANIMATE就好了
 
-```C#
+```CSharp
 
 // #define DO_ANIMATE
 #define DO_LIGHT_SAMPLING
@@ -1903,7 +1903,7 @@ public class CPURayTracing
 
 在**CPURayTracing.cs**中 #define DO_THREADED 方便开关和观察. 如果开启则走多线程的Job,否则走主线程. Job可以直接用for循环来Execute,所以改造比较简单.
 
-```C#
+```CSharp
 // #define DO_ANIMATE
 #define DO_LIGHT_SAMPLING
 #define DO_THREADED
@@ -1944,7 +1944,7 @@ public class CPURayTracing
 
 在**CPURayTracingTest.cs**中添加组件代码,并且在外面绑定刚添加的创建的**UI Text**.
 
-```C#
+```CSharp
 
 public class CPURayTracingTest : MonoBehaviour
 {
@@ -1962,7 +1962,7 @@ public class CPURayTracingTest : MonoBehaviour
 
 继续返回**CPURayTracingTest.cs**,完成性能统计. 用**Stopwatch**做耗时统计. 因为存在随机,每隔N帧统计一次平均值即可,不然会跳来跳去. 射线总数量我们之前也已经统计好了.
 
-```C#
+```CSharp
 
 public class CPURayTracingTest : MonoBehaviour
 {

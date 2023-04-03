@@ -156,7 +156,7 @@ URP的SSAO
 
 所以这里创建C# **URPSSAORenderFeature.cs**. 直接复制粘贴Settings Class.
 
-```C#
+```CSharp
 [Serializable]
 public class URPSSAOSettings
 {
@@ -206,7 +206,7 @@ public class URPSSAORenderFeature: MonoBehaviour
 
 **k_ShaderName**要和Shader中的name对应, 并且打包的时候注意别剔除了(可以添加材质球强制让其入包, 或者用**Shader Variant Collect**), 不然会报错找不到.
 
-```C#
+```CSharp
 using System;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -306,7 +306,7 @@ public class URPSSAORenderFeature : ScriptableRendererFeature
 
 再比如**isRendererDeferred**判断是否为延迟渲染. 因为 **renderer.renderingMode** 是**internal**, 所以没有办法判断, 只能先写成false, 之后再想办法解决.
 
-```C#
+```CSharp
 using System;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -356,7 +356,7 @@ ConfigureInput告诉管线, 我这个pass需要什么图, 让引擎帮忙启用�
 
 ![URPSSAO_13](Images/URPSSAO_13.jpg)
 
-```C#
+```CSharp
 ...
 
 private Material m_Material;
@@ -426,7 +426,7 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 
 为了后面对材质球属性设置省事,我们可以提前粘贴需要的全部属性. Ctrl+C+V一下, 啪很快啊.
  
-```C#
+```CSharp
 ...
 public class URPSSAORenderPass : ScriptableRenderPass
 {
@@ -475,7 +475,7 @@ public class URPSSAORenderPass : ScriptableRenderPass
 
 先写SSAO Params的设置.
 
-```C#
+```CSharp
 
 internal bool Setup(URPSSAOSettings featureSettings, ScriptableRenderer renderer,
 	Material material)
@@ -516,7 +516,7 @@ XR主要是多了一个eye, 让其成为**VectorArray**就好了. 总体没有�
 
 首先是为了减少计算. 而且也可以防止大世界精度过大, 导致数据不准确.
 
-```C#
+```CSharp
 
 ...
 
@@ -582,7 +582,7 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 
 比如摄像机类型, Normal采样质量, 用Depth还是DepthNormal图.
 
-```C#
+```CSharp
 
 private const string k_tag = "URPSSAO";
 
@@ -668,7 +668,7 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 
 **RenderTargetIdentifier** , 是和**ID**进行绑定的. 在后面渲染的时候用到, 作用是避免每次传递的时候都进行创建, 所以在这里先初始化.
 
-```C#
+```CSharp
 ...
 
 #region Property
@@ -745,7 +745,7 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 
 之后就是执行渲染了. 先写一个基础的框架.
 
-```C#
+```CSharp
 
  public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
 {
@@ -770,7 +770,7 @@ public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderin
 **AfterOpaque**决定是由哪种方式采样表现AO效果.所以需要设置一个关键字**k_ScreenSpaceOcclusion**在shader中进行开关. 关键字重置在后面的**OnCameraCleanup**中完成.
 
 
-```C#
+```CSharp
 
 public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
 {
@@ -802,7 +802,7 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 
 **RenderAndSetBaseMap**, 同上, 并且多传入一个BaseMap.
 
-```C#
+```CSharp
 
 public class URPSSAORenderPass : ScriptableRenderPass
 {
@@ -874,7 +874,7 @@ public class URPSSAORenderPass : ScriptableRenderPass
 
 如果是**AfterOpaque**, 需要对全屏绘制AO. 所以还需要设置RT并进行全屏Blend的绘制.
 
-```C#
+```CSharp
 
 public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
 {
@@ -926,7 +926,7 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 
 整个camera渲染完成, 重置参数, 清理临时RT.
 
-```C#
+```CSharp
 
 public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
 {
@@ -967,7 +967,7 @@ private void SetSourceSize(CommandBuffer cmd, RenderTextureDescriptor desc)
 
 打开**URPSSAORenderFeature.cs**, 修改 **class URPSSAOSettings**
 
-```C#
+```CSharp
 
 [Serializable]
 public class URPSSAOSettings
@@ -990,7 +990,7 @@ public class URPSSAORenderFeature : ScriptableRendererFeature
 
 然后修改**class URPSSAORenderFeature**, 在里面添加反射获取.
 
-```C#
+```CSharp
 
 ...
 public class URPSSAORenderFeature : ScriptableRendererFeature
@@ -1026,7 +1026,7 @@ public class URPSSAORenderFeature : ScriptableRendererFeature
 
 最后返回**URPSSAORenderPass.cs**, 修改**isRendererDeferred**
 
-```C#
+```CSharp
 
 public class URPSSAORenderPass : ScriptableRenderPass
 {
@@ -1062,7 +1062,7 @@ public class URPSSAORenderPass : ScriptableRenderPass
 
 这里**RendererIsDeferred()**的写法跟原URP不一样, 因为原来的写法存在问题. 他拿的的是当前管线, 然后是否存在当前**RenderFeature**, 决定能不能编辑. 但是其实可以直接获取这个**RenderFeature**所属的**RendererData**, 得到**renderingMode**是否是延迟就好了.
 
-```C#
+```CSharp
 
 using MyGraphics.URPSSAO.Scripts;
 using UnityEditor;

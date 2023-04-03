@@ -138,7 +138,7 @@ YiQiuuu的有篇文章是关于HBAO原理和实现, 讲的详细且不错, [文�
 
 创建一个C#文件**HBAORenderFeature.cs**. 先写RenderSettings.
 
-```C#
+```CSharp
 
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -180,7 +180,7 @@ sharpness: 模糊深度权重
 
 这里只是demo, **renderPassEvent**我是随便写的. 比如这里是**RenderPassEvent.BeforeRenderingPostProcessing**.
 
-```C#
+```CSharp
 
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -265,7 +265,7 @@ public class HBAORenderFeature : ScriptableRendererFeature
 
 创建**HBAORenderPass.cs**文件. 先写一个基础框架.
 
-```C#
+```CSharp
 
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -314,7 +314,7 @@ public class HBAORenderPass : ScriptableRenderPass
 
 从前面知道我们需要depthRT和normalRT, 所以在**Configure**中配置ConfigureInput.
 
-```C#
+```CSharp
 
 public class HBAORenderPass : ScriptableRenderPass
 {
@@ -338,7 +338,7 @@ noise.x: 随机初始角度
 
 noise.y: 射线随机初始化长度
 
-```C#
+```CSharp
 
 public class HBAORenderPass : ScriptableRenderPass
 {
@@ -398,7 +398,7 @@ public class HBAORenderPass : ScriptableRenderPass
 
 然后就是Shader属性ID. 这里直接全部一把梭写完了, 不用来回折腾, 也方便自动补全.
 
-```C#
+```CSharp
 
 public class HBARenderPass : ScriptableRenderPass
 {
@@ -433,7 +433,7 @@ maxRadiusPixels, 跟屏幕分辨率有关.
 
 aoMultiplier, 跟bias有关系, 因为bias会减弱ao, 所以这个做补偿.
 
-```C#
+```CSharp
 
 public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
 {
@@ -467,7 +467,7 @@ public override void Execute(ScriptableRenderContext context, ref RenderingData 
 
 Blur和Combine的模块之后再补充.
 
-```C#
+```CSharp
 
 public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
 {
@@ -1142,7 +1142,7 @@ Blur这一步做完就是下图这样. 之后就是要Combine了.
 
 返回 **HBAORenderPass.cs** , 继续修改 **Execute** 方法. 其实就是把AOTex传给Shader, 再SetRT为ColorTarget, 最后执行全屏绘制.
 
-```C#
+```CSharp
 
 public class HBAORenderPass : ScriptableRenderPass
 {

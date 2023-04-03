@@ -744,7 +744,7 @@ ShaderToy Capsule AO 写轮眼完成.
 
 我们用一个 **List\<Capsule\> capsules**记录胶囊体, 这样角色就只用记录他的胶囊体在capsules中的start index 和  end index.
 
-```C#
+```CSharp
 
 public struct Capsule
 {

@@ -24,6 +24,10 @@
 - [**2.3. GPU**](#23-gpu)
   - [**2.3.1 Create Mesh**](#231-create-mesh)
   - [**2.3.2 绑定GPU资源**](#232-绑定gpu资源)
+  - [**2.3.3 UpdateMesh_GPU**](#233-updatemesh_gpu)
+  - [**2.3.4 WaterCS**](#234-watercs)
+  - [**2.3.5 KernelWave**](#235-kernelwave)
+  - [**2.3.6 KernelCalcNormals**](#236-kernelcalcnormals)
 
 <!-- /code_chunk_output -->
 
@@ -52,7 +56,7 @@
 
 再设置 mesh中 索引为0的SubMesh 的 indexData(newIndices) 和 绘制模式(Triangles).
 
-```C#
+```CSharp
 
 Mesh mesh = new Mesh();
 
@@ -70,7 +74,7 @@ mesh.SetIndices(newIndices, MeshTopology.Triangles, 0);
 
 然后再补充Index Buffer属性, 即Index Buffer Count 和 Format.
 
-```C#
+```CSharp
 
 Mesh mesh = new Mesh();
 
@@ -87,7 +91,7 @@ mesh.SetIndexBufferParams(indicesCount, IndexFormat.UInt32);
 
 **MeshUpdateFlags**, 可以告诉 Unity 当Mesh数据更新的时候你别做一些事情. 比如 **DontRecalculateBounds** 不要自动生存包围盒, **DontValidateIndices** 不要检查Index索引(可能存在越界). 详见[官方文档][3].
 
-```C#
+```CSharp
 
 var vertexPos = new NativeArray<Vector3>(verticesCount, Allocator.Temp);
 var vertexNor = new NativeArray<Vector3>(verticesCount, Allocator.Temp);
@@ -115,7 +119,7 @@ indicesBuffer.Dispose();
 
 同时因为上面让其不要自动生成包围盒, 渲染的时候存在Culling问题. 所以还可以指定一下.
 
-```C#
+```CSharp
 
 var subMesh = new SubMeshDescriptor(0, indicesCount, MeshTopology.Triangles);
 subMesh.bounds = new Bounds(Vector3.zero, new Vector3(10, 10, 10));
@@ -148,7 +152,7 @@ Talk is cheap, show me your code!
 
 新建个C# **WaterMesh.cs**, 添加 **RequireComponent**, 并且拖拽给Water.
 
-```C#
+```CSharp
 
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -166,7 +170,7 @@ public class WaterMesh : MonoBehaviour
 
 因为要考虑到后面别的MeshAPI测试, 所以写了点代码结构.
 
-```C#
+```CSharp
 
 public float widthSize = 10;
 public float heightSize = 10;
@@ -210,7 +214,7 @@ private Mesh CreateMesh_Old()
 
 当老模式的时候, 用Unity自带的方法 **RecalculateNormals** 去重建Normal比较快.
 
-```C#
+```CSharp
 
 private Mesh CreateMesh_Old()
 {
@@ -266,7 +270,7 @@ private Mesh CreateMesh_Old()
 
 那么先要获取目标点(即cubes), 可以直接偷懒用Linq写. 添加属性Transform[] cubes, 然后直接用Linq Select. 注意这时候Cube的父节点要为Water.
 
-```C#
+```CSharp
 
 public class WaterMesh : MonoBehaviour
 {
@@ -290,7 +294,7 @@ public class WaterMesh : MonoBehaviour
 
 更新Mesh相关的三个方法 **Update** , **UpdateMesh** 和 **UpdateMesh_Old** .
 
-```C#
+```CSharp
 
 public class WaterMesh : MonoBehaviour
 {
@@ -343,7 +347,7 @@ public class WaterMesh : MonoBehaviour
 
 波浪的y其实就是 **sin(dist * 12.0f - time) / (dist * 20 + 10)** , 再遍历cube做叠加.
 
-```C#
+```CSharp
 
 private void UpdateMesh_Old()
 {
@@ -381,7 +385,7 @@ private void UpdateMesh_Old()
 同时修改 **CreateMesh** 和 **UpdateMesh** 方法, 并且创建方法 **CreateMesh_Job** 和 **UpdateMesh_Job** .
 
 
-```C#
+```CSharp
 
 	public class WaterMesh : MonoBehaviour
 	{
@@ -454,7 +458,7 @@ private void UpdateMesh_Old()
 
 再用上面说的 **VertexBuffer** , **VertexDescriptor** 去创建Mesh. 默认normal朝上, 后面Update再修改.
 
-```C#
+```CSharp
 
 ...
 
@@ -557,7 +561,7 @@ private Mesh CreateMesh_Job()
 
 记得添加 **BurstCompile** 走burst优化编译 可以加速执行.
 
-```C#
+```CSharp
 
 private void UpdateMesh_Job()
 {
@@ -619,7 +623,7 @@ private struct UpdateMeshPosJob : IJobParallelFor
 
 这里要注意 **SetVertexBufferData** . 根据上面的**SetVertexBufferParams** 的设置, position 的 stream 为 0, normal 的 stream 为1.
 
-```C#
+```CSharp
 
 private void UpdateMesh_Job()
 {
@@ -702,7 +706,7 @@ private struct UpdateMeshNormalJob : IJobParallelFor
 
 CreateMesh_GPU 与 CreateMesh_Old 类似.
 
-```C#
+```CSharp
 
 private Mesh CreateMesh_GPU()
 {
@@ -766,7 +770,7 @@ private void UpdateMesh_GPU()
 
 然后 在 **CreateMesh** 和 **UpdateMesh** 中分别调用上面两个方法.
 
-```C#
+```CSharp
 
 private void CreateMesh()
 {
@@ -804,7 +808,7 @@ private void UpdateMesh()
 
 Vertex Buffer 可以当作是 Structured Buffer, 但是在一些图形API(尤其是DX11)上不受支持. 所以这里用Raw Buffer代替.
 
-```C#
+```CSharp
 
 private Mesh CreateMesh_GPU()
 {
@@ -816,24 +820,170 @@ private Mesh CreateMesh_GPU()
 
 ```
 
-然后创建 **GraphicsBuffer** . 一个用于顶点位置, 一个用于绑定Mesh的GPU资源.
+然后创建 **GraphicsBuffer** . 一个用于cubes顶点位置, 另外一个用于绑定Mesh的VertexBuffer. 别忘了在 OnDisable 中 Dispose.
 
-```C#
+```CSharp
+
 public class WaterMesh : MonoBehaviour
 {
 	...
 	private NativeArray<float3> normalArray;
 
-	private GraphicsBuffer gpuPositionsCB;
-	private GraphicsBuffer gpuVerticesCB;
+	private GraphicsBuffer cubePositionsCB;
+	private GraphicsBuffer meshVerticesCB;
 	...
 
 
 	private void OnDisable()
 	{
+		...
+
+		cubePositionsCB?.Dispose();
+		cubePositionsCB = null;
+		meshVerticesCB?.Dispose();
+		meshVerticesCB = null;
 	}
 
+	private Mesh CreateMesh_GPU()
+	{
+		...
+		mesh.bounds = new Bounds(Vector3.zero, new Vector3(widthSize, float.Epsilon, heightSize));
+
+		//stride: 12 => pos => float3
+		cubePositionsCB = new GraphicsBuffer(GraphicsBuffer.Target.Structured, cubes.Length, 12);
+		cubePositionsCB.SetData(cubes.Select(x => x.position).ToArray());
+		meshVerticesCB = mesh.GetVertexBuffer(0);
+
+		return mesh;
+	}
+}
+
 ```
+
+### **2.3.3 UpdateMesh_GPU**
+
+添加属性 **ComputeShader waterCS** , 先写更新CPU的代码 **UpdateMesh_GPU** .
+
+第一个pass用做计算波浪, 第二个pass用做生成normal.
+
+```CSharp
+
+public MeshMode meshMode = MeshMode.Job;
+public ComputeShader waterCS;
+
+...
+
+private void UpdateMesh_GPU()
+{
+	waterCS.SetFloat("_GTime", localTime);
+	waterCS.SetInt("_VertexCount", waterMesh.vertexCount);
+	waterCS.SetInt("_CubeCount", cubePositionsCB.count);
+	waterCS.SetInt("_VertexGridX", widthPoints);
+	waterCS.SetInt("_VertexGridY", heightPoints);
+	//生成Wave
+	waterCS.SetBuffer(0, "_CubePositionsCB", cubePositionsCB);
+	waterCS.SetBuffer(0, "_MeshVerticesCB", meshVerticesCB);
+	waterCS.Dispatch(0, Mathf.CeilToInt(waterMesh.vertexCount/64.0f), 1, 1);
+	//计算Normal
+	waterCS.SetBuffer(1, "_MeshVerticesCB", meshVerticesCB);
+	waterCS.Dispatch(1, Mathf.CeilToInt(waterMesh.vertexCount/64.0f), 1, 1);
+}
+
+```
+
+### **2.3.4 WaterCS**
+
+新建 **Compute Shader WaterCS** , 并且把它赋值给waterCS.
+
+添加CPU端传入的属性. 
+
+**_MeshVerticesCB** 的标记是RawData, 所以这里是 **RWByteAddressBuffer**.
+
+```C++
+
+#pragma kernel KernelWave
+#pragma kernel KernelCalcNormals
+
+RWByteAddressBuffer _MeshVerticesCB;
+
+StructuredBuffer<float3> _CubePositionsCB;
+
+float _GTime;
+int _VertexCount;
+int _VertexGridX;
+int _VertexGridY;
+int _CubeCount;
+
+[numthreads(64,1,1)]
+void KernelWave(uint3 DTID : SV_DispatchThreadID)
+{
+	//TODO:
+}
+
+[numthreads(64, 1, 1)]
+void KernelCalcNormals(uint3 DTID : SV_DispatchThreadID)
+{
+	//TODO:
+}
+
+
+```
+
+### **2.3.5 KernelWave**
+
+完善KernelWave.
+
+因为只改pos.y, 所以只用Store一个值.
+
+```C++
+
+void KernelWave(uint3 DTID : SV_DispatchThreadID)
+{
+	int idx = DTID.x;
+	if (idx >= _VertexCount)
+	{
+		return;
+	}
+
+	// float3 pos + float3 normal = 6 float
+	// vidx << 2  = byte 的地址 * 4   因为 1float = 4byte
+	int vidx = idx * 6;
+	uint3 praw = _MeshVerticesCB.Load3(vidx << 2);
+	float3 p = asfloat(praw);
+	float y = 0;
+	for (int i = 0; i < _CubeCount; ++i)
+	{
+		float2 p1 = p.xz;
+		float2 p2 = _CubePositionsCB[i].xz;
+		float dist = length(p1 - p2);
+		y += sin(dist * 12 - _GTime) / (dist * 20 + 10);
+	}
+	//vidx + 1 => pos.y
+	_MeshVerticesCB.Store((vidx + 1) << 2, asuint(y));
+}
+
+```
+
+### **2.3.6 KernelCalcNormals**
+
+```C++
+
+[numthreads(64, 1, 1)]
+void KernelCalcNormals(uint3 DTID : SV_DispatchThreadID)
+{
+	//TODO:
+}
+
+```
+
+
+
+其实Shader的vertex阶段也能做到这个效果. 但是如果多个相同模型播放同一动画在不同时刻, 这套效率就比较慢, 不如Instance + Vertex阶段 来的快.
+
+不过像Hifi Rush那种 多个相同模型同时播放一模一样的骨骼动画 其实可以走这套. 
+
+这样就只用执行一次CS, 然后Draw Instance 简单的Vertex Shader. 而不是执行Instance + 复杂的 Vertex Shader. (虽然Hifi Rush 是在Vertex阶段中通过Buffer做骨骼动画.)
+
 
 -----------------
 

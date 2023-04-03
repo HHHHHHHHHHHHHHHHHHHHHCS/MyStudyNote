@@ -158,7 +158,7 @@ GPU压力. 分辨率降低RenderLoop耗时明显降低.
 
 ![](Images/UWAOther_11.jpg)
 
-```C#
+```CSharp
 
 public static class ScriptableRendererExtension
 {
@@ -196,7 +196,7 @@ public static class ScriptableRendererExtension
 
 ```
 
-```C#
+```CSharp
 
 public void SwitchSSAO(bool active)
 {
@@ -223,7 +223,7 @@ public void SwitchSSAO(bool active)
 
   但是有个缺点, 因为需要修改MRode的Blend Mode, 所以需要OpenGLES 3.2. 比如说小米4X直接不渲染, 5XBlend Mode 没有修改成功, OPPO R17则修改成功.
 
-```C#
+```CSharp
 internal static bool IsMRT(RTHandle[] colorBuffers)
 {
     return GetValidColorBufferCount(colorBuffers) > 1;
@@ -492,7 +492,7 @@ UNITY_FLATTEN: GPU会执行所有分支的代码，在后面才通过if表达式
 
 做了分帧warmUp, 避免让玩家以为卡死了.
 
-```C#
+```CSharp
 int len = m_svc.Length;
 int 1 = 0;
 while(i < len)
@@ -635,7 +635,7 @@ while(i < len)
 
   关于this.transform, 存在一定的耗时.
 
-```C#
+```CSharp
 Transform t;
 float time = Time,realtimeSinceStartup;
 for (int i = 0; < 100000; i++)
@@ -657,7 +657,7 @@ Debug.Log(Time.realtimeSinceStartup - time);
 
   关于自定义的string比较器. 因为判断key相等会GetHashCode()和Equals(). 原来的string的Equals()比较复杂.
 
-```C#
+```CSharp
 
 private Dictionary<string, AssetBundleContainer> dict
 nen Dictionary<string, AssetBundleCantainer>(4096, CustomOrdinalStringComparer.GetComparer());
@@ -699,7 +699,7 @@ public class CustomOrdinalStringComparer : IEqualityComparer<string>
 
   队尾移除更快, lua/python也同理.
 
-```C#
+```CSharp
 
 // 队首移除
 public static void TestListRemove()
@@ -742,7 +742,7 @@ public static void TestListRemove()
 
   开发时候为了安全性用了get/set. 但是本质是Func, 所以会在堆栈上分配内存. 如果次数少无所谓, 但是在循环中频繁使用或许可以考虑下面代码.
 
-```C#
+```CSharp
 #if DELELOPMENT_BUILD
     int m_health;
     public int health { get => m_health; }

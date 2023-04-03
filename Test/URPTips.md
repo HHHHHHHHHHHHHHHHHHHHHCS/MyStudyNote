@@ -6,7 +6,7 @@
 
 
 ### 获取位置 创建并且 选中物体
-```C#
+```CSharp
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812")]
 internal class CreateUniversalRendererAsset : EndNameEditAction
 {
@@ -31,7 +31,7 @@ private static void CreateUniversalRendererData()
 
 
 ### 加载序列化
-```C#
+```CSharp
 string resourcePath = AssetDatabase.GUIDToAssetPath(editorResourcesGUID);
 var objs = InternalEditorUtility.LoadSerializedFileAndForget(resourcePath);
 m_EditorResourcesAsset = objs != null && objs.Length > 0
