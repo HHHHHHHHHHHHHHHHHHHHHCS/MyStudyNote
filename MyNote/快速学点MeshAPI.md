@@ -21,13 +21,17 @@
   - [**2.2.1 创建Mesh**](#221-创建mesh)
   - [**2.2.3 更新MeshPos**](#223-更新meshpos)
   - [**2.2.3 更新MeshNormal**](#223-更新meshnormal)
-- [**2.3. GPU**](#23-gpu)
+  - [**2.3. GPU**](#23-gpu)
   - [**2.3.1 Create Mesh**](#231-create-mesh)
   - [**2.3.2 绑定GPU资源**](#232-绑定gpu资源)
   - [**2.3.3 UpdateMesh_GPU**](#233-updatemesh_gpu)
   - [**2.3.4 WaterCS**](#234-watercs)
-  - [**2.3.5 KernelWave**](#235-kernelwave)
-  - [**2.3.6 KernelCalcNormals**](#236-kernelcalcnormals)
+  - [**2.3.5 Wave**](#235-wave)
+  - [**2.3.6 CalcNormals**](#236-calcnormals)
+- [**3. Combine Mesh**](#3-combine-mesh)
+  - [**3.1 基础准备**](#31-基础准备)
+  - [**3.2 传统合并**](#32-传统合并)
+  - [**3.3 Job合并**](#33-job合并)
 
 <!-- /code_chunk_output -->
 
@@ -692,11 +696,11 @@ private struct UpdateMeshNormalJob : IJobParallelFor
 
 老方法约25ms. Job Pos + RecalculateNormals约0.7ms. Job Pos + Job Normal约0.5ms.
 
-数据证明用Job重算Normal比较快一点.
+数据证明这里用Job重算Normal比较快一点.
 
 -----------------
 
-## **2.3. GPU**
+### **2.3. GPU**
 
 最后就是需要Unity2021才支持的 GPU修改顶点数据. 设置BufferTarget, 然后传入GPU, 通过RWByteAddressBuffer进行计算.
 
@@ -929,7 +933,7 @@ void KernelCalcNormals(uint3 DTID : SV_DispatchThreadID)
 
 ```
 
-### **2.3.5 KernelWave**
+### **2.3.5 Wave**
 
 完善KernelWave.
 
@@ -964,26 +968,201 @@ void KernelWave(uint3 DTID : SV_DispatchThreadID)
 
 ```
 
-### **2.3.6 KernelCalcNormals**
+### **2.3.6 CalcNormals**
+
+如法炮制, 只用注意这里存normal要做偏移和Store3.
 
 ```C++
 
 [numthreads(64, 1, 1)]
 void KernelCalcNormals(uint3 DTID : SV_DispatchThreadID)
 {
-	//TODO:
+int idx = DTID.x;
+	if (idx >= _VertexCount)
+	{
+		return;
+	}
+
+	int x = idx % _VertexGridX;
+	int y = idx / _VertexGridX;
+
+	int x_l = max(x - 1, 0);
+	int x_r = min(x + 1, _VertexGridX - 1);
+	int y_b = max(y - 1, 0);
+	int y_t = min(y + 1, _VertexGridY - 1);
+
+	int idx_c = idx * 6;
+	int idx_l = (y * _VertexGridX + x_l) * 6;
+	int idx_r = (y * _VertexGridX + x_r) * 6;
+	int idx_b = (y_b * _VertexGridX + x) * 6;
+	int idx_t = (y_t * _VertexGridX + x) * 6;
+
+	float3 center = asfloat(_MeshVerticesCB.Load3(idx_c << 2));
+	float3 left = asfloat(_MeshVerticesCB.Load3(idx_l << 2)) - center;
+	float3 right = asfloat(_MeshVerticesCB.Load3(idx_r << 2)) - center;
+	float3 bottom = asfloat(_MeshVerticesCB.Load3(idx_b << 2)) - center;
+	float3 top = asfloat(_MeshVerticesCB.Load3(idx_t << 2)) - center;
+
+	float3 normal = cross(top, right);
+	normal += cross(left, top);
+	normal += cross(bottom, left);
+	normal += cross(right, bottom);
+	normal = normalize(normal);
+
+	_MeshVerticesCB.Store3((idx_c + 3) << 2, asuint(normal));
 }
 
 ```
 
+![MeshAPI_00](Images/MeshAPI_03.jpg)
 
+GPU这套大约0.263ms, 属于高下立判了.
 
-其实Shader的vertex阶段也能做到这个效果. 但是如果多个相同模型播放同一动画在不同时刻, 这套效率就比较慢, 不如Instance + Vertex阶段 来的快.
+其实Shader的vertex阶段也能做到这个效果. 但是如果多个相同模型播放同一动画在不同时刻, 这套效率就比较慢, 不如Instance + Vertex阶段来的快.
 
-不过像Hifi Rush那种 多个相同模型同时播放一模一样的骨骼动画 其实可以走这套. 
+不过像Hifi Rush那种 多个相同模型同时播放一模一样的骨骼动画, 其实可以走这套. 
 
 这样就只用执行一次CS, 然后Draw Instance 简单的Vertex Shader. 而不是执行Instance + 复杂的 Vertex Shader. (虽然Hifi Rush 是在Vertex阶段中通过Buffer做骨骼动画.)
 
+-----------------
+
+## **3. Combine Mesh**
+
+这也是上面Git里面的Demo, 效率对比芜湖起飞. 需要Unity 2020.1+.
+
+![MeshAPI_00](Images/MeshAPI_04.jpg)
+
+### **3.1 基础准备**
+
+创建一个空的GameObject 名为 CombineMeshRoot, 在下面放置一堆要合并Mesh的GameObject. 可以如下图这样.
+
+![MeshAPI_00](Images/MeshAPI_05.jpg)
+
+然后创建C# **CombineSceneMesh** 挂载在 CombineMeshRoot 上.
+
+```CSharp
+
+public class CombineSceneMesh : MonoBehaviour
+{
+	public Material jobsMat;
+	public Material classicMat;
+
+	private void Start()
+	{
+		CreateMesh_MeshDataAPI(gameObject, jobsMat);
+		CreateMesh_ClassicAPI(gameObject, classicMat);
+	}
+
+	// New Unity 2020.1 MeshData API
+	public static void CreateMesh_MeshDataAPI(GameObject root, Material mat)
+	{
+		//TODO:
+	}
+
+	public static void CreateMesh_ClassicAPI(GameObject root, Material mat)
+	{
+		//TODO:
+	}
+}
+
+```
+
+### **3.2 传统合并**
+
+修改方法 **CreateMesh_ClassicAPI**, 先写传统的合并Mesh方法.
+
+这里normal用重新计算, 效率会快点.
+
+```CSharp
+
+public static void CreateMesh_ClassicAPI(GameObject root, Material mat)
+{
+	var sw = Stopwatch.StartNew();
+
+	var meshFilters = root.GetComponentsInChildren<MeshFilter>();
+
+	if (meshFilters.Length == 0)
+	{
+		return;
+	}
+
+	List<Vector3> allVerts = new List<Vector3>();
+	List<int> allIndices = new List<int>();
+	foreach (var mf in meshFilters)
+	{
+		var go = mf.gameObject;
+		var tr = go.transform;
+		var mesh = mf.sharedMesh;
+		var verts = mesh.vertices;
+		var tris = mesh.triangles;
+		for (var i = 0; i < verts.Length; ++i)
+		{
+			var pos = verts[i];
+			pos = tr.TransformPoint(pos);
+			verts[i] = pos;
+		}
+
+		var baseIdx = allVerts.Count;
+		for (var i = 0; i < tris.Length; ++i)
+		{
+			tris[i] += baseIdx;
+		}
+
+		allVerts.AddRange(verts);
+		allIndices.AddRange(tris);
+	}
+
+	var newMesh = new Mesh();
+	newMesh.name = "CombinedMesh_Classic";
+	newMesh.indexFormat = IndexFormat.UInt32;
+	newMesh.SetVertices(allVerts);
+	newMesh.SetTriangles(allIndices, 0);
+
+	var newGo = new GameObject("ClassicMesh", typeof(MeshFilter), typeof(MeshRenderer));
+	var newMf = newGo.GetComponent<MeshFilter>();
+	var newMr = newGo.GetComponent<MeshRenderer>();
+	newMr.sharedMaterial = mat;
+	newMf.sharedMesh = newMesh;
+	newMesh.RecalculateNormals();
+
+	var dur = sw.ElapsedMilliseconds;
+	Debug.Log($"Classic Took {dur / 1000.0:F2}sec for {meshFilters.Length} objects, total {allVerts.Count} verts");
+}
+
+```
+
+### **3.3 Job合并**
+
+先创建 **ProcessMeshDataJob** .
+
+
+```CSharp
+
+public class CombineSceneMesh : MonoBehaviour
+{
+	...
+
+	public static void CreateMesh_MeshDataAPI(GameObject root, Material mat)
+	{
+		//TODO:
+	}
+
+	[BurstCompile]
+	private struct ProcessMeshDataJob : IJobParallelFor
+	{
+		public void Execute(int index)
+		{
+			//TODO:
+		}
+	}
+
+	public static void CreateMesh_ClassicAPI(GameObject root, Material mat)
+	{
+		...
+	}
+}
+
+```
 
 -----------------
 
