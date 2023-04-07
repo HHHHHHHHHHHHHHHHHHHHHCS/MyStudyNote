@@ -32,6 +32,9 @@
   - [**3.1 基础准备**](#31-基础准备)
   - [**3.2 传统合并**](#32-传统合并)
   - [**3.3 Job合并**](#33-job合并)
+  - [**3.3.1 Job模板**](#331-job模板)
+  - [**3.3.2 属性**](#332-属性)
+  - [**3.3.3 合并**](#333-合并)
 
 <!-- /code_chunk_output -->
 
@@ -1071,7 +1074,9 @@ public class CombineSceneMesh : MonoBehaviour
 
 修改方法 **CreateMesh_ClassicAPI**, 先写传统的合并Mesh方法.
 
-这里normal用重新计算, 效率会快点.
+顶点位置做一次矩阵转换, 然后顶点索引做Offset即可.
+
+这里normal用自动生成 效率会快点.
 
 ```CSharp
 
@@ -1126,15 +1131,16 @@ public static void CreateMesh_ClassicAPI(GameObject root, Material mat)
 	newMesh.RecalculateNormals();
 
 	var dur = sw.ElapsedMilliseconds;
-	Debug.Log($"Classic Took {dur / 1000.0:F2}sec for {meshFilters.Length} objects, total {allVerts.Count} verts");
+	Debug.Log($"Classic Took {dur / 1000.0:F3}sec for {meshFilters.Length} objects, total {allVerts.Count} verts");
 }
 
 ```
 
 ### **3.3 Job合并**
 
-先创建 **ProcessMeshDataJob** .
+### **3.3.1 Job模板**
 
+先创建Job **ProcessMeshDataJob** 的模板.
 
 ```CSharp
 
@@ -1163,6 +1169,108 @@ public class CombineSceneMesh : MonoBehaviour
 }
 
 ```
+
+### **3.3.2 属性**
+
+先写属性吧.
+
+可以把Job想成多线程, 所以 导出的数据 要提前划分好写入区间, 避免写入的时候出现覆盖等情况. 这里的的执行数量 就是要合并模型的数量.
+
+创建方法 **CreateInputArrays** 用于初始化属性相关的容器. 数据可以不用初始化, 因为等下会在外面赋值的. 
+
+**Mesh.MeshDataArray meshData** 是要合并的Mesh数据. **Mesh.MeshData outputMesh** 是要导出的Mesh.
+
+Normla和Bound也都在Job里面一次性做完.
+
+```CSharp
+
+[BurstCompile]
+private struct ProcessMeshDataJob : IJobParallelFor
+{
+	[ReadOnly]
+	public Mesh.MeshDataArray meshData;
+
+	public Mesh.MeshData outputMesh;
+
+	//[DeallocateOnJobCompletion] 数组在运行完成时自动释放
+	[ReadOnly, DeallocateOnJobCompletion] 
+	public NativeArray<int> vertexStart;
+
+	[ReadOnly, DeallocateOnJobCompletion] 
+	public NativeArray<int> indexStart;
+
+	[ReadOnly, DeallocateOnJobCompletion] 
+	public NativeArray<float4x4> xform;
+
+	public NativeArray<float3x2> bounds;
+
+	//[NativeDisableContainerSafetyRestriction] 禁用安全性检查, 如果Job运行时, dispose NativeArray, Unity可能会崩溃
+	//https://docs.unity3d.com/cn/2019.4/ScriptReference/Unity.Collections.LowLevel.Unsafe.NativeDisableContainerSafetyRestrictionAttribute.html
+	[NativeDisableContainerSafetyRestriction]
+	public NativeArray<float3> tempVertices;
+
+	[NativeDisableContainerSafetyRestriction]
+	public NativeArray<float3> tempNormals;
+
+	public void CreateInputArrays(int meshCount)
+	{
+		vertexStart = new NativeArray<int>(meshCount, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+		indexStart = new NativeArray<int>(meshCount, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+		xform = new NativeArray<float4x4>(meshCount, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+		bounds = new NativeArray<float3x2>(meshCount, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+	}
+}
+
+```
+
+### **3.3.3 合并**
+
+继续完善Job 的 **Execute** .
+
+```CSharp
+
+[BurstCompile]
+private struct ProcessMeshDataJob : IJobParallelFor
+{
+	...
+
+	public void Execute(int index)
+	{
+		var data = meshData[index];
+		var vCount = data.vertexCount;
+		var mat = xform[index];
+		var vStart = vertexStart[index];
+
+		data.GetVertices(tempVertices.Reinterpret<Vector3>());
+		data.GetNormals(tempNormals.Reinterpret<Vector3>());
+
+		var outputVerts = outputMesh.GetVertexData<Vector3>();
+		var outputNormals = outputMesh.GetVertexData<Vector3>(stream: 1);
+
+		float3x2 b = new float3x2(Mathf.Infinity, Mathf.NegativeInfinity);
+		for (var i = 0; i < vCount; i++)
+		{
+			var pos = tempVertices[i];
+			pos = math.mul(mat, new float4(pos, 1)).xyz;
+			outputVerts[i + vStart] = pos;
+			var nor = tempNormals[i];
+			nor = math.normalize(math.mul(mat, new float4(nor, 0)).xyz);
+			outputNormals[i + vStart] = nor;
+			b.c0 = math.min(b.c0, pos);
+			b.c1 = math.max(b.c1, pos);
+		}
+	}
+}
+
+```
+
+**Job是多线程, 为什么临时容器不会出现竞争的情况?**
+
+在JobScheduler.ScheduleBatchedJobs方法被调用时, 会根据Job的数量将它们分成多个批次, 每个批次中的Job会在一个独立的线程中执行. 
+
+因此每个Job都有自己的内存空间, 不会与其他Job的内存发生冲突, 避免了资源争夺的情况.
+
+每个线程的Job要合并的每个Mesh的顶点数量不一样, 所以要对临时容器做动态扩容, 即释放再创建.
 
 -----------------
 
