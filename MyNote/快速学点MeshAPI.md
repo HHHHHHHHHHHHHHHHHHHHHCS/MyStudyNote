@@ -18,9 +18,9 @@
   - [**2.1.3 动起来**](#213-动起来)
   - [**2.2 Job**](#22-job)
   - [**2.2.1 Create Mesh**](#221-create-mesh)
-  - [**2.2.1 创建Mesh**](#221-创建mesh)
+  - [**2.2.2 创建Mesh**](#222-创建mesh)
   - [**2.2.3 更新MeshPos**](#223-更新meshpos)
-  - [**2.2.3 更新MeshNormal**](#223-更新meshnormal)
+  - [**2.2.4 更新MeshNormal**](#224-更新meshnormal)
   - [**2.3. GPU**](#23-gpu)
   - [**2.3.1 Create Mesh**](#231-create-mesh)
   - [**2.3.2 绑定GPU资源**](#232-绑定gpu资源)
@@ -35,6 +35,7 @@
   - [**3.3.1 Job模板**](#331-job模板)
   - [**3.3.2 属性**](#332-属性)
   - [**3.3.3 合并**](#333-合并)
+  - [**3.3.4 Schedule**](#334-schedule)
 
 <!-- /code_chunk_output -->
 
@@ -457,7 +458,7 @@ private void UpdateMesh_Old()
 
 ```
 
-### **2.2.1 创建Mesh**
+### **2.2.2 创建Mesh**
 
 这种创建方法的效率没有第一种快, 老方法是0.9ms, Job创建是2.8ms. 但是后面Update Mesh的时候速度就是云泥之别了. 
 
@@ -622,7 +623,7 @@ private struct UpdateMeshPosJob : IJobParallelFor
 
 现在虽然可以动起来了, 但是因为是统一的颜色, 没有改动Normal, 所以效果不是很明显.
 
-### **2.2.3 更新MeshNormal**
+### **2.2.4 更新MeshNormal**
 
 然后再写 **UpdateJob** .
 
@@ -1178,9 +1179,9 @@ public class CombineSceneMesh : MonoBehaviour
 
 创建方法 **CreateInputArrays** 用于初始化属性相关的容器. 数据可以不用初始化, 因为等下会在外面赋值的. 
 
-**Mesh.MeshDataArray meshData** 是要合并的Mesh数据. **Mesh.MeshData outputMesh** 是要导出的Mesh.
+**Mesh.MeshDataArray meshData** 是要合并的Mesh数据. **Mesh.MeshData outputMesh** 是要导出的Mesh. 需要新的API来获取.
 
-Normla和Bound也都在Job里面一次性做完.
+Normal和Bound也都在Job里面一次性做完.
 
 ```CSharp
 
@@ -1227,6 +1228,10 @@ private struct ProcessMeshDataJob : IJobParallelFor
 
 继续完善Job 的 **Execute** .
 
+跟上面的做法差不多, 对位置和法线做矩阵变化, 这时候同时记录min/max用作后面bound, 最后对顶点索引做偏移.
+
+注意临时容器要做动态扩容.
+
 ```CSharp
 
 [BurstCompile]
@@ -1240,6 +1245,26 @@ private struct ProcessMeshDataJob : IJobParallelFor
 		var vCount = data.vertexCount;
 		var mat = xform[index];
 		var vStart = vertexStart[index];
+
+		if (!tempVertices.IsCreated || tempVertices.Length < vCount)
+		{
+			if (tempVertices.IsCreated)
+			{
+				tempVertices.Dispose();
+			}
+
+			tempVertices = new NativeArray<float3>(vCount, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+		}
+
+		if (!tempNormals.IsCreated || tempNormals.Length < vCount)
+		{
+			if (tempNormals.IsCreated)
+			{
+				tempNormals.Dispose();
+			}
+
+			tempNormals = new NativeArray<float3>(vCount, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+		}
 
 		data.GetVertices(tempVertices.Reinterpret<Vector3>());
 		data.GetNormals(tempNormals.Reinterpret<Vector3>());
@@ -1259,6 +1284,28 @@ private struct ProcessMeshDataJob : IJobParallelFor
 			b.c0 = math.min(b.c0, pos);
 			b.c1 = math.max(b.c1, pos);
 		}
+
+		bounds[index] = b;
+
+		var tStart = indexStart[index];
+		var tCount = data.GetSubMesh(0).indexCount;
+		var outputTris = outputMesh.GetIndexData<int>();
+		if (data.indexFormat == IndexFormat.UInt16)
+		{
+			var tris = data.GetIndexData<ushort>();
+			for (var i = 0; i < tCount; i++)
+			{
+				outputTris[i + tStart] = vStart + tris[i];
+			}
+		}
+		else
+		{
+			var tris = data.GetIndexData<int>();
+			for (var i = 0; i < tCount; i++)
+			{
+				outputTris[i + tStart] = vStart + tris[i];
+			}
+		}
 	}
 }
 
@@ -1271,6 +1318,110 @@ private struct ProcessMeshDataJob : IJobParallelFor
 因此每个Job都有自己的内存空间, 不会与其他Job的内存发生冲突, 避免了资源争夺的情况.
 
 每个线程的Job要合并的每个Mesh的顶点数量不一样, 所以要对临时容器做动态扩容, 即释放再创建.
+
+
+### **3.3.4 Schedule**
+
+完善之前写的 **CreateMesh_MeshDataAPI** .
+
+初始化Job属性, 提前规划好Offset.
+
+**Mesh.AcquireReadOnlyMeshData** 获得 **MeshDataArray** . 
+
+**Mesh.AllocateWritableMeshData** 申请得到 **MeshDataArray**. 因为导出的mesh只有一个, 所以只用申请一个. 通过 **MeshDataArray[0]** 可以得到 **Mesh.MeshData** .
+
+通过 **Mesh.ApplyAndDisposeWritableMeshData** 设置Mesh Data Array并且销毁刚申请的数据.
+
+最后就是设置Mesh Data, 注意设置 MeshUpdateFlags.
+
+```CSharp
+
+public static void CreateMesh_MeshDataAPI(GameObject root, Material mat)
+{
+	var sw = Stopwatch.StartNew();
+
+	var meshFilters = root.GetComponentsInChildren<MeshFilter>();
+
+	if (meshFilters.Length == 0)
+	{
+		return;
+	}
+
+	var jobs = new ProcessMeshDataJob();
+	jobs.CreateInputArrays(meshFilters.Length);
+	var inputMeshes = new List<Mesh>(meshFilters.Length);
+
+	var vertexStart = 0;
+	var indexStart = 0;
+	var meshCount = 0;
+	foreach (var mf in meshFilters)
+	{
+		var go = mf.gameObject;
+		var mesh = mf.sharedMesh;
+		inputMeshes.Add(mesh);
+		jobs.vertexStart[meshCount] = vertexStart;
+		jobs.indexStart[meshCount] = indexStart;
+		jobs.xform[meshCount] = go.transform.localToWorldMatrix;
+		vertexStart += mesh.vertexCount;
+		indexStart += (int)mesh.GetIndexCount(0);
+		++meshCount;
+	}
+
+	jobs.meshData = Mesh.AcquireReadOnlyMeshData(inputMeshes);
+
+	var outputMeshData = Mesh.AllocateWritableMeshData(1);
+	jobs.outputMesh = outputMeshData[0];
+	jobs.outputMesh.SetIndexBufferParams(indexStart, IndexFormat.UInt32);
+	jobs.outputMesh.SetVertexBufferParams(vertexStart,
+		new VertexAttributeDescriptor(VertexAttribute.Position),
+		new VertexAttributeDescriptor(VertexAttribute.Normal, stream: 1));
+
+	var handle = jobs.Schedule(meshCount, 4);
+
+	var newMesh = new Mesh
+	{
+		name = "CombinedMesh_Jobs"
+	};
+	var sm = new SubMeshDescriptor(0, indexStart, MeshTopology.Triangles)
+	{
+		firstVertex = 0,
+		vertexCount = vertexStart
+	};
+
+	handle.Complete();
+
+	var bounds = new float3x2(Mathf.Infinity, Mathf.NegativeInfinity);
+	for (var i = 0; i < meshCount; i++)
+	{
+		var b = jobs.bounds[i];
+		bounds.c0 = math.min(bounds.c0, b.c0);
+		bounds.c1 = math.max(bounds.c1, b.c1);
+	}
+
+	sm.bounds = new Bounds((bounds.c0 + bounds.c1) * 0.5f, (bounds.c1 - bounds.c0));
+	jobs.outputMesh.subMeshCount = 1;
+	jobs.outputMesh.SetSubMesh(0, sm, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontNotifyMeshUsers);
+	Mesh.ApplyAndDisposeWritableMeshData(outputMeshData, new[] { newMesh }, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontNotifyMeshUsers);
+	newMesh.bounds = sm.bounds;
+
+	jobs.meshData.Dispose();
+	jobs.bounds.Dispose();
+
+	var newGo = new GameObject("JobsMesh", typeof(MeshFilter), typeof(MeshRenderer));
+	var newMf = newGo.GetComponent<MeshFilter>();
+	var newMr = newGo.GetComponent<MeshRenderer>();
+	newMr.sharedMaterial = mat;
+	newMf.sharedMesh = newMesh;
+
+	var dur = sw.ElapsedMilliseconds;
+	Debug.Log($"Jobs Took {dur / 1000.0:F3}sec for {meshCount} objects, total {vertexStart} verts");
+}
+
+```
+
+差不多写完了. 执行会发现Job第一次耗时会久点(还是比传统快超多), 后面就会快很多. This is Burst power!!!
+
+写完感觉好水hhh!!!
 
 -----------------
 
