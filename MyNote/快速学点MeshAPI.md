@@ -395,66 +395,66 @@ private void UpdateMesh_Old()
 
 ```CSharp
 
-	public class WaterMesh : MonoBehaviour
+public class WaterMesh : MonoBehaviour
+{
+	public enum MeshMode
 	{
-		public enum MeshMode
+		OldMethod,
+		Job,
+		GPU,
+	}
+
+	public MeshMode meshMode = MeshMode.Job;
+	public float widthSize = 10;
+	...
+
+	private void CreateMesh()
+	{
+		switch (meshMode)
 		{
-			OldMethod,
-			Job,
-			GPU,
+			case MeshMode.OldMethod:
+				waterMesh = CreateMesh_Old();
+				break;
+			case MeshMode.Job:
+				waterMesh = CreateMesh_Job();
+				break;
+			case MeshMode.GPU:
+				//TODO:
+				break;
 		}
 
-		public MeshMode meshMode = MeshMode.Job;
-		public float widthSize = 10;
-		...
+		GetComponent<MeshFilter>().sharedMesh = waterMesh;
+	}
 
-		private void CreateMesh()
+	private void UpdateMesh()
+	{
+		localTime = waveFrequency * Time.time;
+		switch (meshMode)
 		{
-			switch (meshMode)
-			{
-				case MeshMode.OldMethod:
-					waterMesh = CreateMesh_Old();
-					break;
-				case MeshMode.Job:
-					waterMesh = CreateMesh_Job();
-					break;
-				case MeshMode.GPU:
-					//TODO:
-					break;
-			}
-
-			GetComponent<MeshFilter>().sharedMesh = waterMesh;
-		}
-
-		private void UpdateMesh()
-		{
-			localTime = waveFrequency * Time.time;
-			switch (meshMode)
-			{
-				case MeshMode.OldMethod:
-					UpdateMesh_Old();
-					break;
-				case MeshMode.Job:
-					UpdateMesh_Job();
-					break;
-				case MeshMode.GPU:
-					//TODO:
-					break;
-			}
-		}
-
-		...
-
-		private Mesh CreateMesh_Job()
-		{
-			//TODO:Create
-		}
-
-		private void UpdateMesh_Job()
-		{
-			//TODO:Update
+			case MeshMode.OldMethod:
+				UpdateMesh_Old();
+				break;
+			case MeshMode.Job:
+				UpdateMesh_Job();
+				break;
+			case MeshMode.GPU:
+				//TODO:
+				break;
 		}
 	}
+
+	...
+
+	private Mesh CreateMesh_Job()
+	{
+		//TODO:Create
+	}
+
+	private void UpdateMesh_Job()
+	{
+		//TODO:Update
+	}
+}
 
 ```
 
