@@ -353,7 +353,7 @@ public class WaterMesh : MonoBehaviour
 
 完善 **UpdateMesh_Old** 方法.
 
-波浪的y其实就是 **sin(dist * 12.0f - time) / (dist * 20 + 10)** , 再遍历cube做叠加.
+波浪的y其实就是 **sin(dist * 12.0f - time) / (dist * 20 + 10)**  , 再遍历cube做叠加.
 
 ```CSharp
 
@@ -462,7 +462,9 @@ private void UpdateMesh_Old()
 
 这种创建方法的效率没有第一种快, 老方法是0.9ms, Job创建是2.8ms. 但是后面Update Mesh的时候速度就是云泥之别了. 
 
-创建NativeArray<float3> vertexArray, normalArray. 这里用Job去更新Normal, 一是用来对比Unity自带生成Normal的速度, 二是方便后面用GPU. 因为申请的是 **Allocator.Persistent** 的, 所以要Dispose.
+创建NativeArray\<float3\> vertexArray, normalArray. 这里用Job去更新Normal, 一是用来对比Unity自带生成Normal的速度, 二是方便后面用GPU.
+
+因为申请的是 **Allocator.Persistent** 的, 所以要Dispose.
 
 再用上面说的 **VertexBuffer** , **VertexDescriptor** 去创建Mesh. 默认normal朝上, 后面Update再修改.
 
@@ -567,7 +569,7 @@ private Mesh CreateMesh_Job()
 
 **NativeDisableParallelForRestriction** 可以理解为禁用对并行处理的限制, Unity对为了安全性对数据读写添加了限制. 比如当前的Job Index是1, 但是想要读取的数据的位置是100, 那么超出了安全范围, 就会报错.
 
-记得添加 **BurstCompile** 走burst优化编译 可以加速执行.
+记得添加 **BurstCompile** 走Burst优化编译 可以加速执行.
 
 ```CSharp
 
