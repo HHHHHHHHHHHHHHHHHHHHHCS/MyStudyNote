@@ -31,3 +31,29 @@ Editor Perference -> Source Code -> Source Code Editor -> Rider
 参考: https://zhuanlan.zhihu.com/p/401583420
 
 class **FMobileSceneRenderer**     **Render** 方法
+
+## Shader 重新编译
+
+Ctrl + Shift + . 要么 控制台输入 **recompileshaders all**
+
+Editor Perference -> 搜索recompile 里面可以改快捷键
+
+## VS解决方案资源管理器中自动定位当前编辑中的文件
+
+【工具】- 【选项】 - 【项目和解决方案】-【常规】- 勾选【在解决方案资源管理器中跟踪活动项】
+
+## Slate 控件乱码
+
+如果直接下面这样写, 会乱码.
+
+```
+SNew(SButton)
+.Text(FText::FromString("按钮"))
+```
+
+这时候需要一个 **TEXT** 包裹, 就能解决了.
+
+```
+SNew(SButton)
+.Text(FText::FromString(TEXT("按钮")))
+```
