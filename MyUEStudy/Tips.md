@@ -57,3 +57,13 @@ SNew(SButton)
 SNew(SButton)
 .Text(FText::FromString(TEXT("按钮")))
 ```
+
+## 删除StarterContent
+
+关闭Editor, 删除 **Content** 下的 **StarterContent**, 再 打开项目的 **Config\DefaultGame.ini** 删除下面这段话.
+
+```
+[StartupActions]
+bAddPacks=True
+InsertPack=(PackSource="StarterContent.upack",PackName="StarterContent")
+```
