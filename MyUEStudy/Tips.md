@@ -67,3 +67,11 @@ SNew(SButton)
 bAddPacks=True
 InsertPack=(PackSource="StarterContent.upack",PackName="StarterContent")
 ```
+
+## 贴图颜色内存排序
+
+基本是BGRA来排序, 而不是正常的RGBA.
+
+因为现在GPU的预设颜色是BGRA memory layout. 如果用BGRA 比 RGBA 快5%.
+
+详情: https://social.msdn.microsoft.com/Forums/en-US/f56e4449-f3e1-491e-9f64-e65e989a518a/best-swap-buffer-format-rgba-or-bgra-?forum=wingameswithdirectx
