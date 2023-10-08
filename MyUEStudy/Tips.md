@@ -75,3 +75,15 @@ InsertPack=(PackSource="StarterContent.upack",PackName="StarterContent")
 因为现在GPU的预设颜色是BGRA memory layout. 如果用BGRA 比 RGBA 快5%.
 
 详情: https://social.msdn.microsoft.com/Forums/en-US/f56e4449-f3e1-491e-9f64-e65e989a518a/best-swap-buffer-format-rgba-or-bgra-?forum=wingameswithdirectx
+
+## 保存UTexture2D到本地重启引擎后丢失内容
+
+因为没有对UTexture2D的Source进行Init, 少了下面这句.
+
+```
+tex->Source.Init(width, height, 1, 1, TSF_BGRA8, bgra8);
+```
+
+## 游戏内Profiler
+
+游戏内 按 **`** 输入 如 **Stat Engine** **Stat xxxx**
