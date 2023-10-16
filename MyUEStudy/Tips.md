@@ -38,6 +38,10 @@ Ctrl + Shift + . 要么 控制台输入 **recompileshaders all**
 
 Editor Perference -> 搜索recompile 里面可以改快捷键
 
+编译单个Shader, 控制台输入 **recompileshaders /Engine/Private/DeferredLightPixelShaders.usf**
+
+详情 **https://docs.unrealengine.com/4.26/en-US/API/Runtime/Engine/RecompileShaders/**
+
 ## VS解决方案资源管理器中自动定位当前编辑中的文件
 
 【工具】- 【选项】 - 【项目和解决方案】-【常规】- 勾选【在解决方案资源管理器中跟踪活动项】
