@@ -16,6 +16,34 @@ r.Shaders.Symbols=1
 r.Shaders.ExtraData=1
 ```
 
+## 调试及启用PIX
+
+参考: https://zhuanlan.zhihu.com/p/706117237
+
+plugin 下启用 **PIX for Windows GPU Capture Plugin**
+
+在 **ConsoleVariables.ini** 设置如下
+
+```
+r.ShaderDevelopmentMode=1
+...
+r.Shaders.Optimize=0
+...
+r.Shaders.Symbols=1
+...
+r.Shaders.ExtraData=1
+...
+r.D3D12.AutoAttachPIX=1
+```
+
+然后可以在Pix中启用(建议管理员模式启动), 设置如下
+
+> Executable: Engine\Binaries\Win64\UnrealEditor.exe
+
+> Arguments: xxxxx.uproject
+
+打开 NVDIA Control Panel, 标题栏->桌面->启用开发者模式
+
 ## Show FPS
 
 可以Scene View -> Prespective 旁边的拓展按钮 -> ShowFPS (Ctrl+Shift+H)
