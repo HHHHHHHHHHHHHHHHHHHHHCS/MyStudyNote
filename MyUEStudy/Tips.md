@@ -119,3 +119,21 @@ tex->Source.Init(width, height, 1, 1, TSF_BGRA8, bgra8);
 ## 游戏内Profiler
 
 游戏内 按 **`** 输入 如 **Stat Engine** **Stat xxxx**
+
+## 打Android包提示 Gradle Required array size too large
+
+可能是因为ASTC包体太大, 尝试取消勾 项目设置->Package game data inside .apk, 它会生成一个OBB
+
+## 打Android包提示 no google play store key
+
+要勾选 项目设置->Package game data inside .apk?. 
+如果不勾选会把项目资源生成OBB, OBB需要谷歌商店.
+这个会把项目资源打进APK, 不生成OBB.
+
+项目\Saved\StagedBuilds 可以看打出了package具体数量和大小
+在 项目\Config\DefaultGame.ini 可以看加入包体的Obb过滤规则, 正常是只有package0即母包
+
+[/Script/AndroidRuntimeSettings.AndroidRuntimeSettings]
+...
++ObbFilters=-*.pak
++ObbFilters=pakchunk0-*
