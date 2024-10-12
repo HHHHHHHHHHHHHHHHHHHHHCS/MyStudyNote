@@ -130,10 +130,13 @@ tex->Source.Init(width, height, 1, 1, TSF_BGRA8, bgra8);
 如果不勾选会把项目资源生成OBB, OBB需要谷歌商店.
 这个会把项目资源打进APK, 不生成OBB.
 
-项目\Saved\StagedBuilds 可以看打出了package具体数量和大小
-在 项目\Config\DefaultGame.ini 可以看加入包体的Obb过滤规则, 正常是只有package0即母包
+项目\Saved\StagedBuilds 可以看打出了pak具体数量和大小
+在 项目\Config\DefaultGame.ini 可以看加入包体的Obb过滤规则, 正常是只有pak0即母包
 
 [/Script/AndroidRuntimeSettings.AndroidRuntimeSettings]
 ...
 +ObbFilters=-*.pak
 +ObbFilters=pakchunk0-*
+
+观察打包命令行 是否有 -iostore, ProjectSetting-> Use IO Setting, 把他去掉
+引擎提示说是 "将所有包放入一个或多个容器文件中". 但是启用该选项会减少大量加载资产时间, 不过pak包也会变的更大
