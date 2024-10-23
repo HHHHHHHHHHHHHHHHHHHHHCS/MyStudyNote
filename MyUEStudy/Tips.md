@@ -140,3 +140,27 @@ tex->Source.Init(width, height, 1, 1, TSF_BGRA8, bgra8);
 
 观察打包命令行 是否有 -iostore, ProjectSetting-> Use IO Setting, 把他去掉
 引擎提示说是 "将所有包放入一个或多个容器文件中". 但是启用该选项会减少大量加载资产时间, 不过pak包也会变的更大
+
+## Rider 打包缺少MSBuild
+
+因为MSBuild选择成了Rider版本的, File->Settings->Build, Execution, Deployment->Toolset and Build->MSBuild version->选择VS的版本
+
+## 编译错误 error C4756: overflow in constant arithmetic
+
+因为WinSDK选择太新了, 就算你卸载掉了还是是有残留的
+同时注意MSVC的版本是否有安装, 是否正确
+
+https://forums.unrealengine.com/t/getting-error-c4756-overflow-in-constant-arithmetic-while-building-unreal-5-4-2-from-source-code/1897276/15
+
+找到 \Engine\Saved\UnrealBuildTool\BuildConfiguration.xml
+手动选择WinSDK版本
+
+```xml
+<?xml version="1.0" encoding="utf-8" ?>
+<Configuration xmlns="https://www.unrealengine.com/BuildConfiguration">
+	<WindowsPlatform>
+		<WindowsSdkVersion>10.0.22621.0</WindowsSdkVersion>
+	</WindowsPlatform>
+</Configuration>
+```
+
