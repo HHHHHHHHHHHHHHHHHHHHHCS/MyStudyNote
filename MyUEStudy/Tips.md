@@ -145,6 +145,15 @@ tex->Source.Init(width, height, 1, 1, TSF_BGRA8, bgra8);
 
 因为MSBuild选择成了Rider版本的, File->Settings->Build, Execution, Deployment->Toolset and Build->MSBuild version->选择VS的版本
 
+
+## Rider dotnet 报错
+
+因为dotnet选择成了默认的版本, File->Settings->Build, Execution, Deployment->Toolset and Build->MSBuild version->选择正确的dotnet.exe
+
+UnrealEngine\Engine\Binaries\ThirdParty\DotNet\{版本}\windows\dotnet.exe
+
+比如6.x版本报错, 尝试8.x版本
+
 ## 编译错误 error C4756: overflow in constant arithmetic
 
 因为WinSDK选择太新了, 就算你卸载掉了还是是有残留的
