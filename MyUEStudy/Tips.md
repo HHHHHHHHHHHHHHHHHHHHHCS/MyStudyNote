@@ -173,3 +173,19 @@ https://forums.unrealengine.com/t/getting-error-c4756-overflow-in-constant-arith
 </Configuration>
 ```
 
+## git ignore 不生效
+
+```
+git rm -r --cached .
+git add .
+```
+
+## 在Visual Studio中使用AGDE调试
+
+5.4之后可以不用下载JDK了, 但是要设置 ANDROID_SDK_ROOT
+
+然后对项目 右键 -> Generate Project Files
+
+项目设置 Configuration 选择为 Debug / Development ,  Target 选择为 Android, Build 出包
+
+https://dev.epicgames.com/documentation/zh-cn/unreal-engine/debugging-unreal-engine-projects-for-android-in-visual-studio-with-the-agde-plugin?application_version=5.4
