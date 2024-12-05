@@ -189,3 +189,10 @@ git add .
 项目设置 Configuration 选择为 Debug / Development ,  Target 选择为 Android, Build 出包
 
 https://dev.epicgames.com/documentation/zh-cn/unreal-engine/debugging-unreal-engine-projects-for-android-in-visual-studio-with-the-agde-plugin?application_version=5.4
+
+
+## Visual Studio 调试PC包
+
+打开 Visual Studio 创建 Continue without code, 然后运行
+
+把要Debug的文件代码拖进 VS, 设置断点就能调试了
