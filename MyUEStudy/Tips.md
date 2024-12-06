@@ -156,10 +156,14 @@ UnrealEngine\Engine\Binaries\ThirdParty\DotNet\{版本}\windows\dotnet.exe
 
 ## 编译错误 error C4756: overflow in constant arithmetic
 
-因为WinSDK选择太新了, 就算你卸载掉了还是是有残留的
-同时注意MSVC的版本是否有安装, 是否正确
+用VS 编译引擎看编译Log有提示 MSVC 和 WinSDK
+
+因为WinSDK(WindowsSdkVersion)选择太新了, 就算你卸载掉了还是是有残留的
+同时注意MSVC(CompilerVersion)的版本是否有安装, 是否正确
 
 https://forums.unrealengine.com/t/getting-error-c4756-overflow-in-constant-arithmetic-while-building-unreal-5-4-2-from-source-code/1897276/15
+
+https://dev.epicgames.com/documentation/en-us/unreal-engine/setting-up-visual-studio-development-environment-for-cplusplus-projects-in-unreal-engine
 
 找到 \Engine\Saved\UnrealBuildTool\BuildConfiguration.xml
 手动选择WinSDK版本
@@ -168,8 +172,23 @@ https://forums.unrealengine.com/t/getting-error-c4756-overflow-in-constant-arith
 <?xml version="1.0" encoding="utf-8" ?>
 <Configuration xmlns="https://www.unrealengine.com/BuildConfiguration">
 	<WindowsPlatform>
+		<CompilerVersion>14.38.33130</CompilerVersion>
 		<WindowsSdkVersion>10.0.22621.0</WindowsSdkVersion>
 	</WindowsPlatform>
+</Configuration>
+```
+
+## 减少UE编译CPU占用过多的卡顿
+
+找到 \Engine\Saved\UnrealBuildTool\BuildConfiguration.xml
+手动选择WinSDK版本
+
+```xml
+<?xml version="1.0" encoding="utf-8" ?>
+<Configuration xmlns="https://www.unrealengine.com/BuildConfiguration">
+	<BuildConfiguration>
+		<MaxParallelActions>16</MaxParallelActions>
+	</BuildConfiguration>
 </Configuration>
 ```
 
