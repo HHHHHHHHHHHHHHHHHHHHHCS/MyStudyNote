@@ -215,3 +215,12 @@ https://dev.epicgames.com/documentation/zh-cn/unreal-engine/debugging-unreal-eng
 打开 Visual Studio 创建 Continue without code, 然后运行
 
 把要Debug的文件代码拖进 VS, 设置断点就能调试了
+
+## 清理DDC
+
+全部DDC
+引擎地址\Engine\DerivedDataCache
+
+Shader相关
+引擎地址\Engine\DerivedDataCache\FShaderJobCacheShaders
+引擎地址\Engine\DerivedDataCache\GlobalShaderMap
