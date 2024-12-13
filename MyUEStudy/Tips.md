@@ -224,3 +224,15 @@ https://dev.epicgames.com/documentation/zh-cn/unreal-engine/debugging-unreal-eng
 Shader相关
 引擎地址\Engine\DerivedDataCache\FShaderJobCacheShaders
 引擎地址\Engine\DerivedDataCache\GlobalShaderMap
+
+##  ValidateShaderParameters 报错/断言
+
+ValidateShaderParameters 触发的hash断言
+
+Shader %s's parameter structure has changed without recompilation of the shader
+
+因为修改了.h 的 SHADER_PARAMETER_STRUCT 但是 因为UE 缓存的问题, 没有触发重新编译
+
+就算 recompileshaders all 或者 删掉DDC 也没有用
+
+建议 直接 usf 或 ush 加一行注释 触发重编
