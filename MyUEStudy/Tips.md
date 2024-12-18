@@ -225,7 +225,7 @@ Shader相关
 引擎地址\Engine\DerivedDataCache\FShaderJobCacheShaders
 引擎地址\Engine\DerivedDataCache\GlobalShaderMap
 
-##  ValidateShaderParameters 报错/断言
+## ValidateShaderParameters 报错/断言
 
 ValidateShaderParameters 触发的hash断言
 
@@ -236,3 +236,8 @@ Shader %s's parameter structure has changed without recompilation of the shader
 就算 recompileshaders all 或者 删掉DDC 也没有用
 
 建议 直接 usf 或 ush 加一行注释 触发重编
+
+## Rider 行补全过多
+
+关闭下面的
+Setting -> Editor -> General -> Inline Completion -> Enable local Full Line completion suggestions 
