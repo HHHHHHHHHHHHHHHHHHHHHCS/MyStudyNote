@@ -209,6 +209,9 @@ git add .
 
 https://dev.epicgames.com/documentation/zh-cn/unreal-engine/debugging-unreal-engine-projects-for-android-in-visual-studio-with-the-agde-plugin?application_version=5.4
 
+其他安卓文档笔记
+
+https://imzlp.com/posts/17996/
 
 ## Visual Studio 调试PC包
 
@@ -241,3 +244,11 @@ Shader %s's parameter structure has changed without recompilation of the shader
 
 关闭下面的
 Setting -> Editor -> General -> Inline Completion -> Enable local Full Line completion suggestions 
+
+## 使用 AnimNotifyState 和 AnimNotify 注意数据共享的问题
+
+UE 没有对它们做实例化, 所以 相同原型角色实例化出来的角色, AnimNotifyState 和 AnimNotify 的地址是同一个
+
+在里面存私有数据会出现竞争和覆盖的问题, 可以用TMap<MeshComp, Data> 来暂时避免
+
+https://blog.csdn.net/tkokof1/article/details/129024465
