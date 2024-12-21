@@ -258,7 +258,7 @@ https://blog.csdn.net/tkokof1/article/details/129024465
 
 UE4.21 ES2.0 只支持75根骨骼, ES3.x 后理论上支持65536.
 
-但是 因为UE的设置关系, 现在被限制在了256.
+但是 因为UE的设置关系, 移动端索引 现在被限制在了256, 超过后会被自动分块
 
 具体查看 Engine\Config\BaseEngine.ini
 
@@ -267,6 +267,5 @@ MaxSkinBones=(Default=65536,PerPlatform=(("Mobile", 256)))
 ```
 
 所以 单个网格最多只能到65k, 因为顶点索引只有16位.
-单个Skeletal Mesh的骨骼数量必须在75个以内, 因为受硬件性能的限制.
 
 最好 还要开启 r.GPUSkin.Support16BitBoneIndex = 1
