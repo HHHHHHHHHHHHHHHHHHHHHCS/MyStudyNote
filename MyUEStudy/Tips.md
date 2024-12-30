@@ -269,3 +269,18 @@ MaxSkinBones=(Default=65536,PerPlatform=(("Mobile", 256)))
 所以 单个网格最多只能到65k, 因为顶点索引只有16位.
 
 最好 还要开启 r.GPUSkin.Support16BitBoneIndex = 1
+
+## Pak文件查看
+
+https://github.com/jashking/UnrealPakViewer
+
+## 动态添加组件Tick不生效
+
+https://dev.epicgames.com/documentation/zh-cn/unreal-engine/components-in-unreal-engine
+
+需要 RegisterComponent
+
+```C++
+UXXXXXComponent* tempComponent = NewObject<UXXXXXComponent>(xxxxxActor);
+tempComponent->RegisterComponent();
+```
