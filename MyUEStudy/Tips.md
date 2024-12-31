@@ -284,3 +284,28 @@ https://dev.epicgames.com/documentation/zh-cn/unreal-engine/components-in-unreal
 UXXXXXComponent* tempComponent = NewObject<UXXXXXComponent>(xxxxxActor);
 tempComponent->RegisterComponent();
 ```
+
+## 不重新打包修改ini
+
+首先一些离线打包编译的设置是不行的, 这里的都是运行时的
+
+比如 DefaultEngine.ini 下, 要开关RayTracing
+
+```bat
+start ./Windows/xxx.exe -game -fullscreen -ini:Engine:[/Script/Engine.RendererSettings]:r.RayTracing=False
+```
+
+安卓则需要 写一个adb.bat 和 UECommandLine.txt, 把启动指令发送过去
+
+adb.txt, com.company.app 要替换成包名, App要替换成应用名字
+
+```bat
+adb push ./UECommandLine.txt  /sdcard/Android/data/com.company.app/files/UnrealGame/App
+pause
+```
+
+UECommandLine.txt, APP要替换成应用名字
+
+```bat
+-project="../../../App/App.uproject" -ExecCmds="r.Mobile.AntiAliasing 1" -ini:Engine:[/Script/Engine.RendererSettings]:r.DistanceField=0 -forcevulkanddrawmarkers
+```
