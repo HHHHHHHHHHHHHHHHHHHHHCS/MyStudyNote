@@ -219,6 +219,8 @@ https://imzlp.com/posts/17996/
 
 把要Debug的文件代码拖进 VS, 设置断点就能调试了
 
+或者 启动参数添加 -waitfordebugger, 然后Visual Studio 进行 Attach
+
 ## 清理DDC
 
 全部DDC
