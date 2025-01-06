@@ -311,3 +311,23 @@ UECommandLine.txt, APP要替换成应用名字
 ```bat
 -project="../../../App/App.uproject" -ExecCmds="r.Mobile.AntiAliasing 1" -ini:Engine:[/Script/Engine.RendererSettings]:r.DistanceField=0 -forcevulkanddrawmarkers
 ```
+
+## 游戏启动的时候强制设置分辨率
+
+-res=1920x1080wf
+
+对应的方法 UGameEngine::DetermineGameWindowResolution
+
+wf 是 窗口化全屏, f 是 全屏, 如果4K因为设置了缩放不生效, 可以尝试用f
+
+-ResX=1920 -RexY=1080
+
+也可以设置启动的分辨率
+
+-fullscreen
+
+全屏, 但是注意窗口模式(r.FullScreenMode), 或者按 F11
+
+DX12, 都是窗口化全屏
+
+https://devblogs.microsoft.com/directx/demystifying-full-screen-optimizations/
