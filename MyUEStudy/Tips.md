@@ -181,7 +181,6 @@ https://dev.epicgames.com/documentation/en-us/unreal-engine/setting-up-visual-st
 ## 减少UE编译CPU占用过多的卡顿
 
 找到 \Engine\Saved\UnrealBuildTool\BuildConfiguration.xml
-手动选择WinSDK版本
 
 ```xml
 <?xml version="1.0" encoding="utf-8" ?>
@@ -331,3 +330,19 @@ wf 是 窗口化全屏, f 是 全屏, 如果4K因为设置了缩放不生效, �
 DX12, 都是窗口化全屏
 
 https://devblogs.microsoft.com/directx/demystifying-full-screen-optimizations/
+
+## Local Exposure (Local Tonemapping)
+
+https://zhuanlan.zhihu.com/p/717418780
+
+https://zhuanlan.zhihu.com/p/519457212
+
+https://john-chapman.github.io/2017/08/23/dynamic-local-exposure.html
+
+Engine\Source\Runtime\Renderer\Private\PostProcess\PostProcessLocalExposure.cpp
+
+分为3个Pass
+
+1. AddLocalExposureFusionPass
+2. AddLocalExposureBlurredLogLuminancePass
+3. AddApplyLocalExposurePass
