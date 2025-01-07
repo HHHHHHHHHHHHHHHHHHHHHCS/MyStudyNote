@@ -341,8 +341,29 @@ https://john-chapman.github.io/2017/08/23/dynamic-local-exposure.html
 
 Engine\Source\Runtime\Renderer\Private\PostProcess\PostProcessLocalExposure.cpp
 
-分为3个Pass
+分为 2 个模式 ELocalExposureMethod: Bilateral 和 Fusion
+
+Bilateral 分为4个Pass
+
+1. LocalExposure
+2. LocalExposure - Blurred Luminance
+3. BloomSetup(应用)
+4. Tonemap(应用)
+
+Fusion 分为3个Pass
 
 1. AddLocalExposureFusionPass
 2. AddLocalExposureBlurredLogLuminancePass
 3. AddApplyLocalExposurePass
+
+## 升级UE版本编译直接报错
+
+如果升级UE版本, Visual Studio 编译直接报错
+
+先看看对应的 DotNet, MSVC, WinSDK 版本是否安装
+
+然后再 Setup.bat 和 GenerateProjectFiles.bat 再试一试
+
+如果还是不行, 直接 **git -clean -fxd** , 再重复 Setup.bat 和 GenerateProjectFiles.bat 再试一试
+
+注意 clean后, Rider 要重新设置 DotNet, MSVC, WinSDK 版本
