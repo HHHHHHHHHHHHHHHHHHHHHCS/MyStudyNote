@@ -339,11 +339,11 @@ https://zhuanlan.zhihu.com/p/519457212
 
 https://john-chapman.github.io/2017/08/23/dynamic-local-exposure.html
 
-Engine\Source\Runtime\Renderer\Private\PostProcess\PostProcessLocalExposure.cpp
-
 分为 2 个模式 ELocalExposureMethod: Bilateral 和 Fusion
 
 Bilateral 分为4个Pass
+
+Engine\Source\Runtime\Renderer\Private\PostProcess\PostProcessHistogram.cpp
 
 1. LocalExposure
 2. LocalExposure - Blurred Luminance
@@ -351,6 +351,8 @@ Bilateral 分为4个Pass
 4. Tonemap(应用)
 
 Fusion 分为3个Pass
+
+Engine\Source\Runtime\Renderer\Private\PostProcess\PostProcessLocalExposure.cpp
 
 1. AddLocalExposureFusionPass
 2. AddLocalExposureBlurredLogLuminancePass
@@ -367,3 +369,28 @@ Fusion 分为3个Pass
 如果还是不行, 直接 **git -clean -fxd** , 再重复 Setup.bat 和 GenerateProjectFiles.bat 再试一试
 
 注意 clean后, Rider 要重新设置 DotNet, MSVC, WinSDK 版本
+
+## 获取当前 Active Preview Shader Platform
+
+```C++
+
+#if WITH_EDITOR
+
+	#include "Editor.h"
+
+#endif
+
+#if WITH_EDITOR
+
+	const FPreviewPlatformInfo info = GEditor->PreviewPlatform;
+	const EShaderPlatform shaderPlatform = GetFeatureLevelShaderPlatform(info.GetEffectivePreviewFeatureLevel());
+	const bool isMobile = IsMobilePlatform(shaderPlatform);
+
+#elif (PLATFORM_IOS || PLATFORM_ANDROID)
+
+	const bool isMobile = IsMobilePlatform(shaderPlatform);
+
+#endif
+
+```
+
