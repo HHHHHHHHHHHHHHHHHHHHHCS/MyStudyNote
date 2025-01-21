@@ -394,3 +394,20 @@ Engine\Source\Runtime\Renderer\Private\PostProcess\PostProcessLocalExposure.cpp
 
 ```
 
+### 苹果分辨率
+
+https://blog.csdn.net/iOS1501101533/article/details/121434858
+
+https://dev.epicgames.com/documentation/zh-cn/unreal-engine/setting-up-device-profiles-in-unreal-engine?application_version=5.5
+
+https://dev.epicgames.com/documentation/en-us/unreal-engine/performance-guidelines-for-mobile-devices-in-unreal-engine
+
+苹果存在 点分辨率 和 比例因子 和 像素分辨率     点分辨率 * 比例因子 = 像素分辨率
+
+UE [[UIScreen mainScreen] bounds] 获取的是点分辨率
+
+然后再乘以 比例因子 r.MobileContentScaleFactor  得到当前的苹果分辨率
+
+比例因子 默认值是  2,  如果要原生分辨率在 iphone6+ 后 需要是3
+
+不过其实写0 也是原生分辨率
