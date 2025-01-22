@@ -411,3 +411,28 @@ UE [[UIScreen mainScreen] bounds] 获取的是点分辨率
 比例因子 默认值是  2,  如果要原生分辨率在 iphone6+ 后 需要是3
 
 不过其实写0 也是原生分辨率
+
+### 苹果抓帧后不能debug shader
+
+https://dev.epicgames.com/documentation/zh-cn/unreal-engine/debugging-ios-projects-with-xcode-in-unreal-engine
+
+https://dev.epicgames.com/documentation/en-us/unreal-engine/debugging-the-shader-compile-process-in-unreal-engine
+
+提示 需要 import metal source
+
+>> if building with the 'metal' command line tool, add the options '-gline-tables-only' and '-MO' to your compilation step.
+
+找到, 开启下面选项
+
+Engine/Config/ConsoleVariables.ini
+
+```
+r.Shaders.Optimize=0
+
+// UE 4.x
+r.Shaders.KeepDebugInfo=1
+
+// UE 5.x
+r.Shaders.Symbols=1
+r.Shaders.ExtraData=1
+```
