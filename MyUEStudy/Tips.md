@@ -436,3 +436,14 @@ r.Shaders.KeepDebugInfo=1
 r.Shaders.Symbols=1
 r.Shaders.ExtraData=1
 ```
+
+### 苹果内存不够闪退
+
+https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.kernel.extended-virtual-addressing
+
+https://imzlp.com/posts/56381/
+
+开启虚拟内存, Extended Virtual Addressing Entitlement
+
+在XCode -> 项目设置 -> Signing & Capabilities -> + Capability(添加) -> Extented Virtual Addressing
+
