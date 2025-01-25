@@ -447,3 +447,19 @@ https://imzlp.com/posts/56381/
 
 在XCode -> 项目设置 -> Signing & Capabilities -> + Capability(添加) -> Extented Virtual Addressing
 
+### Shader内存过大
+
+https://imzlp.com/posts/15810/
+
+1. 关闭 Support low quality lightmap shader permutations
+  + 这意味着引擎支持为低质量的光照贴图生成不同的着色器版本
+2. 关闭 Support Combined Static and CSM Shadowing
+  + 这表示引擎支持将静态阴影和Cascaded Shadow Maps(CSM)阴影合并
+3. 关闭 Support PointLight WholeSceneShadows
+  + 这个功能允许点光源投射的阴影覆盖整个场景, 而不仅仅是局部区域
+4. 关闭 Support Stationary Skylight
+  + 支持 固定位置旋转范围, 但是可以修改颜色和强度的 固定天光
+5. 开启 Share Material Shader Code
+  + 允许多个材质共享相同的着色器代码. 通过共享代码, 材质渲染过程中的一些计算可以复用
+6. 开启 Shared Material Native Libraries
+  + 共享材质着色器代码的本地库. 它允许不同的材质和材质实例使用同一份底层本地代码库
