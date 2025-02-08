@@ -463,3 +463,8 @@ https://imzlp.com/posts/15810/
   + 允许多个材质共享相同的着色器代码. 通过共享代码, 材质渲染过程中的一些计算可以复用
 6. 开启 Shared Material Native Libraries
   + 共享材质着色器代码的本地库. 它允许不同的材质和材质实例使用同一份底层本地代码库
+
+
+### Pix 因为开启 DLSS 无法正常截帧
+
+启动参数添加 -ExecCmds="r.NGX.DLSS.Enable 0, r.Streamline.DLSSG.Enable 0"
