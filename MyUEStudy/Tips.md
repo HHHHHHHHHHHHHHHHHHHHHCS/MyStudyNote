@@ -464,7 +464,12 @@ https://imzlp.com/posts/15810/
 6. 开启 Shared Material Native Libraries
   + 共享材质着色器代码的本地库. 它允许不同的材质和材质实例使用同一份底层本地代码库
 
-
 ### Pix 因为开启 DLSS 无法正常截帧
 
 启动参数添加 -ExecCmds="r.NGX.DLSS.Enable 0, r.Streamline.DLSSG.Enable 0"
+
+
+### 慢放当前画面自由镜头指令
+
+慢放画面 Slomo 0.0
+自由镜头 ToggleDebugCamera 1
