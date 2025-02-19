@@ -473,3 +473,12 @@ https://imzlp.com/posts/15810/
 
 慢放画面 Slomo 0.0
 自由镜头 ToggleDebugCamera 1
+
+
+### Github Desktop 界面卡
+
+Win11 开启 硬件加速导致的
+
+https://github.com/desktop/desktop/issues/10488
+
+打开 cmd.exe 运行 GITHUB_DESKTOP_DISABLE_HARDWARE_ACCELERATION=1 , 再重启试一试
