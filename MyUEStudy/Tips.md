@@ -148,7 +148,7 @@ tex->Source.Init(width, height, 1, 1, TSF_BGRA8, bgra8);
 
 ## Rider dotnet 报错
 
-因为dotnet选择成了默认的版本, File->Settings->Build, Execution, Deployment->Toolset and Build->MSBuild version->选择正确的dotnet.exe
+因为dotnet选择成了默认的版本, File->Settings->Build, Execution, Deployment->Toolset and Build->.NET CLI executeable path->选择正确的dotnet.exe
 
 UnrealEngine\Engine\Binaries\ThirdParty\DotNet\{版本}\windows\dotnet.exe
 
