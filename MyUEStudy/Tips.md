@@ -482,3 +482,10 @@ Win11 开启 硬件加速导致的
 https://github.com/desktop/desktop/issues/10488
 
 打开 cmd.exe 运行 GITHUB_DESKTOP_DISABLE_HARDWARE_ACCELERATION=1 , 再重启试一试
+
+
+### 控制台输出中文编码乱码
+
+添加这行代码 system("chcp 65001");
+
+C/C++ 文件编码格式改成 UTF-8 with bom 试一试
