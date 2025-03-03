@@ -481,7 +481,7 @@ Win11 开启 硬件加速导致的
 
 https://github.com/desktop/desktop/issues/10488
 
-打开 cmd.exe 运行 GITHUB_DESKTOP_DISABLE_HARDWARE_ACCELERATION=1 , 再重启试一试
+打开 cmd.exe 运行 set GITHUB_DESKTOP_DISABLE_HARDWARE_ACCELERATION=1 , 再重启试一试
 
 
 ### 控制台输出中文编码乱码
