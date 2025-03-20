@@ -514,3 +514,10 @@ UGameplayStatics::CalculateViewProjectionMatricesFromViewTarget(this, ViewMatrix
 // (LocalToWorld * ViewProjectionMatrix)
 
 ```
+
+### .gitignore 不生效
+
+```
+git rm -r --cached .
+git add .
+```
