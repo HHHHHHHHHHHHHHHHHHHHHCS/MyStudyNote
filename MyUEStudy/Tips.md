@@ -489,3 +489,28 @@ https://github.com/desktop/desktop/issues/10488
 添加这行代码 system("chcp 65001");
 
 C/C++ 文件编码格式改成 UTF-8 with bom 试一试
+
+
+### 获取相机View Proj Matrix
+
+因为 这个获取矩阵的 aspect 是 相机的aspect, 而不是屏幕的宽高比, 所以需要手动传入屏幕的宽高比.
+
+```C++
+CameraComp->bConstrainAspectRatio = true;
+
+
+int32 ScreenWidth = GEngine->GameViewport->Viewport->GetSizeXY().X;
+int32 ScreenHeight = GEngine->GameViewport->Viewport->GetSizeXY().Y;
+
+CameraComp->SetAspectRatio(ScreenWidth / (float)ScreenHeight);
+
+FMatrix ViewMatrix;
+FMatrix ProjectionMatrix;
+FMatrix ViewProjectionMatrix;
+UGameplayStatics::CalculateViewProjectionMatricesFromViewTarget(this, ViewMatrix,
+																ProjectionMatrix, ViewProjectionMatrix);
+
+// MVP 
+// (LocalToWorld * ViewProjectionMatrix)
+
+```
