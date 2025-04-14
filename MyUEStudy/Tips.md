@@ -483,6 +483,9 @@ https://github.com/desktop/desktop/issues/10488
 
 打开 cmd.exe 运行 set GITHUB_DESKTOP_DISABLE_HARDWARE_ACCELERATION=1 , 再重启试一试
 
+如果不行可能是因为Shell 导致的卡顿
+
+File -> Options -> Integrations -> Shell 换成 Command Propmpt
 
 ### 控制台输出中文编码乱码
 
