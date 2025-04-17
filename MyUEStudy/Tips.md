@@ -246,6 +246,11 @@ Shader %s's parameter structure has changed without recompilation of the shader
 关闭下面的
 Setting -> Editor -> General -> Inline Completion -> Enable local Full Line completion suggestions 
 
+## Visual Studio 行补全过多
+
+关闭下面的
+右上角 -> GitHub Copilot -> Settings -> Enable Completions for C++
+
 ## 使用 AnimNotifyState 和 AnimNotify 注意数据共享的问题
 
 UE 没有对它们做实例化, 所以 相同原型角色实例化出来的角色, AnimNotifyState 和 AnimNotify 的地址是同一个
