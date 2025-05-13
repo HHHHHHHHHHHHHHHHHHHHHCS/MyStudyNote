@@ -529,3 +529,32 @@ UGameplayStatics::CalculateViewProjectionMatricesFromViewTarget(this, ViewMatrix
 git rm -r --cached .
 git add .
 ```
+
+### 连连看UV被优化
+
+```
+float2 GetUV(FMaterialPixelParameters Parameters, bool useUV1)
+{
+	float2 uv = float2(0, 0);
+#if NUM_TEX_COORD_INTERPOLATORS > 0
+	#if NUM_TEX_COORD_INTERPOLATORS < 1
+		uv = Parameters.TexCoords[0].xy;
+	#else
+		uv = Parameters.TexCoords[useUV1 ? 1 : 0].xy;
+	#endif
+#endif
+	return uv;
+}
+```
+
+因为用Custom Node 和 Shader/ush 写
+
+连连看 认为不需要UV, UE会优化掉 VS Input/Output UV
+
+解决办法 需要有UV输入, 可以不用
+
+
+
+### HLSL 2021 新语法
+
+https://devblogs.microsoft.com/directx/announcing-hlsl-2021/
