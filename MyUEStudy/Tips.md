@@ -558,3 +558,16 @@ float2 GetUV(FMaterialPixelParameters Parameters, bool useUV1)
 ### HLSL 2021 新语法
 
 https://devblogs.microsoft.com/directx/announcing-hlsl-2021/
+
+
+
+
+### Metal Capture Frame Diabled / 不显示
+
+https://developer.apple.com/documentation/xcode/capturing-a-metal-workload-in-xcode
+
+Edit Scheme -> Run -> Options -> GPU Frame Capture -> Metal
+
+选中 项目的xcodeproj -> Build Settings -> 搜索 Capture -> Metal Capture Enabled -> true
+
+如果 Capture Frame 按钮还是灰色的 重启手机
