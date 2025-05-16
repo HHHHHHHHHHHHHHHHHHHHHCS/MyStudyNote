@@ -44,6 +44,10 @@ r.D3D12.AutoAttachPIX=1
 
 打开 NVDIA Control Panel, 标题栏->桌面->启用开发者模式
 
+## RenderDoc 截帧要切换窗口
+
+启动的时候 添加参数 -ExecCmds="renderdoc.CaptureAllActivity 1" 或者 截帧前 执行命令
+
 ## Show FPS
 
 可以Scene View -> Prespective 旁边的拓展按钮 -> ShowFPS (Ctrl+Shift+H)
@@ -571,3 +575,4 @@ Edit Scheme -> Run -> Options -> GPU Frame Capture -> Metal
 选中 项目的xcodeproj -> Build Settings -> 搜索 Capture -> Metal Capture Enabled -> true
 
 如果 Capture Frame 按钮还是灰色的 重启手机
+
