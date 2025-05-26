@@ -576,3 +576,33 @@ Edit Scheme -> Run -> Options -> GPU Frame Capture -> Metal
 
 如果 Capture Frame 按钮还是灰色的 重启手机
 
+## UE 性能分析
+
+https://imzlp.com/posts/19135/
+
+下面可以快速预览下内存
+stat unit
+
+GM 指令
++ stat memory #显示引擎中各个子系统的内存占用
++ stat MemoryAllocator #显示内存分配信息
++ stat MemoryPlatform #显示平台内存信息
++ stat MemoryStaticMesh #显示静态模型的内存信息
+
+启动参数
++ -LLM #启用LLM
++ -LLMCSV #连续将所有值写入CSV文件, 自动启用-LLM
++ -llmtagsets=Assets #实验性功能, 显示每个资源分配的内存总计
++ -llmtagsets=AssetClasses #实验性功能, 显示每个UObject类类型的总计
+
+开启LLM后, 运行下面GM
+stat llm #显示LLM摘要, 所有较低级别的引擎统计信息都归入单个引擎统计信息。
+stat llmfull #显示LLM所有统计信息
+stat LLMPlatform #显示从OS分配的所有内存信息 
+stat LLMOverhead #显示LLM内部使用的内存
+
+要生成更详细的内存报告, 可以使用 MemReport 配合 -full 参数:
+
+MemReport -full
+
+生成的报告将保存在 Game/Saved/Profiling/MemReports 目录下，文件格式为 .memreport
