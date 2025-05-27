@@ -606,3 +606,25 @@ stat LLMOverhead #显示LLM内部使用的内存
 MemReport -full
 
 生成的报告将保存在 Game/Saved/Profiling/MemReports 目录下，文件格式为 .memreport
+
+通常只用看 ResExcKB 这个就好了, 可以用同文件夹下的 MemreportToCSV.py 转换为CSV
+
+https://www.intel.cn/content/www/cn/zh/developer/articles/technical/unreal-engine-optimization-profiling-fundamentals.html
+
++ Count - instances of UObject
++ NumKB - the amount of memory used by the UObject
++ ResExcKB - the amount of memory used by resources owned by this UObject
++ ResExcDedSysKB - the amount of memory in system memory
++ ResExcDedVidKB - the amount of memory in dedicated video memory
+
+ADB 查看内存
+
+这个命令会输出系统中所有进程的内存信息, 包括 PSS/USS/RSS 等
+adb shell dumpsys meminfo
+
+输出某个 APP的 内存
+adb shell dumpsys meminfo com.example.myapp
+
+或者 先获取 PID 在 根据PID 输出 特定APP的内存
+adb shell pidof com.example.myapp
+adb shell dumpsys meminfo <pid>
