@@ -1,7 +1,10 @@
 import os
+import re
 
 DEFAULT_TITLE = "Total"
 LIST_PARTICLE_SYSTEMS = "ListParticleSystems"
+CLASS_STATIC_MESH = "class=StaticMesh "
+CLASS_SKELETAL_MESH = "class=SkeletalMesh "
 
 class CSVFile:
 	csv_type = ""
@@ -10,6 +13,7 @@ class CSVFile:
 	end_line = -1
 	last_to_top_line = 0
 	is_texture_group = False
+	is_special_class = False
 
 	def __str__(self):
 		return f"CSVFile(csv_type={self.csv_type}, start_line={self.start_line}, end_line={self.end_line})"
@@ -34,21 +38,38 @@ def DoMain(file_path):
 				if temp_csv.start_line >= 0 and temp_csv.end_line > temp_csv.start_line:
 					csv_list.append(temp_csv)
 
+					if temp_csv.is_special_class:
+						header_index = temp_csv.start_line+1
+						header = re.findall(r'\S+', lines[header_index])
+						lines[header_index] = (','.join(header)) + '\n'
+						header_index = temp_csv.end_line-4
+						header = re.findall(r'\S+', lines[header_index])
+						lines[header_index] = (','.join(header)) + '\n'
+						header_index = temp_csv.end_line-3
+						lines[header_index] = ','.join(lines[header_index].rsplit(' ', 1))
+
 				temp_csv = CSVFile()
 
 			elif temp_csv.start_line < 0:
 				if temp_csv.csv_type == LIST_PARTICLE_SYSTEMS or temp_csv.is_texture_group:
-					temp_csv.start_line = curr_line + 1 # 跳过这行和下一行
+					temp_csv.start_line = curr_line + 1 # 跳过这行
 				elif line.startswith(','):
 					temp_csv.start_line = curr_line
+				elif temp_csv.is_special_class:
+					temp_csv.start_line = curr_line + 2 # 跳过这行和下行
 			
-			if line.startswith(','):
-				lines[curr_line] = line[1:]
-			elif temp_csv.is_texture_group:
-				if line.startswith("Total "):
-					temp_csv.last_to_top_line += 1
-				elif line.find(" KB, ") > 0:
-					lines[curr_line] = line.replace(" KB, ", " KB| ", 1)
+			if temp_csv.is_open:
+				if line.startswith(','):
+					lines[curr_line] = line[1:]
+				elif temp_csv.is_texture_group:
+					if line.startswith("Total "):
+						temp_csv.last_to_top_line += 1
+					elif line.find(" KB, ") > 0:
+						lines[curr_line] = line.replace(" KB, ", " KB| ", 1)
+				elif temp_csv.is_special_class:
+					match = re.match(r'^(.*?)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)$', line.strip())
+					if match:
+						lines[curr_line] = (','.join(match.groups()))+'\n'
 
 		elif line.startswith("MemReport: Begin command"):
 			title_start = line.find('"') + 1
@@ -79,6 +100,15 @@ def DoMain(file_path):
 				temp_csv.csv_type = csv_type
 				temp_csv.is_texture_group = True
 				temp_csv.last_to_top_line = 0
+
+			elif CLASS_STATIC_MESH in csv_type or CLASS_SKELETAL_MESH in csv_type:
+				temp_csv.is_open = True
+				class_start = csv_type.find("class=")
+				class_end = csv_type.find(" ", class_start)
+				csv_type = csv_type[class_start+len("class="):class_end]
+				temp_csv.csv_type = csv_type
+				temp_csv.last_to_top_line = 1
+				temp_csv.is_special_class = True
 
 		curr_line += 1
 

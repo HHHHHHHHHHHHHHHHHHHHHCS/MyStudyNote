@@ -607,6 +607,17 @@ MemReport -full
 
 生成的报告将保存在 Game/Saved/Profiling/MemReports 目录下，文件格式为 .memreport
 
+Android 地址: \ > storage > emulated > 0 > Android > data > com.example.myapp > files > UnrealGame > myapp > myapp > saved > Profiling  > MemReports
+
+或者直接用下面的bat
+
+```bat
+adb pull  /sdcard/Android/data/com.example.myapp/files/UnrealGame/myapp/myapp/Saved/Logs/. ./Logs/
+adb pull  /sdcard/Android/data/com.example.myapp/files/UnrealGame/myapp/myapp/Saved/Profiling/. ./Profiling/
+pause
+
+```
+
 通常只用看 ResExcKB 这个就好了, 可以用同文件夹下的 MemreportToCSV.py 转换为CSV
 
 https://www.intel.cn/content/www/cn/zh/developer/articles/technical/unreal-engine-optimization-profiling-fundamentals.html
