@@ -1,3 +1,19 @@
+## 源码Setup过慢
+
+clash cmd git 代理失败, 尝试用下面的语句
+set http_proxy=http://127.0.0.1:7890
+set https_proxy=http://127.0.0.1:7890
+关闭代理
+set http_proxy=
+set https_proxy=
+
+下面这样可以配置Git全局代理
+git config --global http.proxy http://127.0.0.1:7890
+git config --global https.proxy http://127.0.0.1:7890
+取消Git全局代理
+git config --global --unset http.proxy
+git config --global --unset https.proxy
+
 ## 调试及启用RenderDoc
 
 Plugins中安装 RenderDoc
@@ -564,8 +580,6 @@ float2 GetUV(FMaterialPixelParameters Parameters, bool useUV1)
 https://devblogs.microsoft.com/directx/announcing-hlsl-2021/
 
 
-
-
 ### Metal Capture Frame Diabled / 不显示
 
 https://developer.apple.com/documentation/xcode/capturing-a-metal-workload-in-xcode
@@ -575,6 +589,7 @@ Edit Scheme -> Run -> Options -> GPU Frame Capture -> Metal
 选中 项目的xcodeproj -> Build Settings -> 搜索 Capture -> Metal Capture Enabled -> true
 
 如果 Capture Frame 按钮还是灰色的 重启手机
+
 
 ## UE 性能分析
 
@@ -639,3 +654,15 @@ adb shell dumpsys meminfo com.example.myapp
 或者 先获取 PID 在 根据PID 输出 特定APP的内存
 adb shell pidof com.example.myapp
 adb shell dumpsys meminfo <pid>
+
+
+## 只加载特定质量的shader
+
+只加载特定质量的shader, 提高加载速度, 节省内存, 但是不方便切画质了
+
+AndroidEngine.ini
+
+```
+[/Script/Engine.RendererSettings]
+r.DiscardUnusedQuality=True
+```
