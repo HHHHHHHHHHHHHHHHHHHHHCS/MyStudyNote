@@ -678,11 +678,9 @@ r.DiscardUnusedQuality=True
 修改下面
 
 ```
-NumUnusedShaderCompilingThreads=1
-NumUnusedShaderCompilingThreadsDuringGame=1
-ShaderCompilerCoreCountThreshold=32
+
 PercentageUnusedShaderCompilingThreads=0
-WorkerProcessPriority=1
-bUseVirtualCores = True
+; 改成1会比较卡
+WorkerProcessPriority=0
 
 ```
