@@ -669,3 +669,20 @@ AndroidEngine.ini
 [/Script/Engine.RendererSettings]
 r.DiscardUnusedQuality=True
 ```
+
+
+## 修改UE Shader Compile 速度
+
+打开 UnrealEngine\Engine\Config\BaseEngine.ini
+
+修改下面
+
+```
+NumUnusedShaderCompilingThreads=1
+NumUnusedShaderCompilingThreadsDuringGame=1
+ShaderCompilerCoreCountThreshold=32
+PercentageUnusedShaderCompilingThreads=0
+WorkerProcessPriority=1
+bUseVirtualCores = True
+
+```
