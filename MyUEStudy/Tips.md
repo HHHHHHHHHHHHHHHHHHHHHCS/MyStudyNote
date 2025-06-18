@@ -658,6 +658,11 @@ adb shell dumpsys meminfo com.example.myapp
 adb shell pidof com.example.myapp
 adb shell dumpsys meminfo <pid>
 
+## 查看运行时引用
+
+GM指令输入, 可以查看引用关系
+
+obj refs name=VT_PerlinWorley_Balanced
 
 ## 只加载特定质量的shader
 
@@ -684,3 +689,9 @@ PercentageUnusedShaderCompilingThreads=0
 WorkerProcessPriority=0
 
 ```
+
+## Nanite 和 DDX/DDY
+
+PC 开了 Nanite后 用硬件的DDX和DDY 会有 BUG, 速度会变慢很多, UE 自己算了一套DDX/DDY 在 5.7修复
+比如在 CustomNode 里面 手动写 TextureSampleBias
+https://issues.unrealengine.com/issue/UE-268303
