@@ -662,7 +662,18 @@ adb shell dumpsys meminfo <pid>
 
 GM指令输入, 可以查看引用关系
 
+
 obj refs name=VT_PerlinWorley_Balanced
+
+然后找到代码构造函数中的一些强制引用, 添加HasAnyFlags, 去掉加载
+
+```C++
+if (!HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject | RF_DefaultSubObject))
+{
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> VolumetricCloudDefaultMaterialRef(TEXT("/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst.m_SimpleVolumetricCloud_Inst"));
+	Material = VolumetricCloudDefaultMaterialRef.Object;
+}
+```
 
 ## 只加载特定质量的shader
 
