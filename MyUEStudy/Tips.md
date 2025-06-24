@@ -706,3 +706,8 @@ WorkerProcessPriority=0
 PC 开了 Nanite后 用硬件的DDX和DDY 会有 BUG, 速度会变慢很多, UE 自己算了一套DDX/DDY 在 5.7修复
 比如在 CustomNode 里面 手动写 TextureSampleBias
 https://issues.unrealengine.com/issue/UE-268303
+
+
+## FXC saturate 精度编译报错
+
+UE用FXC 做 mobile preview,  saturate(half) 就会出现报错 需要强制转换为float
