@@ -711,3 +711,23 @@ https://issues.unrealengine.com/issue/UE-268303
 ## FXC saturate 精度编译报错
 
 UE用FXC 做 mobile preview,  saturate(half) 就会出现报错 需要强制转换为float
+
+
+## 生成Patch
+
+生成patch pak
+
+```BAT
+@ECHO OFF
+set PakFilename="xxxx\Paks\pakchunk999-AndroidP.pak"
+set ResponseFile="xxxx\ConfigPakList.txt"
+set UnrealPak=".\Engine\Binaries\Win64\UnrealPak.exe"
+CALL %UnrealPak% %PakFilename%  -create=%ResponseFile%
+PAUSE
+```
+
+ConfigPakList.txt
+
+```
+xxxxxxx\Game\Config\Android\AndroidEngine.ini ../../../{appName}/Config/Android/
+```
