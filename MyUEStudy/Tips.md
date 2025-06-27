@@ -731,3 +731,17 @@ ConfigPakList.txt
 ```
 xxxxxxx\Game\Config\Android\AndroidEngine.ini ../../../{appName}/Config/Android/
 ```
+
+## 替换 exe debug
+
+写一个 bat, 拷贝 xxxxx\Binaries\Win64 下的  appName.exe 和 appName.pdb 去替换
+
+```BAT
+
+set clientconfig=Development
+set cookconfig=-SkipCook
+set pakconfig=-SkipPak 
+
+call XXXXXXX\Engine\Build\BatchFiles\RunUAT.bat BuildGame -project="XXXXXXX\FY.uproject" -nop4 -prereqs -clientconfig=%clientconfig% %cookconfig% -targetplatform=Win64 -utf8output 
+
+```
