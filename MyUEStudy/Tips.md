@@ -745,3 +745,20 @@ set pakconfig=-SkipPak
 call XXXXXXX\Engine\Build\BatchFiles\RunUAT.bat BuildGame -project="XXXXXXX\FY.uproject" -nop4 -prereqs -clientconfig=%clientconfig% %cookconfig% -targetplatform=Win64 -utf8output 
 
 ```
+
+## 关闭RHI异步
+
+启动添加
+
+-ExecCmds="r.RHIThread.Enable 0, r.RDG.ImmediateMode 1, r.RDG.Debug.FlushGPU 1"
+
+## 遍历特定 Actor Class
+
+```C++
+
+for (TActorIterator<XXXXXXX> It(GetWorld()); It; ++It)
+{
+	XXXXXXX* actor = *It;
+}
+
+```
