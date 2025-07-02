@@ -765,4 +765,13 @@ for (TActorIterator<XXXXXXX> It(GetWorld()); It; ++It)
 
 ## 变体统计
 
-生成方法: 配置本地打包环境 清空缓存 打包 cook完后会在项目目录\Game\Saved\MaterialStats下生成变体统计文件
+打开编辑 Engine\Config\ConsoleVariables.ini
+
+```
+r.ShaderDevelopmentMode=1
+
+r.DumpShaderDebugInfo=1
+```
+
+cook完后会在 {项目目录}\Saved\MaterialStats下生成变体统计文件 Permutations 是变体的数量
+MaterialStatsDebug 是详细的变体枚举, PermutationString 是变体枚举排列
