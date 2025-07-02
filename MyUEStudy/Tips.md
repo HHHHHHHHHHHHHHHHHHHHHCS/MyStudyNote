@@ -762,3 +762,7 @@ for (TActorIterator<XXXXXXX> It(GetWorld()); It; ++It)
 }
 
 ```
+
+## 变体统计
+
+生成方法: 配置本地打包环境 清空缓存 打包 cook完后会在项目目录\Game\Saved\MaterialStats下生成变体统计文件
