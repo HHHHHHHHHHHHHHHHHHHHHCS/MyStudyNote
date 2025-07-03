@@ -773,5 +773,6 @@ r.ShaderDevelopmentMode=1
 r.DumpShaderDebugInfo=1
 ```
 
-cook完后会在 {项目目录}\Saved\MaterialStats下生成变体统计文件 Permutations 是变体的数量
-MaterialStatsDebug 是详细的变体枚举, PermutationString 是变体枚举排列
+cook完后会在 {项目目录}\Saved\MaterialStats下生成变体统计文件   Cooked 是 MultiCompile 材质球的数量, Permutations 是ShaderFeature的数量
+MaterialStatsDebug 是详细的变体枚举, PermutationString 是ShaderFeature排列
+Cooked = 每个 Permutations 的 Uses 累加
