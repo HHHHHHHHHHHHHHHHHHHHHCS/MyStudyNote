@@ -50,6 +50,6 @@ if __name__ == "__main__":
 				title= f"{platformtarget} {tips}",
 				msg=tips)
 				
-
-			toast.set_audio(sound=None, loop=False)
+			# None 会阻塞执行
+			# toast.set_audio(sound=None, loop=False)
 			toast.show()
