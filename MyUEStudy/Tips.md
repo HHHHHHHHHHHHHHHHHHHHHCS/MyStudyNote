@@ -773,6 +773,24 @@ r.ShaderDevelopmentMode=1
 r.DumpShaderDebugInfo=1
 ```
 
-cook完后会在 {项目目录}\Saved\MaterialStats下生成变体统计文件   Cooked 是 MultiCompile 材质球的数量, Permutations 是ShaderFeature的数量
-MaterialStatsDebug 是详细的变体枚举, PermutationString 是ShaderFeature排列
+cook完后会在 {项目目录}\Saved\MaterialStats下生成变体统计文件
+Cooked 是 最终变体Shader 的数量(建议参考这个), Permutations 是ShaderFeature的数量
+
+{项目目录}\Saved\MaterialStatsDebug 是详细的变体枚举
+PermutationString 是 ShaderFeature 排列
+
 Cooked = 每个 Permutations 的 Uses 累加
+
+怎么看 Uses 的详情? 随便举个例子, cook生成了2个变体目录, 每个 又有6个子文件夹
+
+下面就是cook生成的中间结果, 2 (Permutations) * 6 (Uses) = 12 (Cooked)
+
+{项目目录}\Saved\ShaderDebugInfo\VULKAN_ES3_1_ANDROID\M_Test_e6f739dfdb823b6d\Default\FLocalVertexFactory
+{项目目录}\Saved\ShaderDebugInfo\VULKAN_ES3_1_ANDROID\M_Test_155e94de3daa0004\Default\FLocalVertexFactory
+
+  + TMobileBasePassPSFMobileDirectionalLightAndCSMPolicyLOCAL_LIGHTS_DISABLED
+  + TMobileBasePassPSFMobileDirectionalLightAndCSMPolicyLOCAL_LIGHTS_ENABLED
+  + TMobileBasePassPSFNoLightMapPolicyLOCAL_LIGHTS_DISABLED
+  + TMobileBasePassPSFNoLightMapPolicyLOCAL_LIGHTS_ENABLED
+  + TMobileBasePassVSFMobileDirectionalLightAndCSMPolicy
+  + TMobileBasePassVSFNoLightMapPolicy
