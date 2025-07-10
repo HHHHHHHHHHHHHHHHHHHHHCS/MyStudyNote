@@ -794,3 +794,13 @@ Cooked = 每个 Permutations 的 Uses 累加
   + TMobileBasePassPSFNoLightMapPolicyLOCAL_LIGHTS_ENABLED
   + TMobileBasePassVSFMobileDirectionalLightAndCSMPolicy
   + TMobileBasePassVSFNoLightMapPolicy
+
+## stat 相关指令
+
+https://dev.epicgames.com/documentation/zh-cn/unreal-engine/stat-commands-in-unreal-engine
+
+## 包体启用 Insights
+
+启动命令行添加
+
+-trace=cpu,frame,bookmark,log,loadtime,file,net,gpu,memory -statnamedevents -LLM -LLMCSV
