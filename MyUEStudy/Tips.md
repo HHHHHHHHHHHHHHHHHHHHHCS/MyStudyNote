@@ -803,4 +803,6 @@ https://dev.epicgames.com/documentation/zh-cn/unreal-engine/stat-commands-in-unr
 
 启动命令行添加
 
--trace=cpu,frame,bookmark,log,loadtime,file,net,gpu,memory -statnamedevents -LLM -LLMCSV
+-trace=cpu,frame,bookmark,log,loadtime,file,net,gpu,memory -tracehost=127.0.0.1 -statnamedevents -LLM -LLMCSV
+
+-tracehost=127.0.0.1 是给移动端用的
