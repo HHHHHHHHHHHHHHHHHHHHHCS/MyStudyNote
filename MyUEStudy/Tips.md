@@ -806,3 +806,7 @@ https://dev.epicgames.com/documentation/zh-cn/unreal-engine/stat-commands-in-unr
 -trace=cpu,frame,bookmark,log,loadtime,file,net,gpu,memory -tracehost=127.0.0.1 -statnamedevents -LLM -LLMCSV
 
 -tracehost=127.0.0.1 是给移动端用的
+
+## debug d3d 命令
+
+启动参数添加 -d3ddebug
