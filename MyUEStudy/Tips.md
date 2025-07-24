@@ -810,3 +810,18 @@ https://dev.epicgames.com/documentation/zh-cn/unreal-engine/stat-commands-in-unr
 ## debug d3d 命令
 
 启动参数添加 -d3ddebug
+
+## 用代码创建的Volume没有gizmos
+
+代码创建的Volume没有, 但是点击拖进来的Volume 有
+
+需要手动添加 CreateBrushForVolumeActor
+
+```C++
+UCubeBuilder* builder = NewObject<UCubeBuilder>();
+UActorFactory::CreateBrushForVolumeActor(newActor, builder);
+
+newActor->PostEditChange();
+newActor->PostEditMove(true);
+
+```
