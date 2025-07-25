@@ -825,3 +825,8 @@ newActor->PostEditChange();
 newActor->PostEditMove(true);
 
 ```
+## FString 条件断点FString
+
+```C++
+wcsstr(*(const wchar_t**)((const char*)&MyString + 0), L"156") != 0
+```
