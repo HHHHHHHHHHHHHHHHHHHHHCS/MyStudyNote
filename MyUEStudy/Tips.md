@@ -710,7 +710,7 @@ https://issues.unrealengine.com/issue/UE-268303
 
 ## FXC saturate 精度编译报错
 
-UE用FXC 做 mobile preview,  saturate(half) 就会出现报错 需要强制转换为float
+UE用FXC 做 mobile preview, saturate(half) 就会出现报错 需要强制转换为float
 
 
 ## 生成Patch
@@ -829,4 +829,16 @@ newActor->PostEditMove(true);
 
 ```C++
 wcsstr(*(const wchar_t**)((const char*)&MyString + 0), L"156") != 0
+```
+
+## 命令编译项目
+
+命令编译项目, 用于代码打包编译检测通过
+
+```Bat
+:: Windows Editor
+call {引擎地址}\Engine\Build\BatchFiles\Build.bat {AppName}Editor Win64 Development "{项目路径}\{AppName}.uproject"
+
+:: Android
+call {引擎地址}\Build.bat {AppName} Android Development ""{项目路径}\{AppName}.uproject"
 ```
