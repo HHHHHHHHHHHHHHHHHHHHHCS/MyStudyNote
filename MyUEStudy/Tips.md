@@ -842,3 +842,9 @@ call {引擎地址}\Engine\Build\BatchFiles\Build.bat {AppName}Editor Win64 Deve
 :: Android
 call {引擎地址}\Build.bat {AppName} Android Development ""{项目路径}\{AppName}.uproject"
 ```
+
+## Device Output Log
+
+可以看Log 和 输入指令
+
+{引擎地址}\Engine\Binaries\Win64\UnrealFrontend.exe
