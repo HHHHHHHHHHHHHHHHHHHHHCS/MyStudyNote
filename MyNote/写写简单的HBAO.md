@@ -621,9 +621,9 @@ Pass
 
 在循环判断HBAO之前还要在Fragment中做点数据准备.
 
-先写一个 **GetViewPos** . 输入uv, uv采样深度图获得depth. uv和depth和UNITY_MATRIX_I_P 反算出viewPos. viewPos的z是near\~far而不是0\~1.
+先写一个 **GetViewPos** . 输入uv, uv采样深度图获得depth. uv和depth和UNITY_MATRIX_I_P 反算出viewPos, 注意y的反转. viewPos的z是near\~far而不是0\~1.
 
-再写一个 **FetchViewNormals** . 采样之前ConfigInput的WorldNormal, 再转换到ViewSpace下. 注意反转YZ.
+再写一个 **FetchViewNormals** . 采样之前ConfigInput的WorldNormal, 再转换到ViewSpace下. 注意反转Z.
 
 ```C++
 
@@ -634,6 +634,7 @@ float3 GetViewPos(float2 uv)
 {
 	float depth = SampleSceneDepth(uv);
 	float2 newUV = float2(uv.x, uv.y);
+	newUV.y = 1 - newUV.y;
 	newUV = newUV * 2 - 1;
 	float4 viewPos = mul(UNITY_MATRIX_I_P, float4(newUV, depth, 1));
 	viewPos /= viewPos.w;

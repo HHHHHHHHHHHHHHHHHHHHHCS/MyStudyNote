@@ -848,3 +848,9 @@ call {引擎地址}\Build.bat {AppName} Android Development ""{项目路径}\{Ap
 可以看Log 和 输入指令
 
 {引擎地址}\Engine\Binaries\Win64\UnrealFrontend.exe
+
+## 增量Cook
+
+打包Bat中添加
+
+-AdditionalCookerOptions="-noshaderddc -iterative"
