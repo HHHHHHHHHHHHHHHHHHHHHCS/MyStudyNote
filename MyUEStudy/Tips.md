@@ -88,6 +88,10 @@ Editor Perference -> 搜索recompile 里面可以改快捷键
 
 编译单个Shader, 控制台输入 **recompileshaders /Engine/Private/DeferredLightPixelShaders.usf**
 
+编译材质球, **Recompileshaders material <MaterialName>**, 将重新编译与名字匹配的第一个material
+
+编译很多无材质球的shader, 比如Compute Shader 或者 deferred lighting, **Recompileshaders global**
+
 详情 **https://docs.unrealengine.com/4.26/en-US/API/Runtime/Engine/RecompileShaders/**
 
 ## VS解决方案资源管理器中自动定位当前编辑中的文件
