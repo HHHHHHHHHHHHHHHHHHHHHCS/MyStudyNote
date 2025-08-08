@@ -858,3 +858,15 @@ call {引擎地址}\Build.bat {AppName} Android Development ""{项目路径}\{Ap
 打包Bat中添加
 
 -AdditionalCookerOptions="-noshaderddc -iterative"
+
+## AFS
+
+Shipping 包有时候用 ADB 无法正常推送 或者 读取不到 uproject
+
+AndroidFileServer是虚幻专为Android平台开发的一款文件服务系统。
+
+Android SDK版本在30(Android 10)以上, 原有的UE4Game文件夹无法再创建到Android根目录
+
+即使使用外部公共目录也无法直接通过手机获取到日志文件, 以及部分Save下的文件内容, ROOT的手机应该可以看到, 但引擎默认是固定死的这个路径的
+
+如果不用AFS, 需要自己去修改源码把这些路径重定向到Android新版本支持的目录下, 而AFS则解决了上述问题
