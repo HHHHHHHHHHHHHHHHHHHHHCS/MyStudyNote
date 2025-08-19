@@ -859,6 +859,11 @@ call {引擎地址}\Build.bat {AppName} Android Development ""{项目路径}\{Ap
 
 -AdditionalCookerOptions="-noshaderddc -iterative"
 
+或
+
+-iterativecooking
+
+
 ## AFS
 
 Shipping 包有时候用 ADB 无法正常推送 或者 读取不到 uproject
