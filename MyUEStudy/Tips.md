@@ -805,11 +805,27 @@ https://dev.epicgames.com/documentation/zh-cn/unreal-engine/stat-commands-in-unr
 
 ## 包体启用 Insights
 
-启动命令行添加
+如果是PC包 启动项添加
 
--trace=cpu,frame,bookmark,log,loadtime,file,net,gpu,memory -tracehost=127.0.0.1 -statnamedevents -LLM -LLMCSV
+```Bat
+-trace=cpu,frame,bookmark,log,loadtime,file,net,gpu,memory -statnamedevents -LLM -LLMCSV
+```
 
--tracehost=127.0.0.1 是给移动端用的
+如果是安卓包
+
+PC执行
+
+```bat
+adb reverse tcp:1980 tcp:1980
+adb shell setprop debug.ue.commandline -tracehost=127.0.0.1
+pause
+```
+
+安卓启动项命令行添加
+
+```bat
+-forcevulkanddrawmarkers -ExecCmds="stat fps, stat unit" -trace=cpu,frame,bookmark,log,loadtime,file,net,gpu,memory -statnamedevents -LLM -LLMCSV
+```
 
 ## debug d3d 命令
 
