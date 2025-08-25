@@ -891,3 +891,29 @@ Android SDK版本在30(Android 10)以上, 原有的UE4Game文件夹无法再创�
 即使使用外部公共目录也无法直接通过手机获取到日志文件, 以及部分Save下的文件内容, ROOT的手机应该可以看到, 但引擎默认是固定死的这个路径的
 
 如果不用AFS, 需要自己去修改源码把这些路径重定向到Android新版本支持的目录下, 而AFS则解决了上述问题
+
+
+## 打开文件夹选中文件
+
+```C++
+
+void OpenSelectFile(FString path)
+{
+	if (FPaths::FileExists(path))
+	{
+		FString absolutePath = FPaths::ConvertRelativePathToFull(path);
+		// 注意这里要用 '\' 而不是 '/'
+		absolutePath = absolutePath.Replace(TEXT("/"),TEXT("\\"));
+
+		FString arguments = FString::Printf(TEXT("/select,\"%s\""), *absolutePath);
+
+		FPlatformProcess::CreateProc(TEXT("explorer.exe"), *arguments, true, false, false, nullptr, 0, nullptr, nullptr);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("File does not exist: %s"), *path);
+	}
+}
+
+
+```
