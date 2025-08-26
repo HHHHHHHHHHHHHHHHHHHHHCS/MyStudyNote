@@ -917,3 +917,51 @@ void OpenSelectFile(FString path)
 
 
 ```
+
+## 多线程执行
+
+
+```C++
+
+#include "Async/ParallelFor.h"
+
+FCriticalSection ResultCS;
+
+ParallelFor(allTextures.Num(), [&](int32 Index)
+{
+	TObjectPtr<UTexture2D> item = allTextures[Index];
+	FString texHash;
+	const bool isValid = GetTextureHash(item, texHash);
+	if (isValid)
+	{
+		FScopeLock Lock(&ResultCS);
+
+		// Dothing...
+	}
+});
+
+```
+
+## Mobile Cluster Deferred Lighting
+
+指令执行
+
+r.Mobile.UseClusteredDeferredShading 1
+
+如果出现乱闪, 可能是Per Cell Max Light 过小, 尝试下面这个
+
+r.Forward.MaxCulledLightsPerCell 64
+
+## Mobile Float 精度
+
+"0: Use Half-precision (default)"
+"1: Half precision, except Full precision for material expressions"
+"2: Force use of high precision in pixel shaders."
+
+r.Mobile.FloatPrecisionMode=1
+
+## 关闭UDP
+
+因为UDP 会有大量的网络占用, 启动参数添加
+
+-UDPMESSAGING_TRANSPORT_ENABLE=0
