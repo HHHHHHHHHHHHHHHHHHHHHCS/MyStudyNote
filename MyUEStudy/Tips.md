@@ -807,8 +807,10 @@ https://dev.epicgames.com/documentation/zh-cn/unreal-engine/stat-commands-in-unr
 
 如果是PC包 启动项添加
 
+task 会显示 waitfortask 在等什么任务
+
 ```Bat
--trace=cpu,frame,bookmark,log,loadtime,file,net,gpu,memory -statnamedevents -LLM -LLMCSV
+-trace=log,frame,cpu,gpu,memory,loadtime,callstack,task,bookmark -statnamedevents -LLM -LLMCSV
 ```
 
 如果是安卓包
@@ -824,7 +826,7 @@ pause
 安卓启动项命令行添加
 
 ```bat
--forcevulkanddrawmarkers -ExecCmds="stat fps, stat unit" -trace=cpu,frame,bookmark,log,loadtime,file,net,gpu,memory -statnamedevents -LLM -LLMCSV
+-forcevulkanddrawmarkers -ExecCmds="stat fps, stat unit" -trace=log,frame,cpu,gpu,memory,loadtime,callstack,task,bookmark -statnamedevents -LLM -LLMCSV
 ```
 
 ## debug d3d 命令
