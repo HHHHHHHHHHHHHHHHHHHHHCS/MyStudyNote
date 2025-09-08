@@ -967,3 +967,53 @@ r.Mobile.FloatPrecisionMode=1
 因为UDP 会有大量的网络占用, 启动参数添加
 
 -UDPMESSAGING_TRANSPORT_ENABLE=0
+
+
+## 优化文章
+
+https://www.zhihu.com/people/KethersHao/posts
+
+
+0. 卡顿大作战：剖析每次帧数下降的原因 The Great Hitch Hunt: Tracking Down Every Frame Drop | Unreal Fest Orlando 2025
+
+https://zhuanlan.zhihu.com/p/1947797880443212469
+
+注意 Nanite 产生的物理碰撞模型(SetupBody)
+
+注意 overlap 事件, 包括生成的时候overlap 和 移动的时候overlap
+
+-clearPSODriverCache 启动函数添加这个 可以清理PSO
+https://zhuanlan.zhihu.com/p/1947801700254617799
+Nvidia最近修改了驱动缓存的PSO命名, 导致-clearPSODriverCache启动参数在5.6之前的版本不再生效了, 除非等待引擎更新修复
+可以cherry-pick这个提交（对于Perforce用户来说是CL 40200336, 这是个很小的更改
+PSOCacheBuster插件也实现了这个修复
+
+使用obj list -countsort控制台命令来查看你当前所有的UObj
+
+蓝图同步加载, 空的Tick, 无效输出节点排查 https://github.com/Flassari/CommonValidators
+
+
+
+1. UE游戏性能最大化 Maximizing Your Game's Performance in Unreal Engine | Unreal Fest 2022
+
+https://zhuanlan.zhihu.com/p/1947794933177104041
+
+Profile CPU
+Tools->Run Unreal Insights
+
+Profile GPU 
+Ctrl+Shift+Comma(,)
+或者控制台命令：ProfileGPU
+对当前帧进行Profile
+
+GPU Visualizer 可以看GPU耗时
+
+gc.CollectGarbageEveryFrame 1 每帧GC 然后通过 Insights 看内存泄漏
+
+
+
+2. 打破虚幻引擎中的“最佳实践”传言 Myth-Busting "Best Practices" in Unreal Engine
+
+https://zhuanlan.zhihu.com/p/1947787635486622837
+
+空Tick开销    5.6及其之后空Tick不再有开销 对于先前的版本,可以cherry-pick 提交
