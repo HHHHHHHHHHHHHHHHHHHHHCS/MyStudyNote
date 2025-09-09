@@ -1022,6 +1022,10 @@ https://zhuanlan.zhihu.com/p/1947787635486622837
 
 ## 变体优化
 
-0. 少用 Static Mask 和 Static Bool, 很容易 不可控
+0. 少用 Component Mask 和 Static Bool 和 Channel Mask, 很容易不可控
 
 1. 注意Vertex Factory, 尤其是导入 GFur 等
+
+2. 注意 材质球 Material Domain 是否是 Light Function, 会对 FMobileDirectionalLightFunctionPS 做Shader变体展开 约有2700个, 还不算材质的变体展开, 比如 UltraDynamicSky 2D_Cloud_Shadows 和 Volumetric_Cloud_Shadows
+
+3. FMaterialShader 的 SHADER_PERMUTATION_BOOL 相关变体, 如果在发布的时候可以确定下来, 可以在 ShouldCompilePermutation 中跳过编译
