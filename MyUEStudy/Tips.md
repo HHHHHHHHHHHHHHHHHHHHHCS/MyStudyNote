@@ -769,6 +769,8 @@ for (TActorIterator<XXXXXXX> It(GetWorld()); It; ++It)
 
 ## 变体统计
 
+MaterialStats 和 MaterialStatsDebug 不需要打开下面的ini, 但是如果要分析 VertexFactory 要开
+
 打开编辑 Engine\Config\ConsoleVariables.ini
 
 ```
@@ -1017,3 +1019,9 @@ gc.CollectGarbageEveryFrame 1 每帧GC 然后通过 Insights 看内存泄漏
 https://zhuanlan.zhihu.com/p/1947787635486622837
 
 空Tick开销    5.6及其之后空Tick不再有开销 对于先前的版本,可以cherry-pick 提交
+
+## 变体优化
+
+0. 少用 Static Mask 和 Static Bool, 很容易 不可控
+
+1. 注意Vertex Factory, 尤其是导入 GFur 等
