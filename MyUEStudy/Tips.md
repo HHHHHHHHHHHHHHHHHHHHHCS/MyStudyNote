@@ -1022,7 +1022,7 @@ https://zhuanlan.zhihu.com/p/1947787635486622837
 
 ## 变体优化
 
-0. 少用 Component Mask 和 Static Bool 和 Channel Mask, 很容易不可控
+0. 少用 Component Mask 和 Static Bool, 很容易不可控.  Channel Mask 是 dot 所以无所谓
 
 1. 注意Vertex Factory, 尤其是导入 GFur 等
 
