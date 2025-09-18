@@ -1031,3 +1031,10 @@ https://zhuanlan.zhihu.com/p/1947787635486622837
 3. FMaterialShader 的 SHADER_PERMUTATION_BOOL 相关变体, 如果在发布的时候可以确定下来, 可以在 ShouldCompilePermutation 中跳过编译
 
 4. 一些变体属性被删除, 但是可能会有残留, 需要重新 SetDirty  ReSave 下
+
+5. 减少1个变体 会少量 减少 QualityLevel x VertexFactory 数量, 同时减少 StatDebug 里面 某个材质的分支 统计数量
+
+
+## 场景加载
+
+stat levels   绿色代表加载完成, 黄色代表还没有加载好
