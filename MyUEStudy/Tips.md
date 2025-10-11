@@ -1038,3 +1038,21 @@ https://zhuanlan.zhihu.com/p/1947787635486622837
 ## 场景加载
 
 stat levels   绿色代表加载完成, 黄色代表还没有加载好
+
+## 异步线程任务
+
+把一个任务丢到Game或者Render线程
+
+```C++
+AsyncTask(ENamedThreads::GameThread, [this]()
+{
+	DoThing();
+});
+
+ENQUEUE_RENDER_COMMAND(FUpdateData)(
+	[this](FRHICommandListImmediate& RHICmdList)
+	{
+		DoThing();
+	}
+);
+```
