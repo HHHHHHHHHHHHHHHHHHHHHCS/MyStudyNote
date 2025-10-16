@@ -217,7 +217,7 @@ https://dev.epicgames.com/documentation/en-us/unreal-engine/setting-up-visual-st
 
 ## git ignore 不生效
 
-```
+```bat
 git rm -r --cached .
 git add .
 ```
@@ -295,7 +295,7 @@ UE4.21 ES2.0 只支持75根骨骼, ES3.x 后理论上支持65536.
 
 具体查看 Engine\Config\BaseEngine.ini
 
-```
+```ini
 MaxSkinBones=(Default=65536,PerPlatform=(("Mobile", 256)))
 ```
 
@@ -458,7 +458,7 @@ https://dev.epicgames.com/documentation/en-us/unreal-engine/debugging-the-shader
 
 Engine/Config/ConsoleVariables.ini
 
-```
+```ini
 r.Shaders.Optimize=0
 
 // UE 4.x
@@ -552,14 +552,14 @@ UGameplayStatics::CalculateViewProjectionMatricesFromViewTarget(this, ViewMatrix
 
 ### .gitignore 不生效
 
-```
+```bat
 git rm -r --cached .
 git add .
 ```
 
 ### 连连看UV被优化
 
-```
+```C++
 float2 GetUV(FMaterialPixelParameters Parameters, bool useUV1)
 {
 	float2 uv = float2(0, 0);
@@ -685,7 +685,7 @@ if (!HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject | RF_DefaultSubObjec
 
 AndroidEngine.ini
 
-```
+```ini
 [/Script/Engine.RendererSettings]
 r.DiscardUnusedQuality=True
 ```
@@ -697,7 +697,7 @@ r.DiscardUnusedQuality=True
 
 修改下面
 
-```
+```ini
 
 PercentageUnusedShaderCompilingThreads=0
 ; 改成1会比较卡
@@ -732,7 +732,7 @@ PAUSE
 
 ConfigPakList.txt
 
-```
+```BAT
 xxxxxxx\Game\Config\Android\AndroidEngine.ini ../../../{appName}/Config/Android/
 ```
 
@@ -773,7 +773,7 @@ MaterialStats 和 MaterialStatsDebug 不需要打开下面的ini, 但是如果�
 
 打开编辑 Engine\Config\ConsoleVariables.ini
 
-```
+```ini
 r.ShaderDevelopmentMode=1
 
 r.DumpShaderDebugInfo=1
@@ -1055,4 +1055,19 @@ ENQUEUE_RENDER_COMMAND(FUpdateData)(
 		DoThing();
 	}
 );
+```
+
+## 头文件包含报错查找
+
+找到 \Engine\Saved\UnrealBuildTool\BuildConfiguration.xml , 添加 bShowIncludes
+但是会触发整体重新编译
+
+```xml
+<?xml version="1.0" encoding="utf-8" ?>
+<Configuration xmlns="https://www.unrealengine.com/BuildConfiguration">
+	<BuildConfiguration>
+		<bShowIncludes>true</bShowIncludes>
+	</BuildConfiguration>
+</Configuration>
+
 ```
