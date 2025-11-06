@@ -1082,3 +1082,9 @@ ENQUEUE_RENDER_COMMAND(FUpdateData)(
 或者输入 gradlew.bat assembleDebug --info --stacktrace 输出详细log
 多半是 会想访问公司的  http://nexus.devops.?????:80 内部网站去下载相关东西(如maven2), 然后又request不通
 比如可以尝试代理关了/退出后 再试一试, 可能要重启
+
+
+## 修改 Minimum LOD 无效
+
+修改 Minimum LOD 无效, 下次打开会被恢复
+因为存在 LOD Settings 代理, 注意要修改它就行
