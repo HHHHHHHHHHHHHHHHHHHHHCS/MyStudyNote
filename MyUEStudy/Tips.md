@@ -1071,3 +1071,13 @@ ENQUEUE_RENDER_COMMAND(FUpdateData)(
 </Configuration>
 
 ```
+
+
+## Android 打包卡 compileDebugAidl
+
+打开 {项目}\Intermediate\Android\arm64\gradle 的 cmd
+输入 gradlew.bat assembleDebug    看看是不是卡住了
+再输入 gradlew.bat assembleDebug -x compileDebugAidl   可以暂时先跳过 compileDebugAidl 看看是否会继续
+再输入 gradlew.bat compileDebugAidl --info --stacktrace  会输出有关compileDebugAidl的详情
+多半是 会想访问公司的  http://nexus.devops.?????:80 内部网站去下载相关东西(如maven2), 然后又request不通
+比如可以尝试代理关了重启
