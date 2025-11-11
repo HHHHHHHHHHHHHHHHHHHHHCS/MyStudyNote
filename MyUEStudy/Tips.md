@@ -1088,3 +1088,62 @@ ENQUEUE_RENDER_COMMAND(FUpdateData)(
 
 修改 Minimum LOD 无效, 下次打开会被恢复
 因为存在 LOD Settings 代理, 注意要修改它就行
+
+
+# P4文件无法Add上去
+
+1. 看changelist是否打开. 如果没有想要的文件说明没有被add成功
+> p4 opened -c 10086
+
+2. 看路径映射是否存在. 如果路径存在 要考虑别的问题
+> p4 where f:\MyGame\Config\MyConfig.ini
+
+3. 看文件映射是否打开. 如果出现下面错误, 说明没有被add上去
+> p4 opened f:\MyGame\Config\MyConfig.ini
+
+f:\MyGame\Config\MyConfig.ini - file(s) not opened on this client.
+
+4. 看add报什么错, 下面说明被ignore掉了
+> p4 add f:\MyGame\Config\MyConfig.ini
+
+//f:/MyGame/Config/MyConfig.ini#1 - opened for add
+f:\MyGame\Config\MyConfig.ini - ignored file can't be added.
+
+5. 尝试用 -I 强制添加 看看是否成功. 如果成功说明有ignore文件在生效
+> p4 add -I f:\MyGame\Config\MyConfig.ini
+
+//f:/MyGame/Config/MyConfig.ini#1 - opened for add
+
+6. 找出谁ignore了文件, 发现是.gitignore
+> p4 ignores -v f:\MyGame\Config\MyConfig.ini
+
+#FILE - defaults
+#LINE 2:**/.p4root
+.../.p4root/...
+.../.p4root
+#LINE 1:**/.p4config
+.../.p4config
+#FILE f:\MyGame\.gitignore
+
+然后发现 .p4ignore 中写了一句话
+
+```txt
+###############################################################################*&&&
+# Epic's P4IGNORE.
+# P4IGNORE doesn't work like GITIGNORE:
+# http://stackoverflow.com/questions/18240084/how-does-perforce-ignore-file-syntax-differ-from-gitignore-syntax
+###############################################################################
+
+打开 stackoverflow 
+In fact, you can specify more than one filename in P4IGNORE. In reality, my P4IGNORE looks like this (this is a new feature in 2015.2):
+P4IGNORE=$home/.p4ignore;.gitignore;.p4ignore;
+
+大致意思是P4 如果你在配置里添加了下面这段话, 就会顺便走.gitignore的忽略
+P4IGNORE=.p4ignore.txt;.gitignore
+```
+
+解决办法
+
+项目目录下有一个.p4config, 打开修改P4IGNORE 去掉.gitignore
+打开文件 f:\MyGame\.p4config
+修改成这样 P4IGNORE=.p4ignore.txt;
