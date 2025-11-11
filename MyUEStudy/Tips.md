@@ -1039,6 +1039,7 @@ https://zhuanlan.zhihu.com/p/1947787635486622837
 
 stat levels   绿色代表加载完成, 黄色代表还没有加载好
 
+
 ## 异步线程任务
 
 把一个任务丢到Game或者Render线程
@@ -1147,3 +1148,34 @@ P4IGNORE=.p4ignore.txt;.gitignore
 项目目录下有一个.p4config, 打开修改P4IGNORE 去掉.gitignore
 打开文件 f:\MyGame\.p4config
 修改成这样 P4IGNORE=.p4ignore.txt;
+
+
+# 打包出来后材质为默认材质
+
+可以注意打包的时候这个LOG, 然后点进去看材质有什么报错
+记得切换成移动端, 然后 Platform Stats 添加移动端 比如 Settings->Android->Android Vulkan Mobile
+
+```txt
+LogMaterial: Warning: Invalid shader map ID caching shaders for 'M_VFX_BaseMat', will use default material.
+LogMaterial: Can't compile M_VFX_BaseMat with cooked content, will use default material instead
+```
+
+
+# 一些手机ADB连上去一伙就断
+
+盲猜可能需要大一点的电流
+用背后的主板口, 然后看看有没有红色的口, 即USB3.1Gen2 or USB3.2大电流, 电脑关闭可以继续充电 
+
+
+# Android Vulkan截帧不显示Pass Name
+
+因为UE5.5之后做的优化和避免特殊机型卡顿, 启动参数添加下面这个指令, 然后推送过去
+-forcevulkanddrawmarkers
+
+
+# Near Clipping Plane 导致的深度精度不够
+
+PC 深度格式 D32S8, Mobile 深度格式 D24S8
+如果 near clip 很小 比如小于0.1, 在移动端就会出现精度开始不够了
+CameraComponent 上有一个变量 CustomNearClippingPlane. 如果写成0 会变成 0.00001, 导致深度精度不够
+建议最小还是1, 理论上都是够用的
