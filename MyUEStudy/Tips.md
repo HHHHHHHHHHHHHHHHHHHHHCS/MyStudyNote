@@ -1,18 +1,29 @@
 ## 源码Setup过慢
 
 clash cmd git 代理失败, 尝试用下面的语句
+```bat
 set http_proxy=http://127.0.0.1:7890
 set https_proxy=http://127.0.0.1:7890
+```
+
 关闭代理
+```bat
 set http_proxy=
 set https_proxy=
+```
 
 下面这样可以配置Git全局代理
+```bat
 git config --global http.proxy http://127.0.0.1:7890
 git config --global https.proxy http://127.0.0.1:7890
+```
+
 取消Git全局代理
+```bat
 git config --global --unset http.proxy
 git config --global --unset https.proxy
+```
+
 
 ## 调试及启用RenderDoc
 
@@ -22,7 +33,7 @@ Project Settings -> RenderDoc -> 勾选 **Auto attach on startup** 和 **RenderD
 
 抓帧查看Shader, 打开UE安装路径 **UE_5.3\Engine\Config\ConsoleVariables.ini** , 解除下面注释.
 
-```
+```ini
 r.ShaderDevelopmentMode=1
 ...
 r.Shaders.Optimize=0
@@ -32,6 +43,7 @@ r.Shaders.Symbols=1
 r.Shaders.ExtraData=1
 ```
 
+
 ## 调试及启用PIX
 
 参考: https://zhuanlan.zhihu.com/p/706117237
@@ -40,7 +52,7 @@ plugin 下启用 **PIX for Windows GPU Capture Plugin**
 
 在 **ConsoleVariables.ini** 设置如下
 
-```
+```ini
 r.ShaderDevelopmentMode=1
 ...
 r.Shaders.Optimize=0
@@ -60,9 +72,11 @@ r.D3D12.AutoAttachPIX=1
 
 打开 NVDIA Control Panel, 标题栏->桌面->启用开发者模式
 
+
 ## RenderDoc 截帧要切换窗口
 
 启动的时候 添加参数 -ExecCmds="renderdoc.CaptureAllActivity 1" 或者 截帧前 执行命令
+
 
 ## Show FPS
 
@@ -70,15 +84,18 @@ r.D3D12.AutoAttachPIX=1
 
 Editor Perference -> Performance -> Show Frame Rate and Memory
 
+
 ## 使用Rider
 
 Editor Perference -> Source Code -> Source Code Editor -> Rider
+
 
 ## UE5 Mobile 管线
 
 参考: https://zhuanlan.zhihu.com/p/401583420
 
 class **FMobileSceneRenderer**     **Render** 方法
+
 
 ## Shader 重新编译
 
@@ -94,35 +111,38 @@ Editor Perference -> 搜索recompile 里面可以改快捷键
 
 详情 **https://docs.unrealengine.com/4.26/en-US/API/Runtime/Engine/RecompileShaders/**
 
+
 ## VS解决方案资源管理器中自动定位当前编辑中的文件
 
-【工具】- 【选项】 - 【项目和解决方案】-【常规】- 勾选【在解决方案资源管理器中跟踪活动项】
+工具 -> 选项 -> 项目和解决方案 -> 常规 -> 勾选 在解决方案资源管理器中跟踪活动项
 
-## Slate 控件乱码
+## Slate 控件文字乱码
 
-如果直接下面这样写, 会乱码.
+如果直接下面这样写 会乱码
 
-```
+```C++
 SNew(SButton)
 .Text(FText::FromString("按钮"))
 ```
 
-这时候需要一个 **TEXT** 包裹, 就能解决了.
+这时候需要一个 **TEXT** 包裹, 就能解决了
 
-```
+```C++
 SNew(SButton)
 .Text(FText::FromString(TEXT("按钮")))
 ```
+
 
 ## 删除StarterContent
 
 关闭Editor, 删除 **Content** 下的 **StarterContent**, 再 打开项目的 **Config\DefaultGame.ini** 删除下面这段话.
 
-```
+```ini
 [StartupActions]
 bAddPacks=True
 InsertPack=(PackSource="StarterContent.upack",PackName="StarterContent")
 ```
+
 
 ## 贴图颜色内存排序
 
@@ -132,42 +152,58 @@ InsertPack=(PackSource="StarterContent.upack",PackName="StarterContent")
 
 详情: https://social.msdn.microsoft.com/Forums/en-US/f56e4449-f3e1-491e-9f64-e65e989a518a/best-swap-buffer-format-rgba-or-bgra-?forum=wingameswithdirectx
 
+
 ## 保存UTexture2D到本地重启引擎后丢失内容
 
 因为没有对UTexture2D的Source进行Init, 少了下面这句.
 
-```
+```C++
 tex->Source.Init(width, height, 1, 1, TSF_BGRA8, bgra8);
 ```
+
 
 ## 游戏内Profiler
 
 游戏内 按 **`** 输入 如 **Stat Engine** **Stat xxxx**
 
+https://dev.epicgames.com/documentation/zh-cn/unreal-engine/stat-commands-in-unreal-engine
+
+
 ## 打Android包提示 Gradle Required array size too large
 
 可能是因为ASTC包体太大, 尝试取消勾 项目设置->Package game data inside .apk, 它会生成一个OBB
 
+
 ## 打Android包提示 no google play store key
 
-要勾选 项目设置->Package game data inside .apk?. 
-如果不勾选会把项目资源生成OBB, OBB需要谷歌商店.
-这个会把项目资源打进APK, 不生成OBB.
+要勾选 项目设置->Package game data inside .apk?
+
+如果不勾选会把项目资源生成OBB, OBB需要谷歌商店
+
+这个会把项目资源打进APK, 不生成OBB
+
 
 项目\Saved\StagedBuilds 可以看打出了pak具体数量和大小
+
 在 项目\Config\DefaultGame.ini 可以看加入包体的Obb过滤规则, 正常是只有pak0即母包
 
+```ini
 [/Script/AndroidRuntimeSettings.AndroidRuntimeSettings]
 ...
 +ObbFilters=-*.pak
 +ObbFilters=pakchunk0-*
+```
 
 观察打包命令行 是否有 -iostore, ProjectSetting-> Use IO Setting, 把他去掉
+
 引擎提示说是 "将所有包放入一个或多个容器文件中". 但是启用该选项会减少大量加载资产时间, 不过pak包也会变的更大
+
 
 ## Rider 打包缺少MSBuild
 
-因为MSBuild选择成了Rider版本的, File->Settings->Build, Execution, Deployment->Toolset and Build->MSBuild version->选择VS的版本
+因为MSBuild选择成了Rider版本的
+
+File->Settings->Build, Execution,Deployment->Toolset and Build->MSBuild version->选择VS的版本
 
 
 ## Rider dotnet 报错
@@ -177,6 +213,7 @@ tex->Source.Init(width, height, 1, 1, TSF_BGRA8, bgra8);
 UnrealEngine\Engine\Binaries\ThirdParty\DotNet\{版本}\windows\dotnet.exe
 
 比如6.x版本报错, 尝试8.x版本
+
 
 ## 编译错误 error C4756: overflow in constant arithmetic
 
@@ -202,6 +239,7 @@ https://dev.epicgames.com/documentation/en-us/unreal-engine/setting-up-visual-st
 </Configuration>
 ```
 
+
 ## 减少UE编译CPU占用过多的卡顿
 
 找到 \Engine\Saved\UnrealBuildTool\BuildConfiguration.xml
@@ -215,12 +253,14 @@ https://dev.epicgames.com/documentation/en-us/unreal-engine/setting-up-visual-st
 </Configuration>
 ```
 
+
 ## git ignore 不生效
 
 ```bat
 git rm -r --cached .
 git add .
 ```
+
 
 ## 在Visual Studio中使用AGDE调试
 
@@ -239,6 +279,7 @@ UE文档: https://dev.epicgames.com/documentation/zh-cn/unreal-engine/debugging-
 
 https://imzlp.com/posts/17996/
 
+
 ## Visual Studio 调试PC包
 
 打开 Visual Studio 创建 Continue without code, 然后运行
@@ -246,6 +287,7 @@ https://imzlp.com/posts/17996/
 把要Debug的文件代码拖进 VS, 设置断点就能调试了
 
 或者 启动参数添加 -waitfordebugger, 然后Visual Studio 进行 Attach
+
 
 ## 清理DDC
 
@@ -255,6 +297,7 @@ https://imzlp.com/posts/17996/
 Shader相关
 引擎地址\Engine\DerivedDataCache\FShaderJobCacheShaders
 引擎地址\Engine\DerivedDataCache\GlobalShaderMap
+
 
 ## ValidateShaderParameters 报错/断言
 
@@ -268,15 +311,18 @@ Shader %s's parameter structure has changed without recompilation of the shader
 
 建议 直接 usf 或 ush 加一行注释 触发重编
 
+
 ## Rider 行补全过多
 
 关闭下面的
 Setting -> Editor -> General -> Inline Completion -> Enable local Full Line completion suggestions 
 
+
 ## Visual Studio 行补全过多
 
 关闭下面的
 右上角 -> GitHub Copilot -> Settings -> Enable Completions for C++
+
 
 ## 使用 AnimNotifyState 和 AnimNotify 注意数据共享的问题
 
@@ -303,9 +349,12 @@ MaxSkinBones=(Default=65536,PerPlatform=(("Mobile", 256)))
 
 最好 还要开启 r.GPUSkin.Support16BitBoneIndex = 1
 
+
+
 ## Pak文件查看
 
 https://github.com/jashking/UnrealPakViewer
+
 
 ## 动态添加组件Tick不生效
 
@@ -317,6 +366,7 @@ https://dev.epicgames.com/documentation/zh-cn/unreal-engine/components-in-unreal
 UXXXXXComponent* tempComponent = NewObject<UXXXXXComponent>(xxxxxActor);
 tempComponent->RegisterComponent();
 ```
+
 
 ## 不重新打包修改ini
 
@@ -343,6 +393,7 @@ UECommandLine.txt, APP要替换成应用名字
 -project="../../../App/App.uproject" -ExecCmds="r.Mobile.AntiAliasing 1" -ini:Engine:[/Script/Engine.RendererSettings]:r.DistanceField=0 -forcevulkanddrawmarkers
 ```
 
+
 ## 游戏启动的时候强制设置分辨率
 
 -res=1920x1080wf
@@ -362,6 +413,7 @@ wf 是 窗口化全屏, f 是 全屏, 如果4K因为设置了缩放不生效, �
 DX12, 都是窗口化全屏
 
 https://devblogs.microsoft.com/directx/demystifying-full-screen-optimizations/
+
 
 ## Local Exposure (Local Tonemapping)
 
@@ -390,6 +442,7 @@ Engine\Source\Runtime\Renderer\Private\PostProcess\PostProcessLocalExposure.cpp
 2. AddLocalExposureBlurredLogLuminancePass
 3. AddApplyLocalExposurePass
 
+
 ## 升级UE版本编译直接报错
 
 如果升级UE版本, Visual Studio 编译直接报错
@@ -401,6 +454,7 @@ Engine\Source\Runtime\Renderer\Private\PostProcess\PostProcessLocalExposure.cpp
 如果还是不行, 直接 **git -clean -fxd** , 再重复 Setup.bat 和 GenerateProjectFiles.bat 再试一试
 
 注意 clean后, Rider 要重新设置 DotNet, MSVC, WinSDK 版本
+
 
 ## 获取当前 Active Preview Shader Platform
 
@@ -426,6 +480,7 @@ Engine\Source\Runtime\Renderer\Private\PostProcess\PostProcessLocalExposure.cpp
 
 ```
 
+
 ### 苹果分辨率
 
 https://blog.csdn.net/iOS1501101533/article/details/121434858
@@ -443,6 +498,7 @@ UE [[UIScreen mainScreen] bounds] 获取的是点分辨率
 比例因子 默认值是  2,  如果要原生分辨率在 iphone6+ 后 需要是3
 
 不过其实写0 也是原生分辨率
+
 
 ### 苹果抓帧后不能debug shader
 
@@ -469,6 +525,7 @@ r.Shaders.Symbols=1
 r.Shaders.ExtraData=1
 ```
 
+
 ### 苹果内存不够闪退
 
 https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.kernel.extended-virtual-addressing
@@ -478,6 +535,7 @@ https://imzlp.com/posts/56381/
 开启虚拟内存, Extended Virtual Addressing Entitlement
 
 在XCode -> 项目设置 -> Signing & Capabilities -> + Capability(添加) -> Extented Virtual Addressing
+
 
 ### Shader内存过大
 
@@ -495,6 +553,7 @@ https://imzlp.com/posts/15810/
   + 允许多个材质共享相同的着色器代码. 通过共享代码, 材质渲染过程中的一些计算可以复用
 6. 开启 Shared Material Native Libraries
   + 共享材质着色器代码的本地库. 它允许不同的材质和材质实例使用同一份底层本地代码库
+
 
 ### Pix 因为开启 DLSS 无法正常截帧
 
@@ -519,6 +578,7 @@ https://github.com/desktop/desktop/issues/10488
 
 File -> Options -> Integrations -> Shell 换成 Command Propmpt
 
+
 ### 控制台输出中文编码乱码
 
 添加这行代码 system("chcp 65001");
@@ -528,7 +588,7 @@ C/C++ 文件编码格式改成 UTF-8 with bom 试一试
 
 ### 获取相机View Proj Matrix
 
-因为 这个获取矩阵的 aspect 是 相机的aspect, 而不是屏幕的宽高比, 所以需要手动传入屏幕的宽高比.
+因为 这个获取矩阵的 aspect 是 相机的aspect, 而不是屏幕的宽高比, 所以需要手动传入屏幕的宽高比
 
 ```C++
 CameraComp->bConstrainAspectRatio = true;
@@ -550,12 +610,14 @@ UGameplayStatics::CalculateViewProjectionMatricesFromViewTarget(this, ViewMatrix
 
 ```
 
+
 ### .gitignore 不生效
 
 ```bat
 git rm -r --cached .
 git add .
 ```
+
 
 ### 连连看UV被优化
 
@@ -579,7 +641,6 @@ float2 GetUV(FMaterialPixelParameters Parameters, bool useUV1)
 连连看 认为不需要UV, UE会优化掉 VS Input/Output UV
 
 解决办法 需要有UV输入, 可以不用
-
 
 
 ### HLSL 2021 新语法
@@ -662,10 +723,10 @@ adb shell dumpsys meminfo com.example.myapp
 adb shell pidof com.example.myapp
 adb shell dumpsys meminfo <pid>
 
+
 ## 查看运行时引用
 
 GM指令输入, 可以查看引用关系
-
 
 obj refs name=VT_PerlinWorley_Balanced
 
@@ -678,6 +739,7 @@ if (!HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject | RF_DefaultSubObjec
 	Material = VolumetricCloudDefaultMaterialRef.Object;
 }
 ```
+
 
 ## 只加载特定质量的shader
 
@@ -705,11 +767,13 @@ WorkerProcessPriority=0
 
 ```
 
+
 ## Nanite 和 DDX/DDY
 
 PC 开了 Nanite后 用硬件的DDX和DDY 会有 BUG, 速度会变慢很多, UE 自己算了一套DDX/DDY 在 5.7修复
 比如在 CustomNode 里面 手动写 TextureSampleBias
 https://issues.unrealengine.com/issue/UE-268303
+
 
 
 ## FXC saturate 精度编译报错
@@ -736,6 +800,7 @@ ConfigPakList.txt
 xxxxxxx\Game\Config\Android\AndroidEngine.ini ../../../{appName}/Config/Android/
 ```
 
+
 ## 替换 exe debug
 
 写一个 bat, 拷贝 xxxxx\Binaries\Win64 下的  appName.exe 和 appName.pdb 去替换
@@ -749,6 +814,7 @@ set pakconfig=-SkipPak
 call XXXXXXX\Engine\Build\BatchFiles\RunUAT.bat BuildGame -project="XXXXXXX\FY.uproject" -nop4 -prereqs -clientconfig=%clientconfig% %cookconfig% -targetplatform=Win64 -utf8output 
 
 ```
+
 
 ## 关闭RHI异步
 
@@ -779,10 +845,12 @@ r.ShaderDevelopmentMode=1
 r.DumpShaderDebugInfo=1
 ```
 
-cook完后会在 {项目目录}\Saved\MaterialStats下生成变体统计文件
+Cook完后会在 {项目目录}\Saved\MaterialStats下生成变体统计文件
+
 Cooked 是 最终变体Shader 的数量(建议参考这个), Permutations 是ShaderFeature的数量
 
 {项目目录}\Saved\MaterialStatsDebug 是详细的变体枚举
+
 PermutationString 是 ShaderFeature 排列
 
 Cooked = 每个 Permutations 的 Uses 累加
@@ -792,6 +860,7 @@ Cooked = 每个 Permutations 的 Uses 累加
 下面就是cook生成的中间结果, 2 (Permutations) * 6 (Uses) = 12 (Cooked)
 
 {项目目录}\Saved\ShaderDebugInfo\VULKAN_ES3_1_ANDROID\M_Test_e6f739dfdb823b6d\Default\FLocalVertexFactory
+
 {项目目录}\Saved\ShaderDebugInfo\VULKAN_ES3_1_ANDROID\M_Test_155e94de3daa0004\Default\FLocalVertexFactory
 
   + TMobileBasePassPSFMobileDirectionalLightAndCSMPolicyLOCAL_LIGHTS_DISABLED
@@ -801,9 +870,6 @@ Cooked = 每个 Permutations 的 Uses 累加
   + TMobileBasePassVSFMobileDirectionalLightAndCSMPolicy
   + TMobileBasePassVSFNoLightMapPolicy
 
-## stat 相关指令
-
-https://dev.epicgames.com/documentation/zh-cn/unreal-engine/stat-commands-in-unreal-engine
 
 ## 包体启用 Insights
 
@@ -831,9 +897,11 @@ pause
 -forcevulkanddrawmarkers -ExecCmds="stat fps, stat unit" -trace=log,frame,cpu,gpu,memory,loadtime,callstack,task,bookmark -statnamedevents -LLM -LLMCSV
 ```
 
+
 ## debug d3d 命令
 
 启动参数添加 -d3ddebug
+
 
 ## 用代码创建的Volume没有gizmos
 
@@ -849,11 +917,14 @@ newActor->PostEditChange();
 newActor->PostEditMove(true);
 
 ```
+
+
 ## FString 条件断点FString
 
 ```C++
 wcsstr(*(const wchar_t**)((const char*)&MyString + 0), L"156") != 0
 ```
+
 
 ## 命令编译项目
 
@@ -867,11 +938,13 @@ call {引擎地址}\Engine\Build\BatchFiles\Build.bat {AppName}Editor Win64 Deve
 call {引擎地址}\Build.bat {AppName} Android Development ""{项目路径}\{AppName}.uproject"
 ```
 
+
 ## Device Output Log
 
 可以看Log 和 输入指令
 
 {引擎地址}\Engine\Binaries\Win64\UnrealFrontend.exe
+
 
 ## 增量Cook
 
@@ -922,8 +995,8 @@ void OpenSelectFile(FString path)
 
 ```
 
-## 多线程执行
 
+## 多线程执行
 
 ```C++
 
@@ -946,6 +1019,7 @@ ParallelFor(allTextures.Num(), [&](int32 Index)
 
 ```
 
+
 ## Mobile Cluster Deferred Lighting
 
 指令执行
@@ -956,13 +1030,17 @@ r.Mobile.UseClusteredDeferredShading 1
 
 r.Forward.MaxCulledLightsPerCell 64
 
+
 ## Mobile Float 精度
 
+r.Mobile.FloatPrecisionMode=1
+
+```
 "0: Use Half-precision (default)"
 "1: Half precision, except Full precision for material expressions"
 "2: Force use of high precision in pixel shaders."
+```
 
-r.Mobile.FloatPrecisionMode=1
 
 ## 关闭UDP
 
@@ -985,9 +1063,12 @@ https://zhuanlan.zhihu.com/p/1947797880443212469
 注意 overlap 事件, 包括生成的时候overlap 和 移动的时候overlap
 
 -clearPSODriverCache 启动函数添加这个 可以清理PSO
+
 https://zhuanlan.zhihu.com/p/1947801700254617799
+
 Nvidia最近修改了驱动缓存的PSO命名, 导致-clearPSODriverCache启动参数在5.6之前的版本不再生效了, 除非等待引擎更新修复
 可以cherry-pick这个提交（对于Perforce用户来说是CL 40200336, 这是个很小的更改
+
 PSOCacheBuster插件也实现了这个修复
 
 使用obj list -countsort控制台命令来查看你当前所有的UObj
@@ -995,24 +1076,28 @@ PSOCacheBuster插件也实现了这个修复
 蓝图同步加载, 空的Tick, 无效输出节点排查 https://github.com/Flassari/CommonValidators
 
 
-
 1. UE游戏性能最大化 Maximizing Your Game's Performance in Unreal Engine | Unreal Fest 2022
 
 https://zhuanlan.zhihu.com/p/1947794933177104041
 
+
 Profile CPU
+
 Tools->Run Unreal Insights
 
+
 Profile GPU 
+
 Ctrl+Shift+Comma(,)
+
 或者控制台命令：ProfileGPU
+
 对当前帧进行Profile
+
 
 GPU Visualizer 可以看GPU耗时
 
 gc.CollectGarbageEveryFrame 1 每帧GC 然后通过 Insights 看内存泄漏
-
-
 
 2. 打破虚幻引擎中的“最佳实践”传言 Myth-Busting "Best Practices" in Unreal Engine
 
@@ -1058,6 +1143,7 @@ ENQUEUE_RENDER_COMMAND(FUpdateData)(
 );
 ```
 
+
 ## 头文件包含报错查找
 
 找到 \Engine\Saved\UnrealBuildTool\BuildConfiguration.xml , 添加 bShowIncludes
@@ -1077,21 +1163,28 @@ ENQUEUE_RENDER_COMMAND(FUpdateData)(
 ## Android 打包卡 compileDebugAidl
 
 打开 {项目}\Intermediate\Android\arm64\gradle 的 cmd
+
 输入 gradlew.bat assembleDebug    看看是不是卡住了
+
 再输入 gradlew.bat assembleDebug -x compileDebugAidl   可以暂时先跳过 compileDebugAidl 看看是否会继续
+
 再输入 gradlew.bat compileDebugAidl --info --stacktrace  会输出有关compileDebugAidl的详情
+
 或者输入 gradlew.bat assembleDebug --info --stacktrace 输出详细log
+
 多半是 会想访问公司的  http://nexus.devops.?????:80 内部网站去下载相关东西(如maven2), 然后又request不通
+
 比如可以尝试代理关了/退出后 再试一试, 可能要重启
 
 
 ## 修改 Minimum LOD 无效
 
 修改 Minimum LOD 无效, 下次打开会被恢复
+
 因为存在 LOD Settings 代理, 注意要修改它就行
 
 
-# P4文件无法Add上去
+## P4文件无法Add上去
 
 1. 看changelist是否打开. 如果没有想要的文件说明没有被add成功
 > p4 opened -c 10086
@@ -1102,22 +1195,29 @@ ENQUEUE_RENDER_COMMAND(FUpdateData)(
 3. 看文件映射是否打开. 如果出现下面错误, 说明没有被add上去
 > p4 opened f:\MyGame\Config\MyConfig.ini
 
+```
 f:\MyGame\Config\MyConfig.ini - file(s) not opened on this client.
+```
 
 4. 看add报什么错, 下面说明被ignore掉了
 > p4 add f:\MyGame\Config\MyConfig.ini
 
+```
 //f:/MyGame/Config/MyConfig.ini#1 - opened for add
 f:\MyGame\Config\MyConfig.ini - ignored file can't be added.
+```
 
 5. 尝试用 -I 强制添加 看看是否成功. 如果成功说明有ignore文件在生效
 > p4 add -I f:\MyGame\Config\MyConfig.ini
 
+```
 //f:/MyGame/Config/MyConfig.ini#1 - opened for add
+```
 
 6. 找出谁ignore了文件, 发现是.gitignore
 > p4 ignores -v f:\MyGame\Config\MyConfig.ini
 
+```
 #FILE - defaults
 #LINE 2:**/.p4root
 .../.p4root/...
@@ -1125,10 +1225,11 @@ f:\MyGame\Config\MyConfig.ini - ignored file can't be added.
 #LINE 1:**/.p4config
 .../.p4config
 #FILE f:\MyGame\.gitignore
+```
 
 然后发现 .p4ignore 中写了一句话
 
-```txt
+```
 ###############################################################################*&&&
 # Epic's P4IGNORE.
 # P4IGNORE doesn't work like GITIGNORE:
@@ -1143,39 +1244,161 @@ P4IGNORE=$home/.p4ignore;.gitignore;.p4ignore;
 P4IGNORE=.p4ignore.txt;.gitignore
 ```
 
-解决办法
+解决办法:
 
 项目目录下有一个.p4config, 打开修改P4IGNORE 去掉.gitignore
+
 打开文件 f:\MyGame\.p4config
+
 修改成这样 P4IGNORE=.p4ignore.txt;
 
 
-# 打包出来后材质为默认材质
+## 打包出来后材质为默认材质
 
 可以注意打包的时候这个LOG, 然后点进去看材质有什么报错
+
 记得切换成移动端, 然后 Platform Stats 添加移动端 比如 Settings->Android->Android Vulkan Mobile
 
-```txt
+```log
 LogMaterial: Warning: Invalid shader map ID caching shaders for 'M_VFX_BaseMat', will use default material.
 LogMaterial: Can't compile M_VFX_BaseMat with cooked content, will use default material instead
 ```
 
 
-# 一些手机ADB连上去一伙就断
+## 一些手机ADB连上去一伙就断
 
 盲猜可能需要大一点的电流
+
 用背后的主板口, 然后看看有没有红色的口, 即USB3.1Gen2 or USB3.2大电流, 电脑关闭可以继续充电 
 
 
-# Android Vulkan截帧不显示Pass Name
+## Android Vulkan截帧不显示Pass Name
 
 因为UE5.5之后做的优化和避免特殊机型卡顿, 启动参数添加下面这个指令, 然后推送过去
 -forcevulkanddrawmarkers
 
 
-# Near Clipping Plane 导致的深度精度不够
+## Near Clipping Plane 导致的深度精度不够
 
 PC 深度格式 D32S8, Mobile 深度格式 D24S8
+
 如果 near clip 很小 比如小于0.1, 在移动端就会出现精度开始不够了
+
 CameraComponent 上有一个变量 CustomNearClippingPlane. 如果写成0 会变成 0.00001, 导致深度精度不够
+
 建议最小还是1, 理论上都是够用的
+
+
+## 移动端 GBuffer 格式
+
+SceneColor格式, 可以通过 r.Mobile.SceneColorFormat 强制设置
+
+可以先看下下面这段代码, 正常都是HDR的, 如果输入需要Alpha 就会变成 R16G16B16A16
+
+需要Alpha是因为 开启平面反射 或 开启SceneCapture并且里面带有CustomRenderPass然后输出格式需要Alpha
+
+```C++
+static EPixelFormat GetMobileSceneColorFormat(bool bRequiresAlphaChannel)
+{
+	EPixelFormat DefaultColorFormat;
+	const bool bUseLowPrecisionFormat = !IsMobileHDR() || !GSupportsRenderTargetFormat_PF_FloatRGBA;
+	if (bUseLowPrecisionFormat)
+	{
+		DefaultColorFormat = GetDefaultMobileSceneColorLowPrecisionFormat();
+	}
+	else
+	{
+		DefaultColorFormat = bRequiresAlphaChannel ? PF_FloatRGBA : PF_FloatR11G11B10;
+	}
+
+	check(GPixelFormats[DefaultColorFormat].Supported);
+
+	EPixelFormat Format = DefaultColorFormat;
+	static const auto CVar = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("r.Mobile.SceneColorFormat"));
+	int32 MobileSceneColor = CVar->GetValueOnAnyThread();
+	switch (MobileSceneColor)
+	{
+	case 1:
+		Format = PF_FloatRGBA; break;
+	case 2:
+		Format = PF_FloatR11G11B10; break;
+	case 3:
+		if (bUseLowPrecisionFormat)
+		{
+			// if bUseLowPrecisionFormat, DefaultColorFormat already contains the value of GetDefaultMobileSceneColorLowPrecisionFormat
+			checkSlow(DefaultColorFormat == GetDefaultMobileSceneColorLowPrecisionFormat());
+			Format = DefaultColorFormat;
+		}
+		else
+		{
+			Format = GetDefaultMobileSceneColorLowPrecisionFormat();
+		}
+		break;
+	default:
+		break;
+	}
+
+	return GPixelFormats[Format].Supported ? Format : DefaultColorFormat;
+}
+
+// Alpha 的由来
+
+void InitializeSceneTexturesConfig(FSceneTexturesConfig& Config, const FSceneViewFamily& ViewFamily, FIntPoint ExtentOverride)
+{
+	...
+	bool bRequiresAlphaChannel = ShadingPath == EShadingPath::Mobile ? IsMobilePropagateAlphaEnabled(ViewFamily.GetShaderPlatform()) : IsPostProcessingWithAlphaChannelSupported();
+	int32 NumberOfViewsWithMultiviewEnabled = 0;
+	
+	for (const FSceneView* View : ViewFamily.AllViews)
+	{
+		bRequiresAlphaChannel|= SceneCaptureRequiresAlphaChannel(*View);
+		NumberOfViewsWithMultiviewEnabled += (View->bIsMobileMultiViewEnabled) ? 1 : 0;
+	}
+
+	...
+	SceneTexturesConfigInitSettings.bRequiresAlphaChannel = bRequiresAlphaChannel;
+	...
+	Config.Init(SceneTexturesConfigInitSettings);
+}
+
+
+bool SceneCaptureRequiresAlphaChannel(const FSceneView& View)
+{
+	// Planar reflections and scene captures use scene color alpha to keep track of where content has been rendered, for compositing into a different scene later
+	if (View.bIsPlanarReflection)
+	{
+		return true;
+	}
+
+	if (View.bIsSceneCapture)
+	{
+		// Depth capture modes do not require alpha channel
+		if (View.CustomRenderPass)
+		{
+			return View.CustomRenderPass->GetRenderOutput() != FCustomRenderPassBase::ERenderOutput::SceneDepth
+				&& View.CustomRenderPass->GetRenderOutput() != FCustomRenderPassBase::ERenderOutput::DeviceDepth
+				&& View.CustomRenderPass->GetRenderOutput() != FCustomRenderPassBase::ERenderOutput::SceneColorNoAlpha;
+		}
+		else if(View.Family)
+		{
+			return View.Family->SceneCaptureSource != SCS_SceneDepth 
+				&& View.Family->SceneCaptureSource != SCS_DeviceDepth
+				&& View.Family->SceneCaptureSource != SCS_SceneColorHDRNoAlpha;
+		}
+	}
+	return false;
+}
+
+```
+
+TAA 格式由下面的GM控制, 但是在安卓端默认值为0
+r.TemporalAA.R11G11B10History
+因为 Engine/Config/Android/AndroidEngine.ini 的配置问题
+其实可以先改成1, 出问题了再说
+
+```ini
+...
+; R11G11B10 UAV is not supported on Android
+r.TemporalAA.R11G11B10History=0
+...
+```
