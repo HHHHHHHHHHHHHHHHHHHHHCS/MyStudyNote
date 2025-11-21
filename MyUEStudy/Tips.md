@@ -41,6 +41,8 @@ r.Shaders.Optimize=0
 r.Shaders.Symbols=1
 ...
 r.Shaders.ExtraData=1
+...
+r.Shaders.SkipCompression=1
 ```
 
 
