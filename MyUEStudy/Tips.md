@@ -45,6 +45,23 @@ r.Shaders.ExtraData=1
 r.Shaders.SkipCompression=1
 ```
 
+也可以 在Console里输入: renderdoc.CaptureFrame
+
+但是UE5.7又把shader debug 改坏了
+
+https://forums.unrealengine.com/t/unable-to-debug-shader-source-in-editor-using-renderdoc-plugin-in-5-6/2641328/2
+
+修改 Engine\Source\Developer\Windows\ShaderFormatD3D\Private\D3DShaderCompilerDXC.cpp
+
+```C++
+...
+// My New Code
+ExtraArguments.Add(TEXT("-Qembed_debug"));
+
+// generate the debug information (PDB)
+ExtraArguments.Add(TEXT("-Zi"));
+...
+```
 
 ## 调试及启用PIX
 
