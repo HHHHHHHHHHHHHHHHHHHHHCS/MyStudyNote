@@ -1036,8 +1036,24 @@ ParallelFor(allTextures.Num(), [&](int32 Index)
 	}
 });
 
+// 走到这里等于多线程完成了
+
 ```
 
+## 异步执行
+
+```C++
+
+#include "Tasks/Task.h"
+
+
+UE::Tasks::FTask task = UE::Tasks::Launch(TEXT("Test"), []()
+{
+	// Dothing...
+});
+// 等待执行结束
+task.Wait();
+```
 
 ## Mobile Cluster Deferred Lighting
 
@@ -1420,4 +1436,61 @@ r.TemporalAA.R11G11B10History
 ; R11G11B10 UAV is not supported on Android
 r.TemporalAA.R11G11B10History=0
 ...
+```
+
+
+## 编辑器/实时相机位置获取
+
+```C++
+
+FVector UOceanMeshComponent::GetCameraPosition()
+{
+#if WITH_EDITOR
+	if (GIsEditor && !GIsPlayInEditorWorld)
+	{
+		if (FViewport* vp = GEditor->GetActiveViewport())
+		{
+			if (const FEditorViewportClient* ViewportClient = static_cast<FEditorViewportClient*>(vp->GetClient()))
+			{
+				return ViewportClient->GetViewLocation();
+			}
+		}
+	}
+#endif
+
+	if (UWorld* world = GetWorld())
+	{
+		if (world->WorldType == EWorldType::Game || world->WorldType == EWorldType::PIE)
+		{
+			if (APlayerController* playerController = UGameplayStatics::GetPlayerController(this, 0))
+			{
+				if (TObjectPtr<APlayerCameraManager> playerCameraManager = playerController->PlayerCameraManager)
+				{
+					FVector cameraLocation;
+					FRotator cameraRotation;
+
+					playerCameraManager->GetCameraViewPoint(cameraLocation, cameraRotation);
+					return cameraLocation;
+				}
+			}
+		}
+	}
+
+	return FVector::Zero();
+}
+```
+
+注意在Build.cs中添加依赖
+
+```C#
+
+if (Target.bBuildEditor)
+{
+	PrivateDependencyModuleNames.AddRange(
+		new string[]
+		{
+			"UnrealEd",
+		});
+}
+
 ```
