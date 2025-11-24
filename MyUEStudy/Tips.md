@@ -24,6 +24,37 @@ git config --global --unset http.proxy
 git config --global --unset https.proxy
 ```
 
+## Github Desktop 无法discard 成功
+
+discard 或者 使用 git reset --hard 都回退成功
+
+使用 下面这个, 会告诉原因
+
+多半都是因为 CRLF 自动替换
+
+```
+git diff --name-only
+```
+
+在项目根目录创建或编辑 .gitattributes 添加 (推荐)
+
+```
+*.sh text eol=lf
+*.bash text eol=lf
+*.py text eol=lf
+```
+
+或者 直接关闭 core.autocrlf，让 Git 不再乱改 ThirdParty 文件。
+
+然后再删掉索引重建, 之后 reset
+
+```
+git config --global core.autocrlf false
+
+del .git\index
+git reset --hard
+```
+
 
 ## 调试及启用RenderDoc
 
