@@ -1530,3 +1530,32 @@ if (Target.bBuildEditor)
 }
 
 ```
+
+## 不让角色跟着平面移动
+
+正常角色站在平面上, 平面调用 SetActorLocation, 角色也会跟着移动
+
+重写CharacterMovementComponent 的 UpdateBasedMovement
+
+然后注意角色的构造函数
+
+```C++
+// 防止 角色 跟随着 Mesh 移动
+// 角色构造函数就要这么写了, 而且 可能还要空参数构造函数并且初始化成员赋值nullptr
+// AMyCharacter::AMyCharacter(const FObjectInitializer& ObjectInitializer)
+// : ACharacter(ObjectInitializer.SetDefaultSubobjectClass<UMyCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
+void UMyCharacterMovementComponent::UpdateBasedMovement(float DeltaSeconds)
+{
+	if (const UPrimitiveComponent* colliderComp = CharacterOwner->GetMovementBase())
+	{
+		if (const AMyMeshActor* oceanMeshActor = Cast<AMyMeshActor>(colliderComp->GetOwner()))
+		{
+			return;
+		}
+	}
+
+	Super::UpdateBasedMovement(DeltaSeconds);
+}
+
+
+```
