@@ -55,6 +55,11 @@ del .git\index
 git reset --hard
 ```
 
+## 软链接
+
+常用于磁盘不够
+
+mklink /D D:\BBBDir\TargetDir  C:\AAADir\SrcDir
 
 ## 调试及启用RenderDoc
 
