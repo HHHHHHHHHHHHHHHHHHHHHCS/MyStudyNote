@@ -1477,23 +1477,16 @@ r.TemporalAA.R11G11B10History=0
 
 ## 编辑器/实时相机位置获取
 
+如果启动游戏就用游戏相机位置, 如果没有启动就用编辑器主窗口相机位置, 蓝图窗口相机位置为零点
+
 ```C++
 
-FVector UOceanMeshComponent::GetCameraPosition()
-{
 #if WITH_EDITOR
-	if (GIsEditor && !GIsPlayInEditorWorld)
-	{
-		if (FViewport* vp = GEditor->GetActiveViewport())
-		{
-			if (const FEditorViewportClient* ViewportClient = static_cast<FEditorViewportClient*>(vp->GetClient()))
-			{
-				return ViewportClient->GetViewLocation();
-			}
-		}
-	}
+	#include "LevelEditorViewport.h"
 #endif
 
+FVector UMyMeshComponent::GetCameraPosition()
+{
 	if (UWorld* world = GetWorld())
 	{
 		if (world->WorldType == EWorldType::Game || world->WorldType == EWorldType::PIE)
@@ -1511,6 +1504,21 @@ FVector UOceanMeshComponent::GetCameraPosition()
 			}
 		}
 	}
+
+#if WITH_EDITOR
+	if (GIsEditor && !GIsPlayInEditorWorld)
+	{
+		TArray<FLevelEditorViewportClient*> levelEditorViewportClients = GEditor->GetLevelViewportClients();
+		for (const auto& vp : levelEditorViewportClients)
+		{
+			// 只在主窗口跟随移动, 蓝图窗口不动, 正常  LVT_Perspective 是主窗口
+			if (vp->IsLevelEditorClient() && vp->IsActiveViewportType(ELevelViewportType::LVT_Perspective))
+			{
+				return vp->GetViewLocation();
+			}
+		}
+	}
+#endif
 
 	return FVector::Zero();
 }
