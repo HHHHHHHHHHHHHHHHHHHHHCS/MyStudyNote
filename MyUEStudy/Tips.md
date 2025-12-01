@@ -1567,3 +1567,68 @@ void UMyCharacterMovementComponent::UpdateBasedMovement(float DeltaSeconds)
 
 
 ```
+
+## 获取相机View Projection
+
+UE 有好几个接口获取View Projection, 注意别获取有错误的
+
+比如很莫名其妙GetCameraCacheView 拿到的居然是错的
+
+如果是Culling, 建议在RenderThread做, 比如 GetDynamicMeshElements 的 view 做Culling
+
+但是因为 view的culling 只有四个Plane(Left/Right/Top/Down),  所以要自己重新补充Near Plane 然后Culling
+
+而且建议优先Near Culling, 可以剔除大部分物体
+
+```C++
+
+if (UWorld* world = GetWorld())
+{
+	if (world->WorldType == EWorldType::Game || world->WorldType == EWorldType::PIE)
+	{
+		if (APlayerController* playerController = UGameplayStatics::GetPlayerController(this, 0))
+		{
+			// 这个拿到的是错误的
+			if (TObjectPtr<APlayerCameraManager> playerCameraManager = playerController->PlayerCameraManager)
+			{
+				const FMinimalViewInfo& viewInfo = playerCameraManager->GetCameraCacheView();
+				FMatrix viewMatrix;
+				FMatrix projectionMatrix;
+				FMatrix viewProjectionMatrix;
+				UGameplayStatics::GetViewProjectionMatrix(viewInfo, viewMatrix, projectionMatrix, viewProjectionMatrix);
+			}
+
+			// 这个拿到的才是对的
+			FSceneViewProjectionData projData;
+			if (playerController->GetLocalPlayer()->GetProjectionData(playerController->GetLocalPlayer()->ViewportClient->Viewport, projData))
+			{
+				const FMatrix viewProjectionMatrix = projData.ComputeViewProjectionMatrix();
+
+				FConvexVolume viewFrustum;
+				GetViewFrustumBounds(viewFrustum, viewProjectionMatrix, true);
+			}
+		}
+	}
+}
+
+
+void FMySceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, class FMeshElementCollector& Collector) const
+{
+	....
+
+	for (int32 viewIndex = 0; viewIndex < Views.Num(); viewIndex++)
+	{
+		if (VisibilityMap & (1 << viewIndex))
+		{
+			const FSceneView* view = Views[viewIndex];
+			// view->GetCullingFrustum() 是四个面片, 没有近平面
+			FMatrix viewProjectionMatrix = view->ViewMatrices.GetViewProjectionMatrix();
+			FConvexVolume convexVolume;
+			GetViewFrustumBounds(convexVolume, viewProjectionMatrix, true);
+			// IntersectBox 比 GetBoxIntersectionOutcode 快一点
+			bool isVisible = convexVolume.IntersectBox(myAABBPos, myExtend).GetInside();
+		}
+	}
+}
+
+```
