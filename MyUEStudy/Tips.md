@@ -1632,3 +1632,15 @@ void FMySceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*>& View
 }
 
 ```
+
+
+## SM6 新特性
+
+HLSL Shader Model 6.6 - 枚鸽的文章 - 知乎
+https://zhuanlan.zhihu.com/p/1980020382640658379
+
+https://devblogs.microsoft.com/directx/announcing-hlsl-2021/
+
+https://microsoft.github.io/DirectX-Specs/
+
+https://learn.microsoft.com/zh-cn/windows/win32/direct3dhlsl/hlsl-shader-model-6-0-features-for-direct3d-12
