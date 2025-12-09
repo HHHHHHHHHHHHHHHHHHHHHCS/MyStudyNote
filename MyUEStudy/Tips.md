@@ -1644,3 +1644,23 @@ https://devblogs.microsoft.com/directx/announcing-hlsl-2021/
 https://microsoft.github.io/DirectX-Specs/
 
 https://learn.microsoft.com/zh-cn/windows/win32/direct3dhlsl/hlsl-shader-model-6-0-features-for-direct3d-12
+
+
+## UE 打包文件夹进包或排除
+
+项目 Config 下的 DefaultGame.ini
+
+MapsToCook -> 要Cook的Map
+DirectoriesToAlwaysCook -> 进包
+DirectoriesToNeverCook -> 不进包
+
+```
+...
+[/Script/UnrealEd.ProjectPackagingSettings]
+...
++MapsToCook=(FilePath="/Game/Level/World/Level_Test")
++DirectoriesToAlwaysCook=(Path="/Game/Art")
++DirectoriesToNeverCook=(Path="/Game/ArtTest")
+...
+
+```
