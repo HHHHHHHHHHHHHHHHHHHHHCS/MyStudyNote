@@ -1664,3 +1664,42 @@ DirectoriesToNeverCook -> 不进包
 ...
 
 ```
+
+
+## 内外网切换
+
+有时候需要频繁的切网络测试
+
+需要一张有线网卡和一张无线网卡
+
+下载绑定网卡启动的软件
+
+https://github.com/ixjb94/ForceBindIP-Gui
+
+然后插有线网卡, 同时连接WIFI, 正常的情况下 WIFI的 网口跃点(Metric)比有线小, 所以优先WIFI
+
+先 右键网络图标 -> 高级网络设置 -> 编辑两个网络的更多适配器选项 -> IPv4 -> 属性 -> 高级 -> 去掉 自动跃点
+
+然后 Wifi 给100, 有线 给20
+
+如果还是不行, WIFI 优先于 有线 可以用下面这招
+
+cmd 输入 ipconfig
+
+观察 有线和WIFI 的 IPv4 地址
+
+PowerShell 管理模式
+
+输入 route print
+
+会输出一大堆log, 主要看 IPv4 路由表, IPv4 的 跃点数 和 接口(我这里是172.18.2.254)
+
+如果有线比较大, 就继续 执行下面这段
+
+注意 "以太网 1" 是当前的 有线网卡名称, 172.18.2.254 是 IPv4的接口, 最后的 1 是跃点(Metric)值
+
+
+```BAT
+Remove-NetRoute -DestinationPrefix "0.0.0.0/0" -InterfaceAlias "以太网 1" -Confirm:$false
+New-NetRoute -DestinationPrefix "0.0.0.0/0" -InterfaceAlias "以太网 1" -NextHop 172.18.2.254 -RouteMetric 1
+```
