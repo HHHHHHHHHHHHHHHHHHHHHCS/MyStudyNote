@@ -3,6 +3,10 @@ WindowsTips
 
 ## 源码Setup过慢
 
+可以试一试下面这个免费hosts加速 Watt Toolkit(Steam++)
+
+https://steampp.net/
+
 clash cmd git 代理失败, 尝试用下面的语句
 
 端口不一定是7890, 要在Clash上的设置->端口看
@@ -30,6 +34,16 @@ git config --global --unset http.proxy
 git config --global --unset https.proxy
 ```
 
+如果频繁断开可以试一试SSH 和 下面的Bat指令
+
+```bat
+# 增加HTTP缓冲区大小, 避免大数据量时失败
+git config --global http.postBuffer 524288000
+# 降低最低速率限制, 并延长低速操作的等待时间
+git config --global http.lowSpeedLimit 0
+git config --global http.lowSpeedTime 999999
+```
+
 
 ## Github Desktop 流量巨大
 
@@ -44,6 +58,13 @@ File -> Options -> Advanced -> Show status icons in the repository list -> Disab
 但是 选中 UE 源码仓库的时候还是会自动 Fetch
 
 所以这里还是建议 直接把 UE源码移除 Github Desktop
+
+
+## Git 预运行
+
+不会真正执行任何有副作用的操作, 只是展示如果执行会发生什么
+
+指令后面加 --dry-run
 
 
 ## Github Desktop 无法discard 成功
