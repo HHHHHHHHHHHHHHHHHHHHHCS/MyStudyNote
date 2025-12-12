@@ -58,6 +58,20 @@ git config --global http.lowSpeedTime 999999
 ```
 
 
+## git ssh
+
+执行下面的bat
+
+会生成在下面的目录, 文件名为id_rsa, 也就是bat里面的 rsa
+
+C:\Users\\{user}\\.ssh\id_rsa 和 id_rsa.pub
+
+```bat
+ssh-keygen -t rsa -C "xxx@xxx.com"
+```
+
+vscode 打开 id_rsa.pub 复制给 Github就可以了
+
 ## git fetch耗时分析
 
 
