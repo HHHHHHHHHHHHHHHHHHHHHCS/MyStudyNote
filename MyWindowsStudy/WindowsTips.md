@@ -36,6 +36,19 @@ git config --global --unset https.proxy
 
 如果频繁断开可以试一试SSH 和 下面的Bat指令
 
+官方也建议使用SSH去下载, 要密钥isa注册
+
+SSH
+```bat
+# 检查当前 remote, 出现https 就说明不是 SSH
+git remote -v
+# 切换成 SSH
+git remote set-url origin git@github.com:EpicGames/UnrealEngine.git
+# 再检验一下
+git remote -v
+```
+
+其它bat
 ```bat
 # 增加HTTP缓冲区大小, 避免大数据量时失败
 git config --global http.postBuffer 524288000
@@ -44,6 +57,30 @@ git config --global http.lowSpeedLimit 0
 git config --global http.lowSpeedTime 999999
 ```
 
+
+## git fetch耗时分析
+
+
+cmd执行, 设置分析变量
+
+```bat
+set GIT_TRACE=2
+set GIT_CURL_VERBOSE=2
+git fetch
+```
+
+清空分析变量设置
+
+```bat
+set GIT_TRACE=
+set GIT_CURL_VERBOSE=
+```
+
+清空节点
+
+```bat
+git gc --aggressive --prune=now
+```
 
 ## Github Desktop 流量巨大
 
