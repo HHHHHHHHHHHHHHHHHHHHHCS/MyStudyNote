@@ -150,6 +150,26 @@ git reset --hard
 ```
 
 
+## .git 损坏
+
+如果是大仓库, 重新下要很久
+
+先快速下载简约版的新git仓库, 在把新下载的仓库覆盖回原有的仓库
+
+重新拉取下, 可能需要重置下一些修改/冲突的文件状态
+
+```bat
+# 下载新的仓库
+git clone --filter=blob:none --single-branch --branch release git@github.com:EpicGames/UnrealEngine.git D:\UnrealEngine_New
+# 覆盖回原有仓库
+robocopy D:\UnrealEngine_New D:\UnrealEngine /E
+# 识别下文件
+git status
+# 重新拉取
+git pull
+```
+
+
 ## 软链接
 
 常用于磁盘不够
