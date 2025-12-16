@@ -1063,6 +1063,10 @@ https://zhuanlan.zhihu.com/p/1947787635486622837
 
 空Tick开销    5.6及其之后空Tick不再有开销 对于先前的版本,可以cherry-pick 提交
 
+3. UnrealFest2024 UE5高级图形特性优化
+
+https://zhuanlan.zhihu.com/p/1982949542992310797
+
 ## 变体优化
 
 0. 少用 Component Mask 和 Static Bool, 很容易不可控.  Channel Mask 是 dot 所以无所谓
@@ -1476,3 +1480,14 @@ DirectoriesToNeverCook -> 不进包
 
 ```
 
+
+## 获取分辨率
+
+```C++
+// 显示器分辨率
+FDisplayMetrics DisplayMetrics;
+FDisplayMetrics::RebuildDisplayMetrics(DisplayMetrics);
+
+//游戏窗口分辨率
+GEngine->GameViewport->Viewport->GetSizeXY()
+```
