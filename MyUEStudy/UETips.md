@@ -1067,6 +1067,10 @@ https://zhuanlan.zhihu.com/p/1947787635486622837
 
 https://zhuanlan.zhihu.com/p/1982949542992310797
 
+4. UE5 性能优化笔记
+
+https://zhuanlan.zhihu.com/p/713335451
+
 ## 变体优化
 
 0. 少用 Component Mask 和 Static Bool, 很容易不可控.  Channel Mask 是 dot 所以无所谓
