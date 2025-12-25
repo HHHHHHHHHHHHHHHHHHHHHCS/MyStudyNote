@@ -1,6 +1,17 @@
 WindowsTips
 ======
 
+## Git 工具
+
+Github Desktop, 免费不能搜索, 小心自动拉取费流量: https://desktop.github.com/
+
+SourceTree, 免费只能搜作者: https://www.sourcetreeapp.com/
+
+Fork, 付费但是可以搜索: https://www.git-fork.com/
+
+TortoiseGit, 免费可以搜索, https://tortoisegit.org/download/
+
+
 ## 源码Setup过慢
 
 可以试一试下面这个免费hosts加速 Watt Toolkit(Steam++)
