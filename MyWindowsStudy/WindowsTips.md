@@ -14,7 +14,16 @@ TortoiseGit, 免费可以搜索, https://tortoisegit.org/download/
 
 ## 源码Setup过慢
 
-可以试一试下面这个免费hosts加速 Watt Toolkit(Steam++)
+可以先试一试加线程数量
+
+右键setup.bat，用记事本打开
+
+找到 set PROMPT_ARGUMENT 添加 --threads=200
+
+set PROMPT_ARGUMENT=--prompt --threads=200
+
+
+或者再试一试下面这个免费hosts加速 Watt Toolkit(Steam++)
 
 https://steampp.net/
 
