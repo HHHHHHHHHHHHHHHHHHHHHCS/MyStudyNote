@@ -1495,3 +1495,10 @@ FDisplayMetrics::RebuildDisplayMetrics(DisplayMetrics);
 //游戏窗口分辨率
 GEngine->GameViewport->Viewport->GetSizeXY()
 ```
+
+
+## UDS 雾不显示
+
+比如说下雨的 Fog 不显示
+
+要找到 场景下的 ExponentialHeightFog 启用 Volumetric Fog
