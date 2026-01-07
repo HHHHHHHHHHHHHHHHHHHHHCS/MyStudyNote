@@ -43,7 +43,7 @@ ExtraArguments.Add(TEXT("-Zi"));
 
 左上角 File -> Settings -> Symbol / PDB Options -> PDB Search Path
 
-输入 {项目路径}/Saved/ShaderSymbols/PCD3D_ES31 之类的
+输入 {项目路径}/Saved/ShaderSymbols/PCD3D_ES31 之类的, 注意要在旁边点击 + 号
 
 ## 调试及启用PIX
 
