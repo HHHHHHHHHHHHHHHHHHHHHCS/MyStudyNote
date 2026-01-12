@@ -1508,3 +1508,166 @@ GEngine->GameViewport->Viewport->GetSizeXY()
 比如说下雨的 Fog 不显示
 
 要找到 场景下的 ExponentialHeightFog 启用 Volumetric Fog
+
+
+
+## 打开保存资源窗口和创建模型
+
+```C++
+bool UMyToolsWidget::OpenSaveAssetDialog(FString& outPackagePath, FString& outAssetName)
+{
+	IDesktopPlatform* desktopPlatform = FDesktopPlatformModule::Get();
+	if (!desktopPlatform)
+	{
+		return false;
+	}
+
+	void* parentWindowHandle = nullptr;
+
+	FString defaultPath = FPaths::ProjectContentDir();
+	FString defaultFile = TEXT("MeshAsset");
+
+	TArray<FString> outFiles;
+
+	bool bResult = desktopPlatform->SaveFileDialog(
+		parentWindowHandle,
+		TEXT("Save Asset"),
+		defaultPath,
+		defaultFile,
+		TEXT("Unreal Asset (*.uasset)|*.uasset"),
+		EFileDialogFlags::None,
+		outFiles
+	);
+
+	if (!bResult || outFiles.Num() == 0)
+	{
+		return false;
+	}
+
+	FString fullPath = outFiles[0];
+
+	// 必须在 Content 目录下
+	if (!fullPath.StartsWith(FPaths::ProjectContentDir()))
+	{
+		UE_LOG(LogTemp, Error, TEXT("Asset must be saved under Content folder"));
+		return false;
+	}
+
+	// 磁盘路径 -> /Game/ 路径
+	FString relativePath = fullPath;
+	FPaths::MakePathRelativeTo(relativePath, *FPaths::ProjectContentDir());
+
+	FString packagePath = TEXT("/Game/") + FPaths::GetPath(relativePath);
+	FString assetName = FPaths::GetBaseFilename(relativePath);
+
+	outPackagePath = packagePath;
+	outAssetName = assetName;
+	return true;
+}
+
+
+void UMyToolsWidget::CreateMesh(FString packagePath, FString assetName)
+{
+	FMeshDescription meshDesc;
+	FStaticMeshAttributes attributes{meshDesc};
+	attributes.Register();
+
+	const float k_Size = 50.0f;
+
+	// 顶点
+	TArray<FVector3f> verts =
+	{
+		FVector3f(0, 0, k_Size),
+		FVector3f(0, 0, -k_Size),
+		FVector3f(k_Size, 0, 0),
+		FVector3f(-k_Size, 0, 0),
+		FVector3f(0, k_Size, 0),
+		FVector3f(0, -k_Size, 0)
+	};
+
+	TArray<FVector2f> uvs =
+	{
+		FVector2f(0.5f, 1.0f),
+		FVector2f(0.5f, 0.0f),
+		FVector2f(1.0f, 0.5f),
+		FVector2f(0.0f, 0.5f),
+		FVector2f(0.5f, 0.5f),
+		FVector2f(0.5f, 0.5f)
+	};
+
+	// 面索引(8 个三角面)
+	int32 faces[8][3] = 
+	{
+		{0, 2, 4}, {0, 4, 3}, {0, 3, 5}, {0, 5, 2},
+		{1, 4, 2}, {1, 3, 4}, {1, 5, 3}, {1, 2, 5}
+	};
+
+	constexpr int32 k_PolygonTypeNum = std::size(faces[0]);
+
+	TMap<int32, FVertexID> vertexIDs;
+	TVertexAttributesRef<FVector3f> attributesRef = attributes.GetVertexPositions();
+	for (int i = 0; i < verts.Num(); i++)
+	{
+		vertexIDs.Add(i, meshDesc.CreateVertex());
+		attributesRef[vertexIDs[i]] = verts[i];
+	}
+
+	FPolygonGroupID polyGroup = meshDesc.CreatePolygonGroup();
+	// 设置polygon name, 之后设置材质要和这个name一样
+	attributes.GetPolygonGroupMaterialSlotNames()[polyGroup] = FName("Default");
+
+	TVertexInstanceAttributesRef<FVector2f> uvs0Ref = attributes.GetVertexInstanceUVs();
+	uvs0Ref.SetNumChannels(1);
+
+	for (int i = 0; i < std::size(faces); i++)
+	{
+		TArray<FVertexInstanceID> instanceIDs;
+		instanceIDs.SetNum(k_PolygonTypeNum);
+
+		for (int j = 0; j < k_PolygonTypeNum; j++)
+		{
+			FVertexID vertexID = vertexIDs[faces[i][j]];
+			FVertexInstanceID vi = meshDesc.CreateVertexInstance(vertexID);
+			instanceIDs[j] = vi;
+			uvs0Ref.Set(vi, 0, uvs[vertexID]);
+		}
+
+		meshDesc.CreatePolygon(polyGroup, instanceIDs);
+	}
+	
+	// UE 重写了 '/', 这里的作用是路径拼接
+	FString fullPackageName = packagePath / assetName;
+
+	UStaticMesh* staticMesh = NewObject<UStaticMesh>(
+		CreatePackage(*fullPackageName),
+		*assetName,
+		RF_Public | RF_Standalone);
+
+	staticMesh->InitResources();
+
+	staticMesh->SetNumSourceModels(1);
+
+	FStaticMeshSourceModel& srcModel = staticMesh->GetSourceModel(0);
+	srcModel.BuildSettings.bRecomputeNormals = true;
+	srcModel.BuildSettings.bRecomputeTangents = true;
+	srcModel.BuildSettings.bRemoveDegenerates = true;
+
+	UStaticMesh::FBuildMeshDescriptionsParams params;
+	params.bFastBuild = false;
+	params.bUseHashAsGuid = true;
+	params.bMarkPackageDirty = true;
+	params.bCommitMeshDescription = true;
+	params.bAllowCpuAccess = false;
+
+	UMaterialInterface* defaultMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
+
+	staticMesh->GetStaticMaterials().Add(FStaticMaterial(defaultMaterial, FName("Default")));
+
+	staticMesh->BuildFromMeshDescriptions({&meshDesc}, params);
+
+	staticMesh->MarkPackageDirty();
+
+	FAssetRegistryModule::AssetCreated(staticMesh);
+}
+
+```
