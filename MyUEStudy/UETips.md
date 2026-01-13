@@ -904,6 +904,11 @@ call {引擎地址}\Build.bat {AppName} Android Development ""{项目路径}\{Ap
 
 -iterativecooking
 
+也可以看下面这篇文章
+
+UE5.7 解析：Incremental Cooking决策逻辑 - 逸清商的文章 - 知乎
+
+https://zhuanlan.zhihu.com/p/1994197836468860651
 
 ## AFS
 
