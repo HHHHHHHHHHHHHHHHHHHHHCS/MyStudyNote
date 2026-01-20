@@ -1676,3 +1676,14 @@ void UMyToolsWidget::CreateMesh(FString packagePath, FString assetName)
 }
 
 ```
+
+
+## Zen Storage Server
+
+为了解决包 海量小文件过多, DDC 命中率低, IO效率低, 增量不方便, 联机编译等问题
+
+https://dev.epicgames.com/documentation/en-us/unreal-engine/using-zen-storage-server-as-cooked-output-store-for-unreal-engine
+
+UE5 ：Zen as Cook Storage 探究和实例测试 - 逸清商的文章 - 知乎
+
+https://zhuanlan.zhihu.com/p/1995628825162318280
