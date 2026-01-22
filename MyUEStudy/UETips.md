@@ -1687,3 +1687,31 @@ https://dev.epicgames.com/documentation/en-us/unreal-engine/using-zen-storage-se
 UE5 ：Zen as Cook Storage 探究和实例测试 - 逸清商的文章 - 知乎
 
 https://zhuanlan.zhihu.com/p/1995628825162318280
+
+
+## Lerp 模板代替宏
+
+更推荐用 模板配合成员指针, 而不是上面的宏.
+
+因为不好调试, 不好搜索, 不好智能联想.
+
+```C++
+
+#define LerpBool(name) \
+	static bool LerpBool_##name(const UMyDataAsset* assetFrom, const UMyDataAsset* assetTo, float lerp) \
+	{ return lerp >= 1 ? assetTo->name : assetFrom->name; }
+
+template <typename T>
+static bool LerpBoolMember(
+	const UMyDataAsset* assetFrom,
+	const UMyDataAsset* assetTo,
+	float lerp,
+	bool T::* member)
+{
+	return lerp >= 1 ? assetTo->*member : assetFrom->*member;
+}
+
+// 调用
+isEnable = UMyDataAsset::LerpMember<UMyDataAsset>(assetFrom, assetTo, lerp, &UMyDataAsset::isEnable);
+
+```
