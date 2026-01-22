@@ -1715,3 +1715,16 @@ static bool LerpBoolMember(
 isEnable = UMyDataAsset::LerpMember<UMyDataAsset>(assetFrom, assetTo, lerp, &UMyDataAsset::isEnable);
 
 ```
+
+
+## 材质分析器
+
+Tools -> Audit -> Material Analyzer
+
+选中要分析的材质, 它会自动找出所有材质实例 和 static switch parameter
+
+最下方会有一个建议表
+
+他会根据你的 相同的 static switch parameter 做分组, 点击 Create Local Collection 按钮会自动创建本地合集
+
+然后可以 把这些相同变体材质的父材质 重新指定 新的相同变体的材质实例, 这样子可以减少 变体组合数量 和 shader libaray 尺寸
