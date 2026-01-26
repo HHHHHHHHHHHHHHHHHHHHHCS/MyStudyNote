@@ -1728,3 +1728,12 @@ Tools -> Audit -> Material Analyzer
 他会根据你的 相同的 static switch parameter 做分组, 点击 Create Local Collection 按钮会自动创建本地合集
 
 然后可以 把这些相同变体材质的父材质 重新指定 新的相同变体的材质实例, 这样子可以减少 变体组合数量 和 shader libaray 尺寸
+
+
+## 编译平台没有Android
+
+引擎更新后 出现android打包失败, 或者 编译平台只有windows 没有android
+
+1. 运行Android Setup     Engine/Extras/Android/SetupAndroid.bat
+2. 运行检查    Engine\Build\BatchFiles\RunUAT.bat Turnkey -command=VerifySdk -platform=Android
+3. 重新生成工程文件    右键 .uproject → Generate Visual Studio project files
