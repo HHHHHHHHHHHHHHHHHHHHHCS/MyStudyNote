@@ -1737,3 +1737,17 @@ Tools -> Audit -> Material Analyzer
 1. 运行Android Setup     Engine/Extras/Android/SetupAndroid.bat
 2. 运行检查    Engine\Build\BatchFiles\RunUAT.bat Turnkey -command=VerifySdk -platform=Android
 3. 重新生成工程文件    右键 .uproject → Generate Visual Studio project files
+
+
+## UE 5.6 天玑骨骼错误
+
+如果 shader 启用了 half, 在 GpuSkinCommon.ush 5.6版本 的一条修改, 会导致 天玑骨骼错误
+
+zach bethel 2025/3/8 6:23 Reduce VGPR count of skin cache shaders by using half's for tangents.
+
+解决办法: 在 ComputeBoneMatrixWithUnlimitedInfluences 函数里 把 BoneWeight 定义回 float
+
+而且还有一个问题 half / 65535.0 , 在一些GPU会被直接优化成0
+
+因为 1/65535 小于 HALF_EPS, 然后就变成了 half / 0, GPU 为了解决非法制, 直接让结果 等于 0
+
