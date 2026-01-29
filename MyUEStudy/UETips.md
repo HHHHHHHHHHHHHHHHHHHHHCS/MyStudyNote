@@ -1751,3 +1751,24 @@ zach bethel 2025/3/8 6:23 Reduce VGPR count of skin cache shaders by using half'
 
 因为 1/65535 小于 HALF_EPS, 然后就变成了 half / 0, GPU 为了解决非法制, 直接让结果 等于 0
 
+
+
+## 添加shaders文件夹
+
+通常是用插件来添加 Shaders 文件夹, 给 Custom Node 用
+
+但是看 LaunchEngineLoop.cpp 代码
+
+```C++
+
+const FString ProjectShaderPath = FPaths::Combine(FPaths::ProjectDir(), TEXT("Shaders"));
+if (FPaths::DirectoryExists(ProjectShaderPath))
+{
+	AddShaderSourceDirectoryMapping(TEXT("/Project"), ProjectShaderPath);
+}
+
+```
+
+直接在项目文件夹下 创建 Shaders 文件夹, 添加 test.ush
+
+然后 在 Custom Node 里面, include file 写 /Project/test.ush
