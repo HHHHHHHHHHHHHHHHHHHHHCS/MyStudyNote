@@ -1136,6 +1136,18 @@ ENQUEUE_RENDER_COMMAND(FUpdateData)(
 
 ```
 
+或者尝试关闭联合编译
+
+```xml
+<?xml version="1.0" encoding="utf-8" ?>
+<Configuration xmlns="https://www.unrealengine.com/BuildConfiguration">
+	<BuildConfiguration>
+		<bUseUnityBuild>false</bUseUnityBuild>
+	</BuildConfiguration>
+</Configuration>
+
+```
+
 
 ## Android 打包卡 compileDebugAidl
 
