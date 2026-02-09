@@ -54,7 +54,7 @@ Hyper-V&GPU
 
 如果虚拟机已经创建完成了. 可以右键虚拟机->设置->SCSI控制器->添加DVD驱动器. 然后指定我们的系统ISO.
 
-![](Images/Hyper-V&GPU_00.jpg)
+![](Images//Hyper-V&GPU//Hyper-V&GPU_00.jpg)
 
 然后就是一系列装系统的过程.
 
@@ -66,13 +66,13 @@ Hyper-V&GPU
 
 我们先要关掉**增强会话**, 点这个按钮, 或者点击 查看->增强会话.
 
-![](Images/Hyper-V&GPU_01.png)
+![](Images//Hyper-V&GPU//Hyper-V&GPU_01.png)
 
 然后输入我们的window账户密码, 不是pin码, 进入Windows 去关闭pin码.
 
 设置->账户->登录选项->关闭 Windows Hello.
 
-![](Images/Hyper-V&GPU_02.png)
+![](Images//Hyper-V&GPU//Hyper-V&GPU_02.png)
 
 这样我们再开增强会话, 就要输入windows账户密码去进入系统了.
 
@@ -86,11 +86,11 @@ Hyper-V&GPU
 
 去新建一个网络交换器.
 
-![](Images/Hyper-V&GPU_03.jpg)
+![](Images//Hyper-V&GPU//Hyper-V&GPU_03.jpg)
 
 属性设置为 外部网络->物理显卡.
 
-![](Images/Hyper-V&GPU_04.jpg)
+![](Images//Hyper-V&GPU//Hyper-V&GPU_04.jpg)
 
 再修改我们的虚拟机, 设置->网络适配器->刚创建的虚拟交换机. 重启虚拟机就完事了.
 
@@ -108,7 +108,7 @@ Hyper-V&GPU
 
 查询我们的驱动程序详细信息, 下拉到最后.
 
-![](Images/Hyper-V&GPU_05.jpg)
+![](Images//Hyper-V&GPU//Hyper-V&GPU_05.jpg)
 
 记住这个文件夹的名字.
 
@@ -120,7 +120,7 @@ Hyper-V&GPU
 
 打开**C:\Windows\System32** 选中nv开头的一堆文件, 把它们拷贝到刚创建的**System32**文件夹
 
-![](Images/Hyper-V&GPU_06.jpg)
+![](Images//Hyper-V&GPU//Hyper-V&GPU_06.jpg)
 
 **下面针对A卡**
 
@@ -161,7 +161,7 @@ Set-VM –HighMemoryMappedIoSpace 32GB –VMName $vm
 
 先要执行一段修改策略的命令 **Set-ExecutionPolicy unrestricted**
 
-![](Images/Hyper-V&GPU_07.jpg)
+![](Images//Hyper-V&GPU//Hyper-V&GPU_07.jpg)
 
 选全是.
 

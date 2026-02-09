@@ -48,13 +48,13 @@
 
 无(you)意间看到了一个Capsule AO插件, 正好学一下(Ctrl+C+V). 请多多支持正版, 我只做学习笔记. [插件地址][2]
 
-![](Images/CapsuleAO_00.jpg)
+![](Images//CapsuleAO//CapsuleAO_00.jpg)
 
 我使用CapsuleAO, 最主要是想要生成影中影和贴近墙壁地板的AO的效果.
 
 UE的Docs上有一个很好的对比图, 比我不知道高到哪里去了. [对比地址][3]. 建议抄UE的代码[UE分享][8].
 
-![](Images/CapsuleAO_01.jpg)
+![](Images//CapsuleAO//CapsuleAO_01.jpg)
 
 尽可能的跳过了数学的地方. 因为讲起来好复杂啊!!! 还是直接Ctrl+C+V快!!!
 
@@ -64,7 +64,7 @@ UE的Docs上有一个很好的对比图, 比我不知道高到哪里去了. [对
 
 一句话概括本文的原理, 用胶囊体(Capsule)来替代角色的躯干去模拟Shadow和AO. Screen的WorldPos沿着WorldNormal和LightDir对Capsule做射线检测, 从而产生AO和Shadow.
 
-![](Images/CapsuleAO_02.jpg)
+![](Images//CapsuleAO//CapsuleAO_02.jpg)
 
 下面内容主要参考(Copy) 简书的 离原春草 的 [Ambient Occlusion技术方案综述][4] 的 CapsuleAO.
 
@@ -76,15 +76,15 @@ AO: 球在半球上投影面积比例.
 
 Shadow: 发射点沿着LightDir 产生一个圆锥(锥角由我们决定, 效果是阴影的软化程度). 球和圆锥的相交面积比例.
 
-![](Images/CapsuleAO_03.png)
+![](Images//CapsuleAO//CapsuleAO_03.png)
 
-![](Images/CapsuleAO_04.png)
+![](Images//CapsuleAO//CapsuleAO_04.png)
 
 还有一个预计算贴图, 用于Directional term, 是蒙特卡洛算法在离线时预计算出遮挡体与被渲染点几何关系与遮挡值的函数关系. 因为那时是PS3时代, ALU不足, 用贴图采样取代复杂的算法. **但是这篇文章的代码里面并没有用到这个图**.
 
 对于一个给定的锥角而言, 遮挡值可以用遮挡体对于当前点的张角(Θ,theta)以及到球心的射线与椎体轴线夹角(Φ,phi)的函数来表示, 这个结果被存成像上面一样的贴图里. 对于不同的锥角, 可分别输出2D贴图, 然后组成3D贴图. ([文章写数学符号][7])
 
-![](Images/CapsuleAO_05.png)
+![](Images//CapsuleAO//CapsuleAO_05.png)
 
 不同的锥角影响着阴影的软化程度, 锥角越大, 软化程度越高。
 
@@ -96,7 +96,7 @@ Shadow: 发射点沿着LightDir 产生一个圆锥(锥角由我们决定, 效果
 
 可以尝试写(Copy)一下Shader toy 上面 iq大佬的 Capsule AO. 抄完大致先效果如下图, [ShaderToy地址][9].
 
-![](Images/CapsuleAO_06.jpg)
+![](Images//CapsuleAO//CapsuleAO_06.jpg)
 
 ### **2.1. frag**
 
@@ -104,7 +104,7 @@ Shadow: 发射点沿着LightDir 产生一个圆锥(锥角由我们决定, 效果
 
 ro是摄像机的位置, 位置会随着时间变化. ta是相机看向哪里, 这里是零点. 大体意思是在一个高0.4, 半径为1的圆环上一直看着零点.
 
-![](Images/CapsuleAO_07.png)
+![](Images//CapsuleAO//CapsuleAO_07.png)
 
 ```C++
 
@@ -177,7 +177,7 @@ half4 frag(v2f IN) : SV_Target
 
 如果除以xy而不是除以y, 就会得到下图这种效果, 拉伸了.
 
-![](Images/CapsuleAO_08.jpg)
+![](Images//CapsuleAO//CapsuleAO_08.jpg)
 
 再建立相机的forward, up, right. 因为forward方向基本都是事先知道的, 不会和float3(0,1,0)重合, 所以这里放心大胆使用了.
 
@@ -205,13 +205,13 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 先做RayTrace CapsuleIntersect. 创建个 **CapsuleIntersect** 方法. 用射线去检测是否碰撞到了Capsule.
 
-![](Images/CapsuleAO_09.jpg)
+![](Images//CapsuleAO//CapsuleAO_09.jpg)
 
 ro, 射线起点. rd, 射线方向. pa, 胶囊体A点. pb, 胶囊体B点. r, 胶囊体半径. 返回值是 射线起点到碰撞点的距离(射线方向需要是Normalize的).
 
 具体的数学这里就不展开BB了, 去搜下挺多的(能用就行). 我是自己用C#写了一版检测, 这里还是用他的吧.
 
-![](Images/CapsuleAO_16.jpg)
+![](Images//CapsuleAO//CapsuleAO_16.jpg)
 
 
 ```C++
@@ -296,7 +296,7 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 就能见到下图这样的胶囊体了.
 
-![](Images/CapsuleAO_10.jpg)
+![](Images//CapsuleAO//CapsuleAO_10.jpg)
 
 ### **2.4. CapsuleNormal**
 
@@ -361,7 +361,7 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 ```
 
-![](Images/CapsuleAO_11.jpg)
+![](Images//CapsuleAO//CapsuleAO_11.jpg)
 
 ### **2.5. Lighting**
 
@@ -423,7 +423,7 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 上色完成.
 
-![](Images/CapsuleAO_12.jpg)
+![](Images//CapsuleAO//CapsuleAO_12.jpg)
 
 ### **2.6. Floor**
 
@@ -435,7 +435,7 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 继续修改 **GetCapsuleColor** 方法, 添加常量 **floorHeight** , 添加 floor 的射线检测.
 
-![](Images/CapsuleAO_13.jpg)
+![](Images//CapsuleAO//CapsuleAO_13.jpg)
 
 
 ```C++
@@ -473,7 +473,7 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 做完效果就是下面这样.
 
-![](Images/CapsuleAO_14.jpg)
+![](Images//CapsuleAO//CapsuleAO_14.jpg)
 
 
 ### **2.7. CapsuleShadow**
@@ -484,13 +484,13 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 但是他这里用了另外一种方法(因为要做软阴影, 算是一种假阴影的做法). 地板上的点沿着光的方向发射射线, 计算射线离胶囊体最短的距离. 根据距离判断要阴影的程度.
 
-![](Images/CapsuleAO_17.jpg)
+![](Images//CapsuleAO//CapsuleAO_17.jpg)
 
 胶囊体可以看成 圆球半径r 球心在a, 然后球心从a位移到b形成的一个形状. 这样射线离胶囊体最近的点可以看成两个线的问题.
 
 射线rord 找到距离线段 ab 最近的点q, 同时找到离射线最近的点p. d = dist(p,q) - r.
 
-![](Images/CapsuleAO_15.png)
+![](Images//CapsuleAO//CapsuleAO_15.png)
 
 添加 **CapsuleShadow** 方法, 返回射线和胶囊体的最近距离.
 
@@ -565,7 +565,7 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 ```
 
-![](Images/CapsuleAO_18.jpg)
+![](Images//CapsuleAO//CapsuleAO_18.jpg)
 
 然后再根据距离生成假的阴影效果. 这里为了美观加了点魔法. 同时还有个挺有趣的想法. th.x越大, 说明投影物体离地板越远, 产生的阴影越虚(淡), 但是阴影面积越大. 如果th.x越小, 说明投影物体离地板越近, 产生的阴影越实, 面积越小. 有点类似于PCSS(脑补闫老师的钢笔图吧2333).
 
@@ -587,11 +587,11 @@ float CapsuleShadow(float3 ro, float3 rd, float3 a, float3 b, float r, float k)
 
 下图分别为 当k和d保持不变, th.x为原值, th.x*=10, th.x/=10. 正常效果, 很虚但是面积很大, 很实面积较小. 当然这个效果其实可以通过调节k来实现.
 
-![](Images/CapsuleAO_19.jpg)
+![](Images//CapsuleAO//CapsuleAO_19.jpg)
 
-![](Images/CapsuleAO_20.jpg)
+![](Images//CapsuleAO//CapsuleAO_20.jpg)
 
-![](Images/CapsuleAO_21.jpg)
+![](Images//CapsuleAO//CapsuleAO_21.jpg)
 
 返回 **GetCapsuleColor**, 把之前测试输出的sha 改成回原来的颜色看看. 对味了.
 
@@ -611,7 +611,7 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 ```
 
-![](Images/CapsuleAO_22.png)
+![](Images//CapsuleAO//CapsuleAO_22.png)
 
 ### **2.8. CapsuleOcclusion**
 
@@ -619,7 +619,7 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 可以先看作地板点P 在 线段AB 上的哪个点(记做x)最近. 然后根据 x和P 的距离计算AO. 他这里还考虑到了法线和Dir(x,P).
 
-![](Images/CapsuleAO_23.png)
+![](Images//CapsuleAO//CapsuleAO_23.png)
 
 先求h, 就是 dot(pa, ba) / dot(ba, ba), 然后因为要在线段上 所以要clamp01 一下. 
 
@@ -691,9 +691,9 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 对比看看, 有无AO效果.
 
-![](Images/CapsuleAO_24.png)
+![](Images//CapsuleAO//CapsuleAO_24.png)
 
-![](Images/CapsuleAO_25.png)
+![](Images//CapsuleAO//CapsuleAO_25.png)
 
 ### **2.9. Final**
 
@@ -718,7 +718,7 @@ half3 GetCapsuleColor(float3 ta, float3 ro, float2 fragCoord, float2 o)
 
 ShaderToy Capsule AO 写轮眼完成.
 
-![](Images/CapsuleAO_26.png)
+![](Images//CapsuleAO//CapsuleAO_26.png)
 
 -----------------
 
@@ -732,11 +732,11 @@ ShaderToy Capsule AO 写轮眼完成.
 
 这里顺便吐槽下Unity 2022.2.0b14有Bug. 如果直接选中骨骼, 添加Capsule Collider /已存在Capsule Collider, 是不会显示Gizmos的. 需要选中Root节点(ybot), 再去选中骨骼才显示.
 
-![](Images/CapsuleAO_29.jpg)
+![](Images//CapsuleAO//CapsuleAO_29.jpg)
 
 然而2021就可以直接显示, 很神奇.
 
-![](Images/CapsuleAO_30.jpg)
+![](Images//CapsuleAO//CapsuleAO_30.jpg)
 
 ### **3.2 结构体**
 
@@ -770,9 +770,9 @@ public struct Character
 
 下面为开启角色自投影 和 关闭的对比.
 
-![](Images/CapsuleAO_27.png)
+![](Images//CapsuleAO//CapsuleAO_27.png)
 
-![](Images/CapsuleAO_28.png)
+![](Images//CapsuleAO//CapsuleAO_28.png)
 
 ### **3.4 Pass**
 
@@ -786,11 +786,11 @@ public struct Character
 
 下面分别为Opaque之后的效果, 单独渲染角色的Depth, 渲染CapsuleAO.
 
-![](Images/CapsuleAO_31.jpg)
+![](Images//CapsuleAO//CapsuleAO_31.jpg)
 
-![](Images/CapsuleAO_32.png)
+![](Images//CapsuleAO//CapsuleAO_32.png)
 
-![](Images/CapsuleAO_33.jpg)
+![](Images//CapsuleAO//CapsuleAO_33.jpg)
 
 -----------------
 

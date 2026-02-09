@@ -58,14 +58,14 @@
     + 同时可以让Tile Light Culling 更加精确
     + (其实Light Layer上也可以解决漏光)
 
-![](Images/MobileGI_00.jpg)
+![](Images//MobileGI//MobileGI_00.jpg)
 
 ### **1.3 Light Num**
   + 检测屏幕物体接受光源的数量
   + 如果是深红色则说明超标了
   + (有点类似于OverDraw的感觉)
 
-![](Images/MobileGI_01.jpg)
+![](Images//MobileGI//MobileGI_01.jpg)
 
 -----------------
 
@@ -82,7 +82,7 @@
   + 储存每一块区域的光照信息
   + 他们游戏就是用的这套
 
-![](Images/MobileGI_02.jpg)
+![](Images//MobileGI//MobileGI_02.jpg)
 
 ### **2.3 储存详细**
   + 用2阶球谐, 1阶段存 Color(3Byte), 2阶只存亮度(3Byte)
@@ -92,32 +92,32 @@
   + 为什么2阶段球谐不存4个Color? 
     + 为了压缩数据
 
-![](Images/MobileGI_03.jpg)
+![](Images//MobileGI//MobileGI_03.jpg)
 
   + Sky Visbility?
     + 有点类似于长距离AO, AO分为长距离AO和短距离AO
     + 下图GI AO 即 Sky Visbility, 可以看到往内部区域走会逐渐变暗
 
-![](Images/MobileGI_04.jpg)
+![](Images//MobileGI//MobileGI_04.jpg)
 
   + 计算公式?
     + 间接光 = GIIndirectSH(烘焙) * LightIntensity(美术调节) + GISkyVisibility(烘焙) * SkySH(美术调节)
 
-![](Images/MobileGI_05.jpg)
+![](Images//MobileGI//MobileGI_05.jpg)
 
 
-![](Images/MobileGI_06.jpg)
+![](Images//MobileGI//MobileGI_06.jpg)
 
   + Light Mask?
     + 表示这块区域的光照贡献主要是平行光产生的, 还是附加光产生的
     + 当白天变成晚上时, 区域的光照贡献主要是附加光, 则亮度不怎么会产生变化
     + 如冰柱的主要贡献是平行光, 白天还好, 但是晚上冰柱周围都变暗了, 冰柱没有变暗会很诡异
 
-![](Images/MobileGI_07.jpg)
+![](Images//MobileGI//MobileGI_07.jpg)
 
-![](Images/MobileGI_08.jpg)
+![](Images//MobileGI//MobileGI_08.jpg)
 
-![](Images/MobileGI_09.jpg)
+![](Images//MobileGI//MobileGI_09.jpg)
 
 ### **2.4 Streaming**
   + Scrolling Clipmap Update
@@ -133,7 +133,7 @@
   + 远处变成2D的Gobal Map
     + 因为3D Texture覆盖范围比较小 远处就需要2D 做弥补
 
-![](Images/MobileGI_10.jpg)
+![](Images//MobileGI//MobileGI_10.jpg)
 
 ### **2.5 耗时**
   + 范围: 256m * 256m * 200m
@@ -147,7 +147,7 @@
   + 3D Virtual Texture (没有细说)
     + 当巨高的场景, 可以用做数据整合, 使其规则化
 
-![](Images/MobileGI_11.jpg)
+![](Images//MobileGI//MobileGI_11.jpg)
 
   + Lightmap VS Irradiance Volume
 
@@ -212,11 +212,11 @@
 
   间接光SH也差不多, 就是多考虑了方向性. 比如L1在靠近L0反向的颜色为黑色.
 
-![](Images/MobileGI_12.jpg)
+![](Images//MobileGI//MobileGI_12.jpg)
 
-![](Images/MobileGI_13.jpg)
+![](Images//MobileGI//MobileGI_13.jpg)
 
-![](Images/MobileGI_14.jpg)
+![](Images//MobileGI//MobileGI_14.jpg)
 
   **迭代叠加越加越亮?**
 
@@ -224,13 +224,13 @@
 
   比如Pixel Shader 对于两张RT的pingpong, 就是雅克比. 但是他们这里用Compute Shader, 如果是高斯赛德尔迭代, 就需要很处理Barrier和数据一致性, 比较繁琐性能也不好. 所以这里就很随意如果数据更新了就用新的, 没有更新就用旧的.
 
-![](Images/MobileGI_15.jpg)
+![](Images//MobileGI//MobileGI_15.jpg)
 
   **迭代反射?**
 
   用迭代近似处理多次反射. 比如下面的L3是不连通的, 因此会反射一定的irrdiance, 计算的时候就会考虑一定的从下往上的加成.
 
-![](Images/MobileGI_16.jpg)
+![](Images//MobileGI//MobileGI_16.jpg)
 
   **耗时?**
 
@@ -246,9 +246,9 @@
 
 比平行光 Diffuse效果要好, 而且效率也会高点. 不过高光部分效果不太行, 平行光是GGX, 而Lux高光效果会变散.
 
-![](Images/MobileGI_17.jpg)
+![](Images//MobileGI//MobileGI_17.jpg)
 
-![](Images/MobileGI_18.jpg)
+![](Images//MobileGI//MobileGI_18.jpg)
 
 
 ### **3.4 漏光**
@@ -257,21 +257,21 @@
 
   (后面一篇文章也会快速讲一个这个)
 
-![](Images/MobileGI_19.jpg)
+![](Images//MobileGI//MobileGI_19.jpg)
 
   一种是区分室内室外做两套probe. 对于规则物体的demo效果比较好, 但是实际上房子不太规则, 所以没有采样.
 
-![](Images/MobileGI_20.jpg)
+![](Images//MobileGI//MobileGI_20.jpg)
 
-![](Images/MobileGI_21.jpg)
+![](Images//MobileGI//MobileGI_21.jpg)
 
   COD用四面体. probe储存四面体中一个点到对面三角面的每个点的深度, 然后做深度对比.
 
-![](Images/MobileGI_22.jpg)
+![](Images//MobileGI//MobileGI_22.jpg)
 
   DDGI. 每个probe对应一个2D的八面体深度贴图, 八个点的距离, 距离平方, 然后用切比雪夫不等式做一个概率估计. 不用线性插值, 而且自己还可以做权重处理. 但是需要的数据量太多了. 每个probe需要16*16个Bytes来记录深度.
 
-![](Images/MobileGI_23.jpg)
+![](Images//MobileGI//MobileGI_23.jpg)
 
   Lux. 
   
@@ -285,7 +285,7 @@
 
   因为球谐的形状比较圆, 但是球面高斯比较符合墙角的形状.
 
-![](Images/MobileGI_24.jpg)
+![](Images//MobileGI//MobileGI_24.jpg)
 
 ### **3.5 性能**
   + Iphone13

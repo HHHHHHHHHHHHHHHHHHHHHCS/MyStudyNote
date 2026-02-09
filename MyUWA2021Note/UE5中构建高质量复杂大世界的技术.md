@@ -85,7 +85,7 @@ UE5中构建高质量复杂大世界的技术
     + 引擎的数学运算都支持了双精度
     + 做了很大改进, 为了让内存和性能对比使用单精度的时候没有太大差别 
 
-![](Images/UE5_00.jpg)
+![](Images//UE5//UE5_00.jpg)
 
 ------------------------
 
@@ -138,7 +138,7 @@ UE5中构建高质量复杂大世界的技术
   + 把每一级的LOD的BVH挂到总的BVH Root下
     + BVH是树的结构, 树干储存bounding box, 叶子储存cluster group和bounding box
 
-![](Images/UE5_01.jpg)
+![](Images//UE5//UE5_01.jpg)
 
 ### **2.4 裁剪流程**
   + Instancing Culling: 跟上一帧的HZB(Hierarchical Z-Buffer)做裁剪()
@@ -152,7 +152,7 @@ UE5中构建高质量复杂大世界的技术
   + 有了新的HZB, 把所有的流程重新来一遍. 这样的生成的结果是保守的.
   + 最后生成这一帧数真正的HZB
 
-![](Images/UE5_02.jpg)
+![](Images//UE5//UE5_02.jpg)
 
 ### **2.4 裁剪和LOD选择**
   + 在Culling的时候也要判断选择哪个LOD, 根据自己的误差是否足够小
@@ -165,7 +165,7 @@ UE5中构建高质量复杂大世界的技术
   + 解决办法: 发一个Dispatch, 开足够多的线程(Persistent), 走多生产者多消费者模式
     + 每一个Task同时做了Hierarchical Culling, Cluster Culling, Rasterizer
 
-![](Images/UE5_03.jpg)
+![](Images//UE5//UE5_03.jpg)
 
 ### **2.5 光栅化**
   + Visibility Buffer 64位: depth 30位, InstanceID 27位, TriangleID 7位(就是 Cluster 128个面片)
@@ -183,7 +183,7 @@ UE5中构建高质量复杂大世界的技术
   + 有了Visibility Buffer就解耦合了场景复杂度, 拥有每个像素位置的instance数据和对应的三角面片
   + 下面的图蓝色走的软件光栅化, 红色走的硬件光栅化
 
-![](Images/UE5_04.jpg)
+![](Images//UE5//UE5_04.jpg)
 
 ### **2.6 材质**
   + 每个Cluster会用额外32位来储存材质信息
@@ -252,7 +252,7 @@ UE5中构建高质量复杂大世界的技术
    + 多View渲染
    + 支持无限实例数
 
-![](Images/UE5_05.jpg)
+![](Images//UE5//UE5_05.jpg)
 
 ------------------------
 
@@ -267,7 +267,7 @@ UE5中构建高质量复杂大世界的技术
   + 不强制依赖硬件光追
   + 简化用户配置
 
-![](Images/UE5_06.jpg)
+![](Images//UE5//UE5_06.jpg)
 
 ### **3.2 Tracing**
   + 需要思考的的问题:
@@ -316,7 +316,7 @@ UE5中构建高质量复杂大世界的技术
   + 硬件Ray Tracing
     + (没有时间展开讲, 被跳过了)
 
-![](Images/UE5_07.jpg)
+![](Images//UE5//UE5_07.jpg)
 
 ### **3.3 场景结构**
   + SDF只能获取的位置信息和梯度场的normal信息, 没有表面材质信息. 如果用了Mesh SDF还能获取MeshID, 是用了Global SDF则不行
@@ -342,7 +342,7 @@ UE5中构建高质量复杂大世界的技术
     + 是非均匀的Voxel, 是用Card投影出来的, 每帧都会高效完全重建
     + 对于远景, 把很多Card合并做低通滤波, 直接在Card的低级mipmap上做查询
 
-![](Images/UE5_08.jpg)
+![](Images//UE5//UE5_08.jpg)
 
 ### **3.3 场景结构**
   + 屏幕空间的Radiance Cache
@@ -373,7 +373,7 @@ UE5中构建高质量复杂大世界的技术
   + Temporal滤波
     + 全部算完之后Temporal滤波 (因为时间关系, 没有细讲)
 
-![](Images/UE5_09.jpg)
+![](Images//UE5//UE5_09.jpg)
 
 ### **3.4 未来**
   + 镜面反射

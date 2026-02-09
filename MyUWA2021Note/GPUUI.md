@@ -88,18 +88,18 @@ GPU UI
     + GPUDoozyUI
     + UESMoviePlgin
 
-![](Images/GUIUI_00.jpg)
+![](Images//GUIUI//GUIUI_00.jpg)
 
 ### **1.2 三个核心类**
   + UESMovieEngine(影片引擎)
   + UESMovieClip(影片剪辑)
   + UESMovieShape(影片图形)
 
-![](Images/GUIUI_01.jpg)
+![](Images//GUIUI//GUIUI_01.jpg)
 
-![](Images/GUIUI_02.jpg)
+![](Images//GUIUI//GUIUI_02.jpg)
 
-![](Images/GUIUI_03.jpg)
+![](Images//GUIUI//GUIUI_03.jpg)
 
 ### **1.3 原理**
   + 不触发网格重构, 让动画实现在GPU层
@@ -125,9 +125,9 @@ GPU UI
       + Vertex偏移
       + Color颜色
 
-![](Images/GUIUI_04.jpg)
+![](Images//GUIUI//GUIUI_04.jpg)
 
-![](Images/GUIUI_05.jpg)
+![](Images//GUIUI//GUIUI_05.jpg)
 
 ------------------------
 
@@ -139,7 +139,7 @@ GPU UI
   + 静态相对上一MovieClip位置矩阵
   + 主机混合顶点变换的矩阵
 
-![](Images/GUIUI_06.jpg)
+![](Images//GUIUI//GUIUI_06.jpg)
 
 ### **2.2 Shader顶点变换**
   + USEMovie.Shader VS 做顶点动画
@@ -147,21 +147,21 @@ GPU UI
   + 移动, 旋转, 缩放
   + 主机混合顶点变换的矩阵
 
-![](Images/GUIUI_07.jpg)
+![](Images//GUIUI//GUIUI_07.jpg)
 
 ### **2.3 Fill属性改变**
   + Image总宽度,高度
   + 当前Fill值-静态的Fill值, 计算偏移量
   + 根据偏移量计算vertex, uv偏移
 
-![](Images/GUIUI_08.jpg)
+![](Images//GUIUI//GUIUI_08.jpg)
 
 ### **2.4 Sprite属性改变**
   + 必须打图集
   + 顶点索引
   + 每个顶点UV偏移量
 
-![](Images/GUIUI_09.jpg)
+![](Images//GUIUI//GUIUI_09.jpg)
 
 ### **Text属性改变**
   + UESMovieText 确定字符串长度
@@ -172,7 +172,7 @@ GPU UI
   + 位置间隙优化
   + 数据索引优化
 
-![](Images/GUIUI_10.jpg)
+![](Images//GUIUI//GUIUI_10.jpg)
 
 ### **鼠标点击**
   + GraphicRaycaster
@@ -182,9 +182,9 @@ GPU UI
     + 传入真正的GPU 动画矩阵
     + 和鼠标点击区域进行判断
 
-![](Images/GUIUI_11.jpg)
+![](Images//GUIUI//GUIUI_11.jpg)
 
-![](Images/GUIUI_12.jpg)
+![](Images//GUIUI//GUIUI_12.jpg)
 
 ------------------------
 
@@ -200,20 +200,20 @@ GPU UI
     + GPU DoTween
     + GPU Doozy
 
-![](Images/GUIUI_13.jpg)
+![](Images//GUIUI//GUIUI_13.jpg)
 
-![](Images/GUIUI_14.jpg)
+![](Images//GUIUI//GUIUI_14.jpg)
 
 ------------------------
 
 ## **4. 性能对比**
 &emsp;&emsp; 越复杂GPU UI效果越好.
 
-![](Images/GUIUI_15.jpg)
+![](Images//GUIUI//GUIUI_15.jpg)
 
-![](Images/GUIUI_16.jpg)
+![](Images//GUIUI//GUIUI_16.jpg)
 
-![](Images/GUIUI_17.jpg)
+![](Images//GUIUI//GUIUI_17.jpg)
 
 ## **4.1 使用建议**
  + 头顶文字, 飘血, 小地图等

@@ -88,11 +88,11 @@ UWA其它
 
 函数消耗没有特别集中的点.
 
-![](Images/UWAOther_00.jpg)
+![](Images//UWAOther//UWAOther_00.jpg)
 
-![](Images/UWAOther_01.jpg)
+![](Images//UWAOther//UWAOther_01.jpg)
 
-![](Images/UWAOther_02.jpg)
+![](Images//UWAOther//UWAOther_02.jpg)
 
 GPU压力. 分辨率降低RenderLoop耗时明显降低.
 
@@ -113,7 +113,7 @@ GPU压力. 分辨率降低RenderLoop耗时明显降低.
 
 1. 特定的几个版本OpenGL下 SRP Batch会失效.
 
-![](Images/UWAOther_03.jpg)
+![](Images//UWAOther//UWAOther_03.jpg)
 
 2. MaterialPropertyBlock(MPB)和SRP Batcher不兼容.
 
@@ -125,11 +125,11 @@ GPU压力. 分辨率降低RenderLoop耗时明显降低.
 
   但是这种改法在不同版本中生效的情况不一样.
 
-![](Images/UWAOther_04.jpg)
+![](Images//UWAOther//UWAOther_04.jpg)
 
-![](Images/UWAOther_05.jpg)
+![](Images//UWAOther//UWAOther_05.jpg)
 
-![](Images/UWAOther_06.jpg)
+![](Images//UWAOther//UWAOther_06.jpg)
 
 #### **1.1.4 OverDraw**
 
@@ -137,9 +137,9 @@ GPU压力. 分辨率降低RenderLoop耗时明显降低.
 
   然后自己再写一个Compute Shader, 对全屏Over DrawRT做累加, 除以像素数量, 得到平均值.
 
-![](Images/UWAOther_07.jpg)
+![](Images//UWAOther//UWAOther_07.jpg)
 
-![](Images/UWAOther_08.jpg)
+![](Images//UWAOther//UWAOther_08.jpg)
 
 #### **1.1.5 Renderer Feature**
   注意Renderer Feature在多个相机上会产生效果, 所以会产生无用的开销. 
@@ -148,15 +148,15 @@ GPU压力. 分辨率降低RenderLoop耗时明显降低.
 
   (其实也可以根据CameraName CameraTag来直接return.)
 
-![](Images/UWAOther_09.jpg)
+![](Images//UWAOther//UWAOther_09.jpg)
 
-![](Images/UWAOther_10.jpg)
+![](Images//UWAOther//UWAOther_10.jpg)
 
   还有比如说只有选中的时候才出现描边, 正常的情况下不用. 那么就可以做成动态开关.
 
   (他是通过反射去获取的. 其实也没有必要, 直接加一个static bool之类的都可以.)
 
-![](Images/UWAOther_11.jpg)
+![](Images//UWAOther//UWAOther_11.jpg)
 
 ```CSharp
 
@@ -211,7 +211,7 @@ public void SwitchSSAO(bool active)
 
   想要不同特效Bloom效果不一样. 其实就是利用MRT(Color RT + Mask RT)去绘制特效. 
 
-  ![](Images/UWAOther_12.jpg)
+  ![](Images//UWAOther//UWAOther_12.jpg)
 
   判断是否是MRT就是**RenderingUtils.IsMRT(renderPass.colorAttachments)**.
 
@@ -244,21 +244,21 @@ internal static uint GetValidColorBufferCount(RTHandle[] colorBuffers)
 }
 ```
 
-![](Images/UWAOther_13.jpg)
+![](Images//UWAOther//UWAOther_13.jpg)
 
-![](Images/UWAOther_14.jpg)
+![](Images//UWAOther//UWAOther_14.jpg)
 
-![](Images/UWAOther_15.jpg)
+![](Images//UWAOther//UWAOther_15.jpg)
 
-![](Images/UWAOther_16.jpg)
+![](Images//UWAOther//UWAOther_16.jpg)
 
-![](Images/UWAOther_17.jpg)
+![](Images//UWAOther//UWAOther_17.jpg)
 
 ### **1.3 带宽**
 
   Copy Depth Pass, 会增加很高的带宽. 因为会切换RT. 增加了一次RAM到RAM的拷贝. 使得所有的Tile多了一次Load和Store.
 
-![](Images/UWAOther_18.jpg)
+![](Images//UWAOther//UWAOther_18.jpg)
 
   改进就是使用FramebufferFetch. 比如说: GL_ARM_shader_framebuffer_fetch_depth_stencil.
 
@@ -327,11 +327,11 @@ void frag (v2f i, inout fixed4 ocol : SV_Target)
 
 低端机不太行. Mali的layout的顺序必须从0开始, 然后严格连续. 高通则没事.
 
-![](Images/UWAOther_19.png)
+![](Images//UWAOther//UWAOther_19.png)
 
-![](Images/UWAOther_20.jpg)
+![](Images//UWAOther//UWAOther_20.jpg)
 
-![](Images/UWAOther_21.png)
+![](Images//UWAOther//UWAOther_21.png)
 
 ### **1.4 Shader**
 
@@ -349,11 +349,11 @@ UNITY_FLATTEN: GPU会执行所有分支的代码，在后面才通过if表达式
 
 如果添加了, 则会先判断if.
 
-![](Images/UWAOther_22.jpg)
+![](Images//UWAOther//UWAOther_22.jpg)
 
-![](Images/UWAOther_23.jpg)
+![](Images//UWAOther//UWAOther_23.jpg)
 
-![](Images/UWAOther_24.jpg)
+![](Images//UWAOther//UWAOther_24.jpg)
 
 当if判断为true执行的代码段增加的Shader复杂度较高时, 且本身判断结果对于所有像素来说是一致的 (例如Uniform变量作为判断条件的参数), 建议手动添加UNITY_BRANCH.
 
@@ -390,9 +390,9 @@ UNITY_FLATTEN: GPU会执行所有分支的代码，在后面才通过if表达式
 
   减少起伏小的顶点. 把高度图用scharr算出起梯度起伏程度. 起伏程度大, 顶点就越多.
 
-![](Images/UWAOther_25.jpg)
+![](Images//UWAOther//UWAOther_25.jpg)
 
-![](Images/UWAOther_26.jpg)
+![](Images//UWAOther//UWAOther_26.jpg)
 
 ### **2.3. 地形抹平**
 
@@ -404,17 +404,17 @@ UNITY_FLATTEN: GPU会执行所有分支的代码，在后面才通过if表达式
 
   因为Unity的之前地形采样过于耗时, 多层之后还要绘制多次. 所以使用了RVT.
 
-![](Images/UWAOther_27.jpg)
+![](Images//UWAOther//UWAOther_27.jpg)
 
-![](Images/UWAOther_28.jpg)
+![](Images//UWAOther//UWAOther_28.jpg)
 
   使用RVT之后还能减少贴花的使用, 把Decal放到Decal VT 合并到 Final Terrain VT.
 
   但是存在融合计算的问题, 所以直接把d设置为0.
 
-![](Images/UWAOther_29.jpg)
+![](Images//UWAOther//UWAOther_29.jpg)
 
-![](Images/UWAOther_30.jpg)
+![](Images//UWAOther//UWAOther_30.jpg)
 
 ### **2.5. 水体**
 
@@ -426,17 +426,17 @@ UNITY_FLATTEN: GPU会执行所有分支的代码，在后面才通过if表达式
 
   可以改成WorldToPlane的阴影算法.
 
-![](Images/UWAOther_31.jpg)
+![](Images//UWAOther//UWAOther_31.jpg)
 
 ### **2.7. 多光源**
 
   一个pixel = 一个tile = 一个32bit的uint, 用来存存mask. 然后有一个小贴图存GlobalLightList, 用位运算拿到Light. 这样可以避免SSBO和Compute Shader.
 
-![](Images/UWAOther_32.jpg)
+![](Images//UWAOther//UWAOther_32.jpg)
 
-![](Images/UWAOther_33.jpg)
+![](Images//UWAOther//UWAOther_33.jpg)
 
-![](Images/UWAOther_34.jpg)
+![](Images//UWAOther//UWAOther_34.jpg)
 
 ### **2.8. 粒子系统**
 
@@ -448,7 +448,7 @@ UNITY_FLATTEN: GPU会执行所有分支的代码，在后面才通过if表达式
 
   (其实如果不考虑要兼容低端机的话, 可以直接走GPU了.)
 
-![](Images/UWAOther_35.jpg)
+![](Images//UWAOther//UWAOther_35.jpg)
 
 ### **2.9. 运行时带宽压缩**
 
@@ -520,7 +520,7 @@ while(i < len)
   + 中景: 中环16个格子, 低精度地表, 大中物件
   + 远景: 最外环24个格子, 低精度地表, 大物件
 
-![](Images/UWAOther_36.jpg)
+![](Images//UWAOther//UWAOther_36.jpg)
 
   UI相关:
   + 当UI是全屏不透明时, 关闭场景相机
@@ -546,7 +546,7 @@ while(i < len)
   + 将每个建筑上的不同组件合成一整个Mesh, 贴图合并, UV调整
   + 最终整个轩辕城的贴图规模控制在在3张2048x2048, 场景DrawCall明显下降
 
-![](Images/UWAOther_37.jpg)
+![](Images//UWAOther//UWAOther_37.jpg)
 
 
   动态合批-以3D HUD为例
@@ -555,7 +555,7 @@ while(i < len)
   + 但是会增加一部分OverDraw
   + 如下图角色名字3DUI被合批了
 
-![](Images/UWAOther_38.jpg)
+![](Images//UWAOther//UWAOther_38.jpg)
 
   GPU Instancing - 草海&树林
   + Graphics.DrawMeshInstanced
@@ -830,7 +830,7 @@ IOS适合用ADPCM和MP3格式, Android适合用OGG Vorbis格式
   2. 进一步强化表现力的受击动画也不一样
   3. 动画分层, 半身动画
 
-![](Images/UWAOther_39.jpg)
+![](Images//UWAOther//UWAOther_39.jpg)
 
   4. 基于数据驱动的AnimatorController生成流程
   + 配置数据生成动画状态机
@@ -843,7 +843,7 @@ IOS适合用ADPCM和MP3格式, Android适合用OGG Vorbis格式
     + 混合类型
     + 混合参数
 
-![](Images/UWAOther_40.jpg)
+![](Images//UWAOther//UWAOther_40.jpg)
 
   5. 自定义的状态过渡规则
   + 基础原则
@@ -856,7 +856,7 @@ IOS适合用ADPCM和MP3格式, Android适合用OGG Vorbis格式
   + 受击动作
     由打击资源确定
 
-![](Images/UWAOther_41.jpg)
+![](Images//UWAOther//UWAOther_41.jpg)
 
   6. Playable Mapping组合替换机制
   + 沿用Animator Override Controller的思想开发的更加灵活的动作替换机制.
@@ -873,9 +873,9 @@ IOS适合用ADPCM和MP3格式, Android适合用OGG Vorbis格式
 
   8. 动作工具流
 
-![](Images/UWAOther_42.jpg)
+![](Images//UWAOther//UWAOther_42.jpg)
 
-![](Images/UWAOther_43.jpg)
+![](Images//UWAOther//UWAOther_43.jpg)
 
 ### **4.2. 英雄系统**
 
@@ -892,20 +892,20 @@ IOS适合用ADPCM和MP3格式, Android适合用OGG Vorbis格式
     + 多个数据变更自动打包同步
     + 断线重连全量同步
 
-![](Images/UWAOther_44.jpg)
+![](Images//UWAOther//UWAOther_44.jpg)
 
 2. 通用属性系统: 可视化的数据跟踪和调试流程
 
-![](Images/UWAOther_45.jpg)
+![](Images//UWAOther//UWAOther_45.jpg)
 
 3. 技能顺序
   + 前置技能检测
   + 通过连招图确定技能动作
   + 动作轨道驱动技能组件
 
-![](Images/UWAOther_46.jpg)
+![](Images//UWAOther//UWAOther_46.jpg)
 
-![](Images/UWAOther_47.jpg)
+![](Images//UWAOther//UWAOther_47.jpg)
 
 ### **4.3. AI系统**
 1. AI负载分配
@@ -946,7 +946,7 @@ IOS适合用ADPCM和MP3格式, Android适合用OGG Vorbis格式
     + 近战AI
       + 强化学习+知识蒸馏
 
-![](Images/UWAOther_48.jpg)
+![](Images//UWAOther//UWAOther_48.jpg)
 
 4. AI连招图
   + 怪物输入
@@ -957,7 +957,7 @@ IOS适合用ADPCM和MP3格式, Android适合用OGG Vorbis格式
     + 每执行一个招式, 都会结合各种条件, 概率等因素筛选下一个可执行的招式, 轻松实现各种变招效果
     + 提供直观清晰的调试模式, 可以命令怪物执行任意一条指定路径上的招式
 
-![](Images/UWAOther_49.jpg)
+![](Images//UWAOther//UWAOther_49.jpg)
 
 ### **4.4. 角色Tick优化**
   + 角色逻辑Tick性能消耗来源
@@ -989,7 +989,7 @@ IOS适合用ADPCM和MP3格式, Android适合用OGG Vorbis格式
     + Tick次数大规模减少
     + 帧率保持相队稳定
 
-![](Images/UWAOther_50.jpg)
+![](Images//UWAOther//UWAOther_50.jpg)
 
 ### **4.5. 加载优化**
 
@@ -1021,21 +1021,21 @@ IOS适合用ADPCM和MP3格式, Android适合用OGG Vorbis格式
 
   Brust C# 内存访问的overlay导致的效率下降.
 
-![](Images/UWAOther_51.jpg)
+![](Images//UWAOther//UWAOther_51.jpg)
 
   Pass的资源管理.
 
-![](Images/UWAOther_52.jpg)
+![](Images//UWAOther//UWAOther_52.jpg)
 
   渲染中间结果输出到屏幕, 和渲染流程可视化.
 
-![](Images/UWAOther_53.jpg)
+![](Images//UWAOther//UWAOther_53.jpg)
 
   大项目开发, 每天SVN更新资源, 然后Unity Import, 需要很久的耗时.
 
   Library下会生成一份cache, 把cache存在asset server. 通过asset ID 把 asset server上的cache拉取到用户本地.(感觉跟Unity Asset Server做的事情差不多.)
 
-![](Images/UWAOther_54.jpg)
+![](Images//UWAOther//UWAOther_54.jpg)
 
   构建App包体缓慢, 如无增量构建常常达到小时或者数小时级别.
 
@@ -1053,7 +1053,7 @@ IOS适合用ADPCM和MP3格式, Android适合用OGG Vorbis格式
 
   (其实可以打包的时候做统计预处理. 运行游戏的时候用Graphics.DrawInstance去合批绘制, 类似于自己手动做合批, 但是要注意Culling.)
 
-![](Images/UWAOther_55.jpg)
+![](Images//UWAOther//UWAOther_55.jpg)
 
 ### **5.4 内存拷贝**
 
@@ -1109,7 +1109,7 @@ void RenderingCommandBuffer::AddDrawMeshInstanced(Mesh* mesh, int subset, Materi
 
   (但是要注意float4对齐.)
 
-![](Images/UWAOther_56.jpg)
+![](Images//UWAOther//UWAOther_56.jpg)
 
 ### **5.6 遮挡剔除**
 
@@ -1125,7 +1125,7 @@ void RenderingCommandBuffer::AddDrawMeshInstanced(Mesh* mesh, int subset, Materi
 
   加入LookDev. Unity新版本中就有. 但是还要对齐Unity和各个外部软件的渲染结果.
 
-![](Images/UWAOther_57.jpg)
+![](Images//UWAOther//UWAOther_57.jpg)
 
 ## **5.8. 标准**
 
@@ -1133,7 +1133,7 @@ void RenderingCommandBuffer::AddDrawMeshInstanced(Mesh* mesh, int subset, Materi
 
   mesh的Physics Cook. mesh之前为readable, 但是子节点经过旋转和非同一缩放, 产生了skew. 所以Unity会把Skew后的mesh bake成一个新的mesh, 然后作为物理碰撞体. 所以规范不要出现非同一缩放且带旋转的子节点.
 
-![](Images/UWAOther_58.jpg)
+![](Images//UWAOther//UWAOther_58.jpg)
 
 ## **5.8. Asset Processor**
 
@@ -1143,17 +1143,17 @@ void RenderingCommandBuffer::AddDrawMeshInstanced(Mesh* mesh, int subset, Materi
 
   同时因为文件标记了会被哪些Processor处理, 所以如果改动Processor代码, 只用处理标记文件就好了, 不需要整个re-import.
 
-![](Images/UWAOther_59.jpg)
+![](Images//UWAOther//UWAOther_59.jpg)
 
-![](Images/UWAOther_60.jpg)
+![](Images//UWAOther//UWAOther_60.jpg)
 
-![](Images/UWAOther_61.jpg)
+![](Images//UWAOther//UWAOther_61.jpg)
 
 ## **5.9. Asset Flows**
 
   比如说Maya的资源导出做一次检查, 然后提交到Database. DataBase会自动在Unity中创建文件夹, 导入文件, 自动绑定材质球和贴图.
 
-![](Images/UWAOther_62.jpg)
+![](Images//UWAOther//UWAOther_62.jpg)
 
 ## **5.10. 局部PCG**
 
@@ -1161,7 +1161,7 @@ void RenderingCommandBuffer::AddDrawMeshInstanced(Mesh* mesh, int subset, Materi
 
   白模的布尔操作, 类似于UE的.
 
-![](Images/UWAOther_63.jpg)
+![](Images//UWAOther//UWAOther_63.jpg)
 
 ## **5.11. 场景编辑器**
 
@@ -1169,7 +1169,7 @@ void RenderingCommandBuffer::AddDrawMeshInstanced(Mesh* mesh, int subset, Materi
 
   然后又开发了场景编辑器 用于多人协同. 分块加载, 同职位协同. 分图层保存, 同块不同职位协同.
 
-![](Images/UWAOther_64.jpg)
+![](Images//UWAOther//UWAOther_64.jpg)
 
 -----------------
 

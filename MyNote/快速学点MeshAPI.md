@@ -148,13 +148,13 @@ Talk is cheap, show me your code!
 
 先来写一个以前版本的写法. 写完大概就是下图这样.
 
-![MeshAPI_00](Images/MeshAPI_00.png)
+![MeshAPI_00](Images//MeshAPI//MeshAPI_00.png)
 
 新建一个Plane, 命名为Water. 然后以Water为父节点, 随便摆放几个Cube.
 
-![MeshAPI_00](Images/MeshAPI_01.jpg)
+![MeshAPI_00](Images//MeshAPI//MeshAPI_01.jpg)
 
-![MeshAPI_00](Images/MeshAPI_02.jpg)
+![MeshAPI_00](Images//MeshAPI//MeshAPI_02.jpg)
 
 ### **2.1.1 基础代码**
 
@@ -1020,7 +1020,7 @@ int idx = DTID.x;
 
 ```
 
-![MeshAPI_00](Images/MeshAPI_03.jpg)
+![MeshAPI_00](Images//MeshAPI//MeshAPI_03.jpg)
 
 GPU这套大约0.263ms, 属于高下立判了.
 
@@ -1036,13 +1036,13 @@ GPU这套大约0.263ms, 属于高下立判了.
 
 这也是上面Git里面的Demo, 效率对比芜湖起飞. 需要Unity 2020.1+.
 
-![MeshAPI_00](Images/MeshAPI_04.jpg)
+![MeshAPI_00](Images//MeshAPI//MeshAPI_04.jpg)
 
 ### **3.1 基础准备**
 
 创建一个空的GameObject 名为 CombineMeshRoot, 在下面放置一堆要合并Mesh的GameObject. 可以如下图这样.
 
-![MeshAPI_00](Images/MeshAPI_05.jpg)
+![MeshAPI_00](Images//MeshAPI//MeshAPI_05.jpg)
 
 然后创建C# **CombineSceneMesh** 挂载在 CombineMeshRoot 上.
 

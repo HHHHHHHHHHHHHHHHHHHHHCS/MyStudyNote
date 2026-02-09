@@ -47,7 +47,7 @@
 
 ### **0.2 管理**
 
-![](Images/BigWorldDevelopment_00.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_00.jpg)
 
   + 传统模式
     + Editor下用GameObjects
@@ -71,7 +71,7 @@
   + 然后把场景的数据移动到主场景
   + Move的时候, 把指针改了一个指向, 性能不错
 
-![](Images/BigWorldDevelopment_01.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_01.jpg)
 
 
 ### **0.4 卸载**
@@ -112,9 +112,9 @@
       + 可以去掉更多的GameObject, 用Streaming接入到ECS
         + 碰撞体换成ECS, 灯光, 音效等
 
-![](Images/BigWorldDevelopment_02.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_02.jpg)
 
-![](Images/BigWorldDevelopment_03.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_03.jpg)
 
 ### **0.6 植被**
   + HIMMR(Hierarchical Instance Mesh Render)
@@ -124,7 +124,7 @@
     + 最后找到要绘制的物体
    + 提交渲染的时候, Instance Data是连续的, 这时候可以连续拷贝, 提升性能
 
-![](Images/BigWorldDevelopment_04.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_04.jpg)
 
 -----------------
 
@@ -143,9 +143,9 @@
       + UnloadBias防止人物反复横跳的时候, 出现反复加载卸载
     + 是用ECS+JobSystem, 判定的时候性能消耗不会很高
 
-![](Images/BigWorldDevelopment_05.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_05.jpg)
 
-![](Images/BigWorldDevelopment_06.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_06.jpg)
 
 ### **1.2 遮挡**
   + 发生遮挡的时候, 可以不去加载另外一个地图块
@@ -157,13 +157,13 @@
     + 当Connection的Region都被卸载的时候, 卸载自身
     + Connection区域可以是一个多边形的
 
-![](Images/BigWorldDevelopment_07.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_07.jpg)
 
-![](Images/BigWorldDevelopment_08.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_08.jpg)
 
-![](Images/BigWorldDevelopment_09.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_09.jpg)
 
-![](Images/BigWorldDevelopment_10.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_10.jpg)
 
 ### **1.3 打包**
   + 如果做成.unity/.prefab
@@ -190,7 +190,7 @@
     + 文件数量可控
     + 省去了prefab和ECS的.asset已经各种子系统可能需要的文件
 
-![](Images/BigWorldDevelopment_11.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_11.jpg)
 
 ### **1.4 Streaming框架**
   + 是对上面的总结
@@ -216,7 +216,7 @@
     + 可以解决人工手调距离, 现在只用调整k值就好了
     + 方便排查, 很远的物体面数过多, 则会提示k值过高
 
-![](Images/BigWorldDevelopment_12.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_12.jpg)
 
 ### **2.2 动态LOD**
   + 之前是根据距离定死了LOD的现实
@@ -229,7 +229,7 @@
     + 面数非常多, 做多次LOD, 占用非常大
     + 不如把数量非常多的小物件多做几次LOD来的收益高
 
-![](Images/BigWorldDevelopment_13.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_13.jpg)
 
 ### **2.3 LOD制作**
   + 为什么需要美术来做?
@@ -264,7 +264,7 @@
   + shader 相同, 所以也没有什么大关系
   + 父子关系
 
-![](Images/BigWorldDevelopment_14.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_14.jpg)
 
 ### **3.2 HLOD In ECS**
   + 用ECS性能会比较高
@@ -284,7 +284,7 @@
     + 中: 开始小范围合批
     + 右: 整个合批
 
-![](Images/BigWorldDevelopment_15.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_15.jpg)
 
 ### **3.3 纹理复用**
   + HLOD会有很多重复的贴图可以进行复用
@@ -299,7 +299,7 @@
   + 复用率: 20%~30%
   + 进一步: 如右边三个大多数相同, 则可以求一个并集
 
-![](Images/BigWorldDevelopment_16.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_16.jpg)
 
 ### **3.4 剔除**
   + 基于Bounds剔除
@@ -313,9 +313,9 @@
     + 有HLOD: 265 DrawCall 29万面
     + 这样远处就有丰富的细节了
 
-![](Images/BigWorldDevelopment_17.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_17.jpg)
 
-![](Images/BigWorldDevelopment_18.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_18.jpg)
 
 ------------------------
 
@@ -349,12 +349,12 @@
     + 5MB内存
     + 如下图, 远处有阴影
 
-![](Images/BigWorldDevelopment_19.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_19.jpg)
 
-![](Images/BigWorldDevelopment_20.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_20.jpg)
 
-![](Images/BigWorldDevelopment_21.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_21.jpg)
 
-![](Images/BigWorldDevelopment_22.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_22.jpg)
 
-![](Images/BigWorldDevelopment_23.jpg)
+![](Images//BigWorldDevelopment//BigWorldDevelopment_23.jpg)
