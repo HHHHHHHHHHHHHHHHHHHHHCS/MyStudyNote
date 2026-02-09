@@ -29,33 +29,33 @@
 &emsp;&emsp; 最近的任务是渲染云,所以写轮眼全开,写(抄袭并魔改)了一堆.但是网易分享的那篇云相关的文章(https://zhuanlan.zhihu.com/p/350058989) 至今绝望,因为还实现出来,而且也没有什么好的想法和灵感.
 先放下我做完的效果图.一些是双拼魔改都搞乱了,找不到原作者见谅...感觉越做越像棉花XD
 
-![RaymarchCloud_0](Images//RaymarchCloud//RaymarchCloud_0.jpg)
+![RaymarchCloud_0](Images/RaymarchCloud/RaymarchCloud_0.jpg)
 
 这个来自WalkingFat大佬的绒毛做法,我加了曲面细分(http://walkingfat.com/bump-noise-cloud-3d%e5%99%aa%e7%82%b9gpu-instancing%e5%88%b6%e4%bd%9c%e5%9f%ba%e4%ba%8e%e6%a8%a1%e5%9e%8b%e7%9a%84%e4%bd%93%e7%a7%af%e4%ba%91/)
 
-![RaymarchCloud_1](Images//RaymarchCloud//RaymarchCloud_1.jpg)
+![RaymarchCloud_1](Images/RaymarchCloud/RaymarchCloud_1.jpg)
 
 这个是视差的做法(https://zhuanlan.zhihu.com/p/83355147)
 
-![RaymarchCloud_2](Images//RaymarchCloud//RaymarchCloud_2.jpg)
+![RaymarchCloud_2](Images/RaymarchCloud/RaymarchCloud_2.jpg)
 
-![RaymarchCloud_3](Images//RaymarchCloud//RaymarchCloud_3.jpg)
+![RaymarchCloud_3](Images/RaymarchCloud/RaymarchCloud_3.jpg)
 
-![RaymarchCloud_4](Images//RaymarchCloud//RaymarchCloud_4.jpg)
+![RaymarchCloud_4](Images/RaymarchCloud/RaymarchCloud_4.jpg)
 
-![RaymarchCloud_5](Images//RaymarchCloud//RaymarchCloud_5.jpg)
+![RaymarchCloud_5](Images/RaymarchCloud/RaymarchCloud_5.jpg)
 
-![RaymarchCloud_6](Images//RaymarchCloud//RaymarchCloud_6.jpg)
+![RaymarchCloud_6](Images/RaymarchCloud/RaymarchCloud_6.jpg)
 
-![RaymarchCloud_7](Images//RaymarchCloud//RaymarchCloud_7.jpg)
+![RaymarchCloud_7](Images/RaymarchCloud/RaymarchCloud_7.jpg)
 
 这里使用最后一版本
 我把它放到了我的**小米10Pro高通865安卓手机**(打钱)上,结果FPS只有9(还是稍微优化过一点的).
 吶吶,电脑上明明这么高的FPS!!!所以就开始了优化之旅.
 
-![RaymarchCloud_8](Images//RaymarchCloud//RaymarchCloud_8.jpg)
+![RaymarchCloud_8](Images/RaymarchCloud/RaymarchCloud_8.jpg)
 
-![RaymarchCloud_9](Images//RaymarchCloud//RaymarchCloud_9.jpg)
+![RaymarchCloud_9](Images/RaymarchCloud/RaymarchCloud_9.jpg)
 
 -----------------
 
@@ -98,9 +98,9 @@
       + 之前每一步ray都会计算,现在只用进行采样就好了.虽然效果不一定正确,但是优化嘛,不磕碜.
       + 下面三张图分别为原来的noise,finalColor.rgb,finalColor.a
 
-      ![RaymarchCloud_10](Images//RaymarchCloud//RaymarchCloud_10.jpg)
-      ![RaymarchCloud_11](Images//RaymarchCloud//RaymarchCloud_11.jpg)
-      ![RaymarchCloud_12](Images//RaymarchCloud//RaymarchCloud_12.jpg)
+      ![RaymarchCloud_10](Images/RaymarchCloud/RaymarchCloud_10.jpg)
+      ![RaymarchCloud_11](Images/RaymarchCloud/RaymarchCloud_11.jpg)
+      ![RaymarchCloud_12](Images/RaymarchCloud/RaymarchCloud_12.jpg)
 
   1. **云的轻微扰动**
       + 因为根据需求云会轻微的起伏晃动
@@ -113,7 +113,7 @@
       + 而在for循环的时候会对noise和mask分别进行采样,造成多次采样计算
       + 可以在云的轻微扰动阶段提前对alpha进行处理
 
-      ![RaymarchCloud_13](Images//RaymarchCloud//RaymarchCloud_13.jpg)
+      ![RaymarchCloud_13](Images/RaymarchCloud/RaymarchCloud_13.jpg)
 
   3. **阴影的优化**
       + for循环的时候,阴影的矩阵计算比较消耗性能
@@ -128,12 +128,12 @@
       + 因为步长变大颜色采样会有比较大的偏差 , 可以根据步长去乘一些系数
       + 啊这....自己取舍吧.
 
-      ![RaymarchCloud_14](Images//RaymarchCloud//RaymarchCloud_14.jpg)
+      ![RaymarchCloud_14](Images/RaymarchCloud/RaymarchCloud_14.jpg)
 
 &emsp;&emsp; 上面 0 1 2 3 优化完帧数就提高了几FPS . 4 进行极端对比,FPS相差65(Emmmm,不过噪点,分层线) . 为了进一步满足效果和性能,便进行更进一步的优化处理了.
 
-  ![RaymarchCloud_15](Images//RaymarchCloud//RaymarchCloud_15.jpg)
-  ![RaymarchCloud_16](Images//RaymarchCloud//RaymarchCloud_16.jpg)
+  ![RaymarchCloud_15](Images/RaymarchCloud/RaymarchCloud_15.jpg)
+  ![RaymarchCloud_16](Images/RaymarchCloud/RaymarchCloud_16.jpg)
 
   5. **降低分辨率**
       + 单纯的降低分辨率是非常非常有效的.而且手机的分辨率都挺高的 , 适当降低不影响.
@@ -145,8 +145,8 @@
         + 因为当前的分辨率是缩小的 , 我们无法很好的选择当前的像素去使用原分辨率的深度图的哪个像素(或用周围点 最大,平均,最小)
         + 远处这样可能会出现边缘不正确的问题 , 这里可以去添加 DOF/Blur去欺骗处理
 
-      ![RaymarchCloud_17](Images//RaymarchCloud//RaymarchCloud_17.jpg)
-      ![RaymarchCloud_18](Images//RaymarchCloud//RaymarchCloud_18.jpg)
+      ![RaymarchCloud_17](Images/RaymarchCloud/RaymarchCloud_17.jpg)
+      ![RaymarchCloud_18](Images/RaymarchCloud/RaymarchCloud_18.jpg)
 
   6. **多图叠加(MulRT Blend)**
       + 原来是渲染宽高1/1的步长为1/20的 , 我们这里开启多图叠加
@@ -155,8 +155,8 @@
       + 这样做还能柔化边缘的锯齿
       + 而且FPS可以提高从 9 提高到 22 
 
-      ![RaymarchCloud_19](Images//RaymarchCloud//RaymarchCloud_19.jpg)
-      ![RaymarchCloud_20](Images//RaymarchCloud//RaymarchCloud_20.jpg)
+      ![RaymarchCloud_19](Images/RaymarchCloud/RaymarchCloud_19.jpg)
+      ![RaymarchCloud_20](Images/RaymarchCloud/RaymarchCloud_20.jpg)
 
   7. **分帧绘制(FrameRT)**
       + 其实云的绘制和更新,可以分多帧完成,减少压力或提高清晰度
@@ -166,16 +166,16 @@
       + 可以配合TAA食用,但TAA在分辨率过低的时候会闪烁
       + 不绘制的区域DontCare/Load(很多手机DontCare就可以了,但是华为需要Load)
 
-        ![RaymarchCloud_24](Images//RaymarchCloud//RaymarchCloud_24.jpg)
-        ![RaymarchCloud_25](Images//RaymarchCloud//RaymarchCloud_25.jpg)
+        ![RaymarchCloud_24](Images/RaymarchCloud/RaymarchCloud_24.jpg)
+        ![RaymarchCloud_25](Images/RaymarchCloud/RaymarchCloud_25.jpg)
 
       + **0. 用1/4分辨率,绘制1/4**
           - 假设1/1(其它分辨率同理)的分辨率,用一个小的quad/三角形在A区域进行绘制,下一帧数在B区域进行绘制,然后C,D
           - 这样每次raymarch的像素就只有1/4了,清晰度有所下降
           - 绘制完整的分辨率循环要4帧,ABCD边界会有画面撕裂
 
-        ![RaymarchCloud_21](Images//RaymarchCloud//RaymarchCloud_21.jpg)
-        ![RaymarchCloud_23](Images//RaymarchCloud//RaymarchCloud_23.jpg)
+        ![RaymarchCloud_21](Images/RaymarchCloud/RaymarchCloud_21.jpg)
+        ![RaymarchCloud_23](Images/RaymarchCloud/RaymarchCloud_23.jpg)
       
       + **1. 用全分辨率,绘制1/4**
           - 和 **0方法** 大致相同,但是是用1/1(其它分辨率同理)的分辨率绘制一个区域,而不是1/4
@@ -188,7 +188,7 @@
         - 耗时就是(1帧数ms+2帧数ms)/3
         - 绘制完整的分辨率要循环要三帧数,屏幕中间会有竖着的画面撕裂
 
-        ![RaymarchCloud_26](Images//RaymarchCloud//RaymarchCloud_26.jpg)
+        ![RaymarchCloud_26](Images/RaymarchCloud/RaymarchCloud_26.jpg)
 
       + **3. 用1/2的分辨率,绘制1/2横屏**
         - 和 **2方法** 大致相同
@@ -204,8 +204,8 @@
         - https://zhuanlan.zhihu.com/p/127435500
         - https://zhuanlan.zhihu.com/p/130785313
 
-        ![RaymarchCloud_27](Images//RaymarchCloud//RaymarchCloud_27.jpg)
-        ![RaymarchCloud_28](Images//RaymarchCloud//RaymarchCloud_28.jpg)
+        ![RaymarchCloud_27](Images/RaymarchCloud/RaymarchCloud_27.jpg)
+        ![RaymarchCloud_28](Images/RaymarchCloud/RaymarchCloud_28.jpg)
 
 
   8. **MulRTBlend+FrameRT**
@@ -269,4 +269,4 @@ frame + mode 4 == null 没有做处理
 
 不过大多数条件下我们用1/4的分辨率,1/2的步长,mulRT模式基本都够了.因为这时候的耗时<1ms,效果也还能接受.
 
-![RaymarchCloud_22](Images//RaymarchCloud//RaymarchCloud_22.jpg)
+![RaymarchCloud_22](Images/RaymarchCloud/RaymarchCloud_22.jpg)

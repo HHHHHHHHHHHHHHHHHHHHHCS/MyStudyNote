@@ -7,4 +7,4 @@ UnityTips
 
 所以直接在RenderDoc配置如下, 启动就完事了.
 
-![](Images//Tips//Tips_0.jpg)
+![](Images/Tips/Tips_0.jpg)

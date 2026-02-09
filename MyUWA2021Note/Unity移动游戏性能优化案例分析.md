@@ -104,11 +104,11 @@ Unity移动游戏性能优化案例分析
   + VS采样高度
     + 采样高度图并赋予给世界坐标Y
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_00.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_00.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_01.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_01.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_02.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_02.jpg)
 
 
 ------------------------
@@ -118,7 +118,7 @@ Unity移动游戏性能优化案例分析
 ### **1.1 定位资源加载的耗时**
   + GOT Online Resource
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_03.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_03.jpg)
 
 ### **1.2 AssetBundle加载资源耗时非常高**
   + Gradle打包
@@ -130,13 +130,13 @@ Unity移动游戏性能优化案例分析
     + AB压不压缩区别不大, 但是资源被压缩后加载速度明显变慢4~5倍数
 
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_04.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_04.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_05.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_05.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_06.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_06.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_07.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_07.jpg)
 
 ------------------------
 
@@ -146,14 +146,14 @@ Unity移动游戏性能优化案例分析
   + GOT Online Lua
   + C#穿梭(耗时高)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_08.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_08.jpg)
 
 ### **2.2 C#**
   + Job System + Burst
     + 如DynamicBone插件Job+Burst化
     + (但是其实DynamicBone可以走GPU, 速度更快. [知乎文章](https://zhuanlan.zhihu.com/p/394632382))
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_09.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_09.jpg)
 
 ------------------------
 
@@ -186,13 +186,13 @@ Unity移动游戏性能优化案例分析
     + 指定机型验证Shader优化后的复杂度变化
     + Standard在中低端机型上开销依旧比较高
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_10.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_10.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_11.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_11.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_12.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_12.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_13.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_13.jpg)
 
 ### **3.4 后处理**
   + 后处理分类:
@@ -232,17 +232,17 @@ Unity移动游戏性能优化案例分析
       + 可以修改UberPost Shader解决, 让其返回为alpha
       + 如果bloom要有alpha, 则可以max(alpha, 3*bloom.x)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_14.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_14.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_15.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_15.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_16.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_16.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_17.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_17.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_18.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_18.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_19.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_19.jpg)
 
 ### **3.5 GPU带宽**
   + 纹理带宽
@@ -262,15 +262,15 @@ Unity移动游戏性能优化案例分析
   + 设置项
     + 一些地方不需要Copy Depth/Opaque Texture, 减少不必要的开销
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_20.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_20.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_21.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_21.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_22.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_22.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_23.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_23.jpg)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_24.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_24.jpg)
 
 ------------------------
 
@@ -285,7 +285,7 @@ Unity移动游戏性能优化案例分析
     + 会自动Stripping, 播放的时候会意外报错
     + 添加link.xml到Assets目录中, [相关文章](https://blog.csdn.net/yuhan61659/article/details/80077285)
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_25.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_25.jpg)
 
 ## **4.2 String驻留**
   + 对于字符串Intern处理
@@ -296,4 +296,4 @@ Unity移动游戏性能优化案例分析
   + 建议配置表导出的时候, 可以添加去重功能, 减少包体和读取
   + 解析的时候Intern, 减少内存占用
 
-![](Images//MobilePerformanceOptimization//MobilePerformanceOptimization_26.jpg)
+![](Images/MobilePerformanceOptimization/MobilePerformanceOptimization_26.jpg)
