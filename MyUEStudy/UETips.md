@@ -1531,7 +1531,14 @@ GEngine->GameViewport->Viewport->GetSizeXY()
 ## 打开保存资源窗口和创建模型
 
 ```C++
-bool UMyToolsWidget::OpenSaveAssetDialog(FString& outPackagePath, FString& outAssetName)
+// V1: 需要添加module DesktopPlatform
+#include "DesktopPlatformModule.h"
+// V2: 需要添加module ContentBrowser
+#include "ContentBrowserModule.h"
+#include "IContentBrowserSingleton.h"
+#include "Misc/PackageName.h"
+
+bool UMyToolsWidget::OpenSaveAssetDialogV1(FString& outPackagePath, FString& outAssetName)
 {
 	IDesktopPlatform* desktopPlatform = FDesktopPlatformModule::Get();
 	if (!desktopPlatform)
@@ -1582,6 +1589,31 @@ bool UMyToolsWidget::OpenSaveAssetDialog(FString& outPackagePath, FString& outAs
 	return true;
 }
 
+bool UMyVertexToolEditorWidget::OpenSaveAssetDialogV2(FString& outPackagePath, FString& outAssetName)
+{
+	FContentBrowserModule& ContentBrowserModule =
+		FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	IContentBrowserSingleton& ContentBrowser = ContentBrowserModule.Get();
+
+	FSaveAssetDialogConfig SaveAssetDialogConfig;
+	SaveAssetDialogConfig.DefaultPath = TEXT("/Game");
+	SaveAssetDialogConfig.DefaultAssetName = TEXT("MyMeshAsset");
+	SaveAssetDialogConfig.AssetClassNames.Add(UStaticMesh::StaticClass()->GetClassPathName());
+	SaveAssetDialogConfig.ExistingAssetPolicy = ESaveAssetDialogExistingAssetPolicy::AllowButWarn;
+	SaveAssetDialogConfig.DialogTitleOverride = FText::FromString(TEXT("Save MyMesh Asset"));
+
+	// 如果只储存在 Content下 CreateModalSaveAssetDialog 比 SaveFileDialog 效果更好
+	// FDesktopPlatformModule::Get()->SaveFileDialog() // 别忘添加 "DesktopPlatform" module
+	const FString SaveObjectPath = ContentBrowser.CreateModalSaveAssetDialog(SaveAssetDialogConfig);
+	if (SaveObjectPath.IsEmpty())
+	{
+		return false;
+	}
+
+	outPackagePath = FPackageName::GetLongPackagePath(SaveObjectPath);
+	outAssetName = FPackageName::GetLongPackageAssetName(SaveObjectPath);
+	return !outPackagePath.IsEmpty() && !outAssetName.IsEmpty();
+}
 
 void UMyToolsWidget::CreateMesh(FString packagePath, FString assetName)
 {
