@@ -78,6 +78,17 @@ r.D3D12.AutoAttachPIX=1
 
 启动的时候 添加参数 -ExecCmds="renderdoc.CaptureAllActivity 1" 或者 截帧前 执行命令
 
+## RenderDoc 启动闪退, 堆栈的缓冲区溢出
+
+启动报错, 提示如下
+
+系统在此应用程序中检测到基于堆栈的缓冲区溢出。溢出可能允许恶意用户获得此应用程序的控制
+
+大致原因是因为DLSS 和 Renderdoc 冲突弹窗导致的
+
+启动参数添加 -Unattended
+
+作用是在遇到错误时抑制生成对话框
 
 ## Show FPS
 
