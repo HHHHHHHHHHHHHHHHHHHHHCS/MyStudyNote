@@ -1,11 +1,11 @@
 ---
 name: git-commit-log-writer
-description: Generate git commit messages and commit commands in the style of this repository. Use when preparing a commit, summarizing staged/unstaged changes, or asking for a ready-to-run commit title/body.
+description: Generate repository-style git commit messages and either provide ready-to-run commands or execute git commit directly. Use when preparing a commit, summarizing staged/unstaged changes, asking for a commit title/body, or explicitly asking to commit changes now.
 ---
 
 # Git Commit Log Skill
 
-Follow this workflow to create commit messages aligned with this project.
+Follow this workflow to create commit messages aligned with this project and execute commits when requested.
 
 ## Style Baseline (from recent 30 commits)
 
@@ -34,6 +34,13 @@ Examples:
 4. Generate subject line with concrete module names.
 5. Optionally generate a short body when multiple files/systems changed.
 
+## Execution Modes
+
+- `Generate mode`: Return subject/body and exact commands, but do not run `git commit`.
+- `Execute mode`: When the user explicitly asks to commit now, run `git add` and `git commit` directly.
+
+Use `Execute mode` for requests such as `commit this`, `直接提交`, `帮我提交`, `提交这些改动`.
+
 ## Commands to Collect Context
 
 ```powershell
@@ -41,11 +48,12 @@ git status --short
 git diff --name-only
 git diff --staged --name-only
 git diff --staged
+git diff
 ```
 
 ## Output Format
 
-Return commit suggestion in this format:
+For `Generate mode`, return:
 
 ```text
 Subject: <one-line subject>
@@ -65,22 +73,42 @@ If body is needed, use:
 git commit -m "<subject>" -m "<bullet 1>" -m "<bullet 2>"
 ```
 
+For `Execute mode`, perform these steps:
+
+1. Inspect current changes.
+2. Stage files:
+   - Prefer already staged files if they match the intended scope.
+   - If nothing is staged, run `git add <files>` for scoped files, or `git add -A` only when the request implies committing all current changes.
+3. Run `git commit` with generated subject/body.
+4. Return:
+
+```text
+Committed: <subject>
+Commit: <short-hash>
+Files: <count or list>
+```
+
+Use `git log -1 --oneline` to report the resulting commit hash.
+If there is nothing to commit, state that clearly and do not fabricate a commit.
+
 ## Quality Checks Before Commit
 
 - Subject reflects actual changed files.
 - Verb and wording match repository style.
 - No unrelated files are mixed in the same commit.
 - Subject is readable and specific (avoid vague words like `update stuff`).
+- Do not use interactive commit flows.
+- Do not use `--amend` unless the user explicitly requests amend.
 
 ## Fast Prompt Template
 
 Use this prompt with the assistant:
 
 ```text
-Read current git changes and generate one commit message in this repo's style.
+Read current git changes and produce one commit in this repo's style.
+If I explicitly ask to commit, execute git add + git commit.
 Return:
 1) Subject
 2) Optional body bullets
-3) Exact git add / git commit command
+3) Exact git add / git commit command or executed commit hash
 ```
-
