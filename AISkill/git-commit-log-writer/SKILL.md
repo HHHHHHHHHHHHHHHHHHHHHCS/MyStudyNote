@@ -1,59 +1,56 @@
 ---
 name: git-commit-log-writer
-description: Generate repository-style git commit messages and either provide ready-to-run commands or execute git commit directly. Use when preparing a commit, summarizing staged/unstaged changes, asking for a commit title/body, or explicitly asking to commit changes now.
+description: Fast, low-token commit message generation with optional direct git commit execution.
 ---
 
 # Git Commit Log Skill
 
-Follow this workflow to create commit messages aligned with this project and execute commits when requested.
+## Core Policy
 
-## Style Baseline (from recent 30 commits)
+- Default to `Generate mode`.
+- Use `Execute mode` only for explicit commit-now intent (`commit this/now/just commit/go ahead and commit`, including equivalent Chinese intent).
+- In `Execute mode`, rebase with upstream before commit when an upstream branch exists.
+- Keep one commit scope coherent. Do not mix unrelated files.
+- Prefer already staged files when staged scope matches intent.
 
-- Start subject with an imperative verb: `Add`, `Refactor`, `Enhance`, `Implement`, `Update`, `Fix`, `Remove`.
-- Use concise English, usually Title Case or sentence case with clear technical nouns.
-- Mention concrete targets (for example: `shader`, `render pass`, `feature`, `system`, `assets`).
-- Combine closely related work with `and`.
-- Keep one-line subject focused on what changed, not why.
+## Context Collection Ladder (Cheapest First)
 
-Preferred subject pattern:
-
-`<Verb> <primary component/change> [and <secondary change>]`
-
-Examples:
-
-- `Add StrobePages render feature and assets`
-- `Refactor and extend physically based sky rendering`
-- `Add AtmosphericScattering render pass, remove define`
-- `Enhance physically based sky rendering and LUT precomputation`
-
-## Commit Message Generation Workflow
-
-1. Inspect repo state.
-2. Group changes into one coherent commit scope.
-3. Pick one primary verb from the style baseline.
-4. Generate subject line with concrete module names.
-5. Optionally generate a short body when multiple files/systems changed.
-
-## Execution Modes
-
-- `Generate mode`: Return subject/body and exact commands, but do not run `git commit`.
-- `Execute mode`: When the user explicitly asks to commit now, run `git add` and `git commit` directly.
-
-Use `Execute mode` for requests such as `commit this`, `直接提交`, `帮我提交`, `提交这些改动`.
-
-## Commands to Collect Context
+Run in this order and stop as soon as confident:
 
 ```powershell
 git status --short
-git diff --name-only
-git diff --staged --name-only
+git diff --staged --name-status
+git diff --name-status
+```
+
+If still unclear, inspect only target files:
+
+```powershell
+git diff --staged -- <file>
+git diff -- <file>
+```
+
+Only when needed, use full patch views:
+
+```powershell
 git diff --staged
 git diff
 ```
 
-## Output Format
+Optional style fallback:
 
-For `Generate mode`, return:
+```powershell
+git log -30 --pretty=%s
+```
+
+## Message Rules
+
+- Subject format: `<Verb> <primary component/change> [and <secondary change>]`
+- Preferred verbs: `Add`, `Refactor`, `Enhance`, `Implement`, `Update`, `Fix`, `Remove`
+- Subject must describe what changed (specific technical nouns), not vague intent.
+- Add body only when useful (1-3 bullets, multi-module or non-obvious changes).
+
+## Generate Mode Output
 
 ```text
 Subject: <one-line subject>
@@ -63,24 +60,30 @@ Body (optional):
 - <change point 2>
 
 Commands:
+git pull --rebase --autostash    # when upstream exists
 git add <files or -A>
 git commit -m "<subject>"
 ```
 
-If body is needed, use:
+Body form when needed:
 
 ```powershell
 git commit -m "<subject>" -m "<bullet 1>" -m "<bullet 2>"
 ```
 
-For `Execute mode`, perform these steps:
+## Execute Mode Steps
 
-1. Inspect current changes.
-2. Stage files:
-   - Prefer already staged files if they match the intended scope.
-   - If nothing is staged, run `git add <files>` for scoped files, or `git add -A` only when the request implies committing all current changes.
-3. Run `git commit` with generated subject/body.
-4. Return:
+1. Collect context using the ladder above.
+2. Rebase first when possible:
+- Check upstream branch (`@{u}`).
+- If upstream exists, run `git pull --rebase --autostash`.
+- If rebase fails/conflicts, stop and report; do not continue to commit.
+3. Stage files:
+- Reuse staged files when scope is correct.
+- If nothing staged, run `git add <scoped files>`.
+- Use `git add -A` only when user intent is clearly commit-all.
+4. Commit with generated subject/body.
+5. Return:
 
 ```text
 Committed: <subject>
@@ -88,27 +91,12 @@ Commit: <short-hash>
 Files: <count or list>
 ```
 
-Use `git log -1 --oneline` to report the resulting commit hash.
-If there is nothing to commit, state that clearly and do not fabricate a commit.
+Use `git log -1 --oneline` for the hash. If nothing is commit-ready, state it clearly.
 
-## Quality Checks Before Commit
+## Guardrails
 
-- Subject reflects actual changed files.
-- Verb and wording match repository style.
-- No unrelated files are mixed in the same commit.
-- Subject is readable and specific (avoid vague words like `update stuff`).
-- Do not use interactive commit flows.
-- Do not use `--amend` unless the user explicitly requests amend.
-
-## Fast Prompt Template
-
-Use this prompt with the assistant:
-
-```text
-Read current git changes and produce one commit in this repo's style.
-If I explicitly ask to commit, execute git add + git commit.
-Return:
-1) Subject
-2) Optional body bullets
-3) Exact git add / git commit command or executed commit hash
-```
+- Subject must match actual diffs (not filenames only).
+- Avoid vague text like `update stuff`.
+- Never continue commit after a failed or unresolved rebase.
+- Use non-interactive git flows.
+- Do not use `--amend` unless explicitly requested.
