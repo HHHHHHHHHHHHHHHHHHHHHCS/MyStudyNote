@@ -1839,4 +1839,4 @@ UE5.8支持导出Mesh, 如果是之前的版本需要导出 R16 的深度图
 
 法线记得要用正确的高度重建, 并且注意 UE 是 DX 副切线规则, OpenGL 会相反
 
-具体可以看下 HeightToUENormal.py
+采样周围算法是 Sobel, 而不是普通的 右减左 / 下减上, 具体可以看下 HeightToUENormal.py
