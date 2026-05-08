@@ -1827,3 +1827,16 @@ if (FPaths::DirectoryExists(ProjectShaderPath))
 直接在项目文件夹下 创建 Shaders 文件夹, 添加 test.ush
 
 然后 在 Custom Node 里面, include file 写 /Project/test.ush
+
+
+## UE 地形深度图 重建高度和法线
+
+UE5.8支持导出Mesh, 如果是之前的版本需要导出 R16 的深度图
+
+再导入 UE, 压缩类型建议选择为 GrayScale(G8/16) from source R
+
+高度 = (深度 * 65536 - 32768) / 128 * 100cm
+
+法线记得要用正确的高度重建, 并且注意 UE 是 DX 副切线规则, OpenGL 会相反
+
+具体可以看下 HeightToUENormal.py
