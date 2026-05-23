@@ -1840,3 +1840,12 @@ UE5.8支持导出Mesh, 如果是之前的版本需要导出 R16 的深度图
 法线记得要用正确的高度重建, 并且注意 UE 是 DX 副切线规则, OpenGL 会相反
 
 采样周围算法是 Sobel, 而不是普通的 右减左 / 下减上, 具体可以看下 HeightToUENormal.py
+
+
+## 抓帧抓不出来
+
+有时候是因为失去焦点, UE 就不渲染了, 直接用了最后一帧的结果
+
+下面选项改成false
+
+Editor Preferences -> General -> Performance -> Use Less CPU when in Background
