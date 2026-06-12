@@ -75,7 +75,9 @@ git commit -m "<subject>" -m "<bullet 1>" -m "<bullet 2>"
 
 1. Collect context using the ladder above.
 2. Rebase first when possible:
-- Check upstream branch (`@{u}`).
+- Check upstream branch with PowerShell-safe quoting:
+  `git rev-parse --abbrev-ref --symbolic-full-name '@{u}'`
+- Never pass bare `@{u}` in PowerShell; it is parsed as a hash literal before Git receives it.
 - If upstream exists, run `git pull --rebase --autostash`.
 - If rebase fails/conflicts, stop and report; do not continue to commit.
 3. Stage files:
