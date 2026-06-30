@@ -1849,3 +1849,16 @@ UE5.8支持导出Mesh, 如果是之前的版本需要导出 R16 的深度图
 下面选项改成false
 
 Editor Preferences -> General -> Performance -> Use Less CPU when in Background
+
+
+## Setup 复用缓存
+
+有时候拉了新的分支需要重新Setup, 但是会耗时间和流量.
+
+如果 UE 大版本/依赖版本一致或接近, 可以复用之前分支的 GitDependencies 缓存!!!
+
+如果只是想安全一点, 不强制覆盖, 可以去掉 `--force`.
+
+```bat
+E:\MyEngine_New\Setup.bat --cache="E:\MyEngine_Old\.git\ue-gitdeps" --force
+```
