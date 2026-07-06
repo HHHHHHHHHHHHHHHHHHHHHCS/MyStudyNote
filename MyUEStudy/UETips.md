@@ -1862,3 +1862,10 @@ Editor Preferences -> General -> Performance -> Use Less CPU when in Background
 ```bat
 E:\MyEngine_New\Setup.bat --cache="E:\MyEngine_Old\.git\ue-gitdeps" --force
 ```
+
+
+## WorldPositionOffsetDisableDistance
+
+WorldPositionOffsetDisableDistance 如果为0, 注意不是无限大, 而是受到全局参数的控制
+
+如果需要很大的值, 建议手动填入很大的值, 比如100000000
