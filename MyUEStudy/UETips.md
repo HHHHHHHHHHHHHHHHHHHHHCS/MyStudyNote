@@ -82,7 +82,7 @@ r.D3D12.AutoAttachPIX=1
 
 启动报错, 提示如下
 
-系统在此应用程序中检测到基于堆栈的缓冲区溢出。溢出可能允许恶意用户获得此应用程序的控制
+系统在此应用程序中检测到基于堆栈的缓冲区溢出. 溢出可能允许恶意用户获得此应用程序的控制
 
 大致原因是因为DLSS 和 Renderdoc 冲突弹窗导致的
 
@@ -638,7 +638,7 @@ GM 指令
 + -llmtagsets=AssetClasses #实验性功能, 显示每个UObject类类型的总计
 
 开启LLM后, 运行下面GM
-stat llm #显示LLM摘要, 所有较低级别的引擎统计信息都归入单个引擎统计信息。
+stat llm #显示LLM摘要, 所有较低级别的引擎统计信息都归入单个引擎统计信息.
 stat llmfull #显示LLM所有统计信息
 stat LLMPlatform #显示从OS分配的所有内存信息 
 stat LLMOverhead #显示LLM内部使用的内存
@@ -647,7 +647,7 @@ stat LLMOverhead #显示LLM内部使用的内存
 
 MemReport -full
 
-生成的报告将保存在 Game/Saved/Profiling/MemReports 目录下，文件格式为 .memreport
+生成的报告将保存在 Game/Saved/Profiling/MemReports 目录下, 文件格式为 .memreport
 
 Android 地址: \ > storage > emulated > 0 > Android > data > com.example.myapp > files > UnrealGame > myapp > myapp > saved > Profiling  > MemReports
 
@@ -791,43 +791,128 @@ for (TActorIterator<XXXXXXX> It(GetWorld()); It; ++It)
 }
 
 ```
+## Shader 变体统计
 
-## 变体统计
+Cook 完成后, UE 会在项目的 `Saved/MaterialStats` 目录下生成材质 Shader 变体统计文件
 
-MaterialStats 和 MaterialStatsDebug 不需要打开下面的ini, 但是如果要分析 VertexFactory 要开
+生成 `MaterialStats` 和 `MaterialStatsDebug` 不需要额外开启 Shader 调试选项. 如果需要继续分析每个 Vertex Factory 实际生成了哪些 Shader, 则需要修改:
 
-打开编辑 Engine\Config\ConsoleVariables.ini
+```text
+Engine/Config/ConsoleVariables.ini
+```
+
+加入以下配置:
 
 ```ini
 r.ShaderDevelopmentMode=1
-
 r.DumpShaderDebugInfo=1
 ```
 
-Cook完后会在 {项目目录}\Saved\MaterialStats下生成变体统计文件
+> `r.DumpShaderDebugInfo` 会生成大量 Shader 中间文件, 可能明显增加 Cook 时间和磁盘占用. 分析完成后建议关闭.
 
-Cooked 是 最终变体Shader 的数量(建议参考这个), Permutations 是ShaderFeature的数量
+### 统计文件
 
-{项目目录}\Saved\MaterialStatsDebug 是详细的变体枚举
+Cook 完成后, 主要关注以下目录:
 
-PermutationString 是 ShaderFeature 排列
+```text
+{项目目录}/Saved/MaterialStats
+{项目目录}/Saved/MaterialStatsDebug
+{项目目录}/Saved/ShaderDebugInfo
+```
 
-Cooked = 每个 Permutations 的 Uses 累加
+各目录的用途如下:
 
-怎么看 Uses 的详情? 随便举个例子, cook生成了2个变体目录, 每个 又有6个子文件夹
+| 目录 | 说明 |
+|---|---|
+| `MaterialStats` | 材质级别的 Shader 变体汇总 |
+| `MaterialStatsDebug` | 更详细的 Shader Permutation 枚举 |
+| `ShaderDebugInfo` | 实际生成的 Shader 编译中间文件, 可用于分析 Vertex Factory, Shader Type 等信息 |
 
-下面就是cook生成的中间结果, 2 (Permutations) * 6 (Uses) = 12 (Cooked)
+### 关键统计字段
 
-{项目目录}\Saved\ShaderDebugInfo\VULKAN_ES3_1_ANDROID\M_Test_e6f739dfdb823b6d\Default\FLocalVertexFactory
+| 字段 | 说明 |
+|---|---|
+| `Compiled` | 本次 Cook 中实际触发编译, 没有直接从 DDC 复用的 Shader 数量 |
+| `Cooked` | 最终 Cook 出来的 Shader 数量, 分析最终 Shader 规模时建议优先参考 |
+| `CompiledDouble` | 同一统计项被重复提交编译的 Shader 数量, 也就是重复编译量 |
+| `CookedDouble` | 同一统计项被重复 Cook 或重复统计的 Shader 数量, 也就是重复 Cook 量 |
+| `Permutations` | 材质生成的 Shader Feature 排列数量 |
+| `PermutationString` | 一组 Shader Feature 的具体排列描述 |
+| `Uses` | 当前 Permutation 实际包含的 Shader Type 数量 |
 
-{项目目录}\Saved\ShaderDebugInfo\VULKAN_ES3_1_ANDROID\M_Test_155e94de3daa0004\Default\FLocalVertexFactory
 
-  + TMobileBasePassPSFMobileDirectionalLightAndCSMPolicyLOCAL_LIGHTS_DISABLED
-  + TMobileBasePassPSFMobileDirectionalLightAndCSMPolicyLOCAL_LIGHTS_ENABLED
-  + TMobileBasePassPSFNoLightMapPolicyLOCAL_LIGHTS_DISABLED
-  + TMobileBasePassPSFNoLightMapPolicyLOCAL_LIGHTS_ENABLED
-  + TMobileBasePassVSFMobileDirectionalLightAndCSMPolicy
-  + TMobileBasePassVSFNoLightMapPolicy
+对于单个材质, `Cooked` 可以理解为各个 Permutation 的 `Uses` 之和:
+
+```text
+Cooked = Σ Uses(Permutation)
+```
+
+需要注意, `Permutations` 统计的是 Feature 排列数量, 而不是最终 Shader 数量. 每个 Permutation 下面还会根据 Vertex Factory, Shader Type, Light Map Policy 等条件生成多个实际 Shader.
+
+### 如何查看 Uses 的组成
+
+假设材质 `M_Test` 在 Cook 后生成了两个 Permutation:
+
+```text
+{项目目录}/Saved/ShaderDebugInfo/VULKAN_ES3_1_ANDROID/
+├── M_Test_e6f739dfdb823b6d/
+└── M_Test_155e94de3daa0004/
+```
+
+每个 Permutation 的 `FLocalVertexFactory` 目录下又分别生成了 6 个 Shader:
+
+```text
+Default/FLocalVertexFactory/
+├── TMobileBasePassPSFMobileDirectionalLightAndCSMPolicyLOCAL_LIGHTS_DISABLED
+├── TMobileBasePassPSFMobileDirectionalLightAndCSMPolicyLOCAL_LIGHTS_ENABLED
+├── TMobileBasePassPSFNoLightMapPolicyLOCAL_LIGHTS_DISABLED
+├── TMobileBasePassPSFNoLightMapPolicyLOCAL_LIGHTS_ENABLED
+├── TMobileBasePassVSFMobileDirectionalLightAndCSMPolicy
+└── TMobileBasePassVSFNoLightMapPolicy
+```
+
+对应关系为:
+
+```text
+Permutations = 2
+每个 Permutation 的 Uses = 6
+Cooked = 2 × 6 = 12
+```
+
+也就是说:
+
+- 两个 `M_Test_<Hash>` 目录对应两个 Shader Feature 排列
+- 每个排列生成 6 个实际 Shader
+- 最终该材质贡献了 12 个 Cooked Shader
+
+### 目录示例
+
+完整路径类似于:
+
+```text
+{项目目录}/Saved/ShaderDebugInfo/
+└── VULKAN_ES3_1_ANDROID/
+    ├── M_Test_e6f739dfdb823b6d/
+    │   └── Default/
+    │       └── FLocalVertexFactory/
+    │           └── 6 个 Shader Type
+    └── M_Test_155e94de3daa0004/
+        └── Default/
+            └── FLocalVertexFactory/
+                └── 6 个 Shader Type
+```
+
+因此, 分析 Shader 变体数量时可以按照下面的层级理解:
+
+```text
+Material
+└── PermutationString
+    └── Vertex Factory
+        └── Shader Type / Policy
+            └── 最终 Shader
+```
+
+`Permutations` 反映材质 Feature 排列规模, `Uses` 反映每种排列实际使用的 Shader 数量, 而 `Cooked` 才是最终生成的 Shader 总量
 
 
 ## 包体启用 Insights
@@ -925,7 +1010,7 @@ https://zhuanlan.zhihu.com/p/1994197836468860651
 
 Shipping 包有时候用 ADB 无法正常推送 或者 读取不到 uproject
 
-AndroidFileServer是虚幻专为Android平台开发的一款文件服务系统。
+AndroidFileServer是虚幻专为Android平台开发的一款文件服务系统.
 
 Android SDK版本在30(Android 10)以上, 原有的UE4Game文件夹无法再创建到Android根目录
 
@@ -1047,7 +1132,7 @@ https://zhuanlan.zhihu.com/p/1947797880443212469
 https://zhuanlan.zhihu.com/p/1947801700254617799
 
 Nvidia最近修改了驱动缓存的PSO命名, 导致-clearPSODriverCache启动参数在5.6之前的版本不再生效了, 除非等待引擎更新修复
-可以cherry-pick这个提交（对于Perforce用户来说是CL 40200336, 这是个很小的更改
+可以cherry-pick这个提交(对于Perforce用户来说是CL 40200336), 这是个很小的更改
 
 PSOCacheBuster插件也实现了这个修复
 
@@ -1070,7 +1155,7 @@ Profile GPU
 
 Ctrl+Shift+Comma(,)
 
-或者控制台命令：ProfileGPU
+或者控制台命令: ProfileGPU
 
 对当前帧进行Profile
 
