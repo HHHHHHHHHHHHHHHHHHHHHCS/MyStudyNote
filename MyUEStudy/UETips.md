@@ -1954,3 +1954,18 @@ E:\MyEngine_New\Setup.bat --cache="E:\MyEngine_Old\.git\ue-gitdeps" --force
 WorldPositionOffsetDisableDistance 如果为0, 注意不是无限大, 而是受到全局参数的控制
 
 如果需要很大的值, 建议手动填入很大的值, 比如100000000
+
+
+## 4K UI 文字刷新 出现菱形问号 闪烁
+
+文字短暂显示为 U+FFFD 替代符
+
+4K 分辨率下聊天窗口高速滚动导致字体 Atlas 快速占满
+
+默认 Slate.MaxFontAtlasPagesBeforeFlush=1 会频繁刷新字体缓存 
+
+尝试执行下面的指令
+
+```
+Slate.MaxFontAtlasPagesBeforeFlush 4
+```
