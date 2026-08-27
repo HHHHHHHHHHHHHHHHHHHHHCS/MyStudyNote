@@ -1616,6 +1616,31 @@ GEngine->GameViewport->Viewport->GetSizeXY()
 ```
 
 
+## Windows DPI 缩放与 bAllowHighDPIInGameMode
+
+有时候 4K 分辨率, 但是DPI 缩放是 200%, 进游戏很模糊
+
+很可能是 bAllowHighDPIInGameMode 设置成了 False, 需要改回 True 测试对比一下
+
+这个开关控制独立游戏启动时是否启用 Windows DPI Awareness, 让 UE 自己处理 DPI, 而不是让 Windows 兼容缩放整张游戏画面
+
+注意它会影响到鼠标的大小, 建议给鼠标一个额外的大小控制选项
+
+项目设置：Project Settings -> Engine -> User Interface -> DPI Scaling -> **Allow High DPI in Game Mode**
+
+在项目的 `Config/DefaultEngine.ini` 中配置:
+
+```ini
+[/Script/Engine.UserInterfaceSettings]
+bAllowHighDPIInGameMode=True
+```
+
+Development / DebugGame / Test 游戏可以用 INI 命令行覆盖:
+
+```text
+-ini:Engine:[/Script/Engine.UserInterfaceSettings]:bAllowHighDPIInGameMode=True
+```
+
 ## UDS 雾不显示
 
 比如说下雨的 Fog 不显示
