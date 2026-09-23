@@ -91,8 +91,8 @@ Visibility Bitmask的想法是, 把角度范围分成很多小格子, 每一格�
 
 ```text
 初始可见性:   11111111
-遮挡bit 2~4:  11100011
-再挡bit 4~5:  11000011
+遮挡bit 2到4:  11100011
+再挡bit 4到5:  11000011
 ```
 
 这里 **1表示可见, 0表示被遮挡**. 两个遮挡重叠的bit 4, 不会重复扣两次. 同一格已经被挡住, 再来一个物体也不能收第二遍遮挡费.
@@ -132,7 +132,7 @@ float3 toBack = samplePosition - viewDirection * thickness - center;
 
 作者的实现会建立切片平面, 把法线投影到切片, 并保留左右方向的有符号角度. [实现说明][3]
 
-当前Demo没有完整照搬这一段. 它直接使用世界法线和采样方向的夹角, 映射到 **0~PI/2** 的32格, 并让正反两个采样方向共用一个mask.
+当前Demo没有完整照搬这一段. 它直接使用世界法线和采样方向的夹角, 映射到 **0到PI/2** 的32格, 并让正反两个采样方向共用一个mask.
 
 因此它丢掉了左右角度的符号. 两边不同的遮挡, 如果恰好落在相同的角度格子, 会被合并. 后面 **countbits / 32** 也是等权计数, 没有做完整的余弦加权积分.
 
@@ -490,9 +490,9 @@ int endBit = clamp((int)(GTVBAOApproxAcos(dot(normal, backDirection))
 角度换算成bit索引 = clamp((int)(angle * (32.0 / HALF_PI)), 0, 31)
 ```
 
-相当于把0~90度分成32个格子. 这里得到的是startBit和endBit两个索引, 后面再用它们生成遮挡区间的BitMask.
+相当于把0到90度分成32个格子. 这里得到的是startBit和endBit两个索引, 后面再用它们生成遮挡区间的BitMask.
 
-比如夹角是PI/4, 即45度, 对应位置约为16. 后面转int, 再限制到0~31.
+比如夹角是PI/4, 即45度, 对应位置约为16. 后面转int, 再限制到0到31.
 
 **GTVBAOApproxAcos()** 用多项式近似acos:
 
@@ -507,7 +507,7 @@ float GTVBAOApproxAcos(float value)
 
 ```
 
-这里输入先saturate到0~1, 所以输出大致是0~PI/2. 负点积会被当成0, 不是完整支持-1~1的acos. 结合上一节就能看出来, 当前实现的角度表示确实做了简化.
+这里输入先saturate到0到1, 所以输出大致是0到PI/2. 负点积会被当成0, 不是完整支持-1到1的acos. 结合上一节就能看出来, 当前实现的角度表示确实做了简化.
 
 thickness为0时, 前后方向相同, startBit和endBit相同, 不会写入遮挡. 所以这个参数在这里控制的是“遮挡区间有没有宽度”, 并不是普通的暗度滑杆.
 
@@ -625,7 +625,7 @@ GroupMemoryBarrierWithGroupSync();
 
 ```
 
-lane 0~63先各装一个, lane 0~7再装剩下8个. 同步之后大家才能放心读邻居加载的数据.
+lane 0到63先各装一个, lane 0到7再装剩下8个. 同步之后大家才能放心读邻居加载的数据.
 
 横向的direction为(1, 0), 纵向为(0, 1), 因此相同的lane就能对应一行或者一列.
 
@@ -808,7 +808,7 @@ Debug模式对应如下:
 | Composite | 最终场景乘AO |
 | AmbientOcclusion | 最终AO, 包含已启用的滤波和累积 |
 | RawAmbientOcclusion | Main输出, 未经过Blur和Temporal |
-| WorldNormals | 世界法线映射到0~1显示 |
+| WorldNormals | 世界法线映射到0到1显示 |
 
 虽然变量名叫 **_GTVBAOHistory**, 在Composite里面绑定的是“最终AO”. Temporal没开时也可能是Blur结果或者Raw, 并不一定来自上一帧.
 
@@ -828,7 +828,7 @@ thickness也要结合场景看. 薄板和厚墙共用同一个系数, 总会有�
 
 性能方面, 可以先试quality 1和halfResolution, 看细节是否还能接受. Temporal适合在运动中看稳定性, 只截一张静态图很难判断拖影. 当前RT每像素两个32位浮点, History还要两张, 带宽和显存也要算进去. AO本来只想存一份黑白, 为了照顾历史Depth, 最后租了个双人间.
 
-后续如果想试更紧凑的RT格式, 要先检查远处Depth精度能不能满足历史拒绝和上采样, 不要只因为AO本身0~1就把G通道也一起随便压缩了.
+后续如果想试更紧凑的RT格式, 要先检查远处Depth精度能不能满足历史拒绝和上采样, 不要只因为AO本身0到1就把G通道也一起随便压缩了.
 
 这次从AO写到Blur又写到Temporal, 后面的收尾比前面的算法还长. 图形学日常了属于是(Doge).
 
