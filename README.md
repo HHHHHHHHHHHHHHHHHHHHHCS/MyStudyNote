@@ -27,6 +27,7 @@
 - [快速学点MeshAPI](MyNote/快速学点MeshAPI.md)
 - [水一篇](MyNote/水一篇.md)
 - [写轮眼个CapsuleAO](MyNote/写轮眼个CapsuleAO.md)
+- [写写GTVBAO](MyNote/写写GTVBAO.md)
 - [写写简单的HBAO](MyNote/写写简单的HBAO.md)
 - [一点点的优化学习](MyNote/一点点的优化学习.md)
 - [自己的图形学血祭路线](MyNote/自己的图形学血祭路线.md)
